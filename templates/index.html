@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Al Hidayet Mission</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .glass-container img.logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Banner styling refresh */
+        .admission-banner {
+            background: linear-gradient(90deg, rgba(255, 153, 0, 0.2), rgba(255, 0, 0, 0.1));
+            border: 1px solid rgba(255, 165, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .admission-banner h2 {
+            color: #ffa500;
+        }
+
+        .admission-banner p {
+            color: #ddd;
+        }
+
+        .role-desc {
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="#home" class="logo">AHM</a>
+        <div class="nav-links">
+            <a href="#home">Home</a>
+            <a href="#about">About</a>
+            <a href="#services">Services</a>
+            <a href="/gallery">Gallery</a>
+            <a href="#contact">Contact</a>
+            <a href="/login/student" class="nav-btn">Login</a>
+        </div>
+    </nav>
+
+    <div id="home" class="glass-container wide">
+        <div class="text-center">
+            <img src="{{ logo_url }}" alt="School Logo" class="logo">
+            <h1>Al Hidayet Mission</h1>
+            <p style="color: #bbb;">Digital Management System</p>
+        </div>
+
+        <div class="admission-banner text-center">
+            <h2>ADMISSION OPEN - 2026</h2>
+            <p>Nursery to Class X | Bengali Medium</p>
+        </div>
+
+        <div class="role-grid">
+            <a href="/login/headmaster" class="glass-card">
+                <i class="fas fa-user-tie role-icon"></i>
+                <div class="role-title">Headmaster</div>
+                <div class="role-desc">Admin Access</div>
+            </a>
+
+            <a href="/login/teacher" class="glass-card">
+                <i class="fas fa-chalkboard-teacher role-icon"></i>
+                <div class="role-title">Teacher</div>
+                <div class="role-desc">Upload & View</div>
+            </a>
+
+            <a href="/login/student" class="glass-card">
+                <i class="fas fa-user-graduate role-icon"></i>
+                <div class="role-title">Student</div>
+                <div class="role-desc">View Resources</div>
+            </a>
+
+            <a href="#" class="glass-card" onclick="alert('Guardian portal coming soon!')">
+                <i class="fas fa-user-friends role-icon" style="color: #ccc;"></i>
+                <div class="role-title" style="color: #999;">Guardian</div>
+                <div class="role-desc">Coming Soon</div>
+            </a>
+        </div>
+
+        <div class="info-section">
+            <div class="info-grid">
+                <!-- About Section -->
+                <div id="about" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
+                    <h3
+                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-school"></i> About Mission
+                    </h3>
+                    <p style="font-size: 0.95rem; margin-bottom: 20px; line-height: 1.6; color: #eee;">
+                        An Ideal Residential / Non-Residential / Day-Boarding Educational Institution established in
+                        2010.
+                    </p>
+                    <ul style="list-style: none; padding: 0; width: 100%;">
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
+                            <span>Boys & Girls Hostel</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
+                            <span>Skilled & Experienced Teachers</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
+                            <span>Special Care for Weak Students</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
+                            <span>Registration No: S/IL/81291</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Services Section -->
+                <div id="services" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
+                    <h3
+                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-concierge-bell"></i> Services & Features
+                    </h3>
+                    <ul style="list-style: none; padding: 0; width: 100%;">
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-laptop-code"
+                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
+                            <span>Computer Education</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-chalkboard"
+                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
+                            <span>Coaching Facilities</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-file-alt"
+                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
+                            <span>Monthly Class Tests</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-user-md"
+                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
+                            <span>Psychological Care</span>
+                        </li>
+                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-bus"
+                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
+                            <span>Transport via Mastanpara</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Contact Section -->
+                <div id="contact" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
+                    <h3
+                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-map-marker-alt"></i> Contact Us
+                    </h3>
+
+                    <div style="margin-bottom: 20px;">
+                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Main Branch
+                            (Surangapur):</strong>
+                        <span style="color: #ccc; line-height: 1.5; display: block; margin-bottom: 15px;">
+                            Surangapur (Mastanpara), P.O. Samaspur,<br>
+                            P.S. Hemtabad, Dist. Uttar Dinajpur.
+                        </span>
+
+                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Bhogram Branch:</strong>
+                        <span style="color: #ccc; line-height: 1.5; display: block;">
+                            Bhogram (East Side of Bhogram Market),<br>
+                            Hemtabad, Uttar Dinajpur, 733130.
+                        </span>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Phone:</strong>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <a href="tel:9775357903"
+                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 9775357903
+                            </a>
+                            <a href="tel:8617875908"
+                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 8617875908
+                            </a>
+                            <a href="tel:8145589351"
+                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 8145589351
+                            </a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #fff;">Secretary:</strong>
+                            <span style="color: #ccc;">Majidur Rahman Chowdhury</span>
+                        </div>
+                        <div>
+                            <strong style="color: #fff;">President:</strong>
+                            <span style="color: #ccc;">Habibur Rahman (Ripon)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert mt-3">
+                <strong><i class="fas fa-bullhorn"></i> Notice:</strong> Teacher Recruitment: Experienced and qualified
+                teachers are required.
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

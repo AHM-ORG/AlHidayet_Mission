@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Verify OTP</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="/" class="logo">AHM</a>
+    </nav>
+
+    <div class="glass-container">
+        <h2>Verify OTP</h2>
+        <p style="color: #ccc;">We have sent a verification code to <br> <strong style="color: #fff;">{{ email
+                }}</strong></p>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert">{{ messages[0] }}</div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="alert-success" style="margin-bottom: 20px; font-size: 13px;">
+            <i class="fas fa-info-circle"></i> Check your server console/logs for the specific OTP.
+        </div>
+
+        <form action="{{ url_for('verify_otp', context=context) }}" method="post">
+            <div class="input-group">
+                <label>Enter OTP Code</label>
+                <input type="text" name="otp" required placeholder="6-digit code">
+            </div>
+
+            <button type="submit" class="glass-button">Verify Code</button>
+        </form>
+    </div>
+
+</body>
+
+</html>

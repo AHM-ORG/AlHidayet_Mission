@@ -1,0 +1,371 @@
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    --backdrop-blur: 15px;
+    --text-color: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --primary-color: #4facfe;
+    --accent-color: #00f2fe;
+    --button-bg: #1e1e2e;
+    --font-family: 'Poppins', sans-serif;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family);
+    /* Dark Blue Forest Theme */
+    background: url('https://img.freepik.com/free-vector/night-forest-landscape-with-trees_107791-28.jpg?w=1380&t=st=1709450000~exp=1709450600~hmac=example') no-repeat center center fixed;
+    /* Fallback high quality nature image if vector not available directly, using a reliable Unsplash dark forest one */
+    background: linear-gradient(rgba(10, 25, 47, 0.8), rgba(10, 25, 47, 0.8)), url('https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* Changed for Navbar */
+    color: var(--text-color);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Offset for fixed navbar to prevent overlapping */
+section,
+div[id] {
+    scroll-margin-top: 100px;
+}
+
+/* Navbar Styles */
+.navbar {
+    width: 100%;
+    padding: 15px 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    background: rgba(10, 25, 47, 0.95);
+    /* Semi-transparent dark bg for visibility */
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure body has padding so navbar doesn't cover content */
+.navbar+.glass-container {
+    margin-top: 100px;
+}
+
+.navbar .logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+.nav-links a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 16px;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: #fff;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    border: 1px solid #fff;
+    border-radius: 5px;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.nav-btn:hover {
+    background: #fff;
+    color: #1a1a2e;
+}
+
+/* Glass Container (Modal Style) */
+.glass-container {
+    background: var(--glass-bg);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    margin: 100px auto 40px auto;
+    /* Centered horizontally */
+}
+
+.glass-container.wide {
+    max-width: 1000px;
+    text-align: left;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.3);
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border-radius: 5px;
+}
+
+h1,
+h2,
+h3 {
+    margin-top: 0;
+    font-weight: 600;
+    color: #fff;
+}
+
+h2 {
+    margin-bottom: 30px;
+}
+
+/* Input Styles */
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+    position: relative;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #ddd;
+    font-size: 14px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    padding: 10px 5px;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+    border-radius: 0;
+    /* Flat look */
+}
+
+input:focus,
+select:focus {
+    border-bottom-color: var(--accent-color);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+select option {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+/* Checkbox & Links */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    margin-bottom: 30px;
+    color: #ccc;
+}
+
+.form-actions a {
+    color: #ccc;
+}
+
+.form-actions a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* Glowing Button from previous request, tweaked for dark theme */
+.glass-button {
+    padding: 12px 0;
+    border: none;
+    outline: none;
+    color: #FFF;
+    cursor: pointer;
+    position: relative;
+    z-index: 0;
+    border-radius: 8px;
+    width: 100%;
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    background: #0f2027;
+    /* Dark background base */
+}
+
+.glass-button::after {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: #1a1a2e;
+    left: 0;
+    top: 0;
+    border-radius: 8px;
+}
+
+/* glow */
+.glass-button::before {
+    content: "";
+    background: linear-gradient(45deg,
+            #00c6ff, #0072ff, #00c6ff);
+    /* Blueish glow for dark theme */
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    background-size: 200%;
+    z-index: -1;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity .3s ease-in-out;
+    border-radius: 8px;
+}
+
+.glass-button:hover::before {
+    opacity: 0.8;
+}
+
+/* Helper Classes */
+.text-center {
+    text-align: center;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.text-small {
+    font-size: 13px;
+}
+
+/* Home Page Specifics */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.3s, background 0.3s;
+    text-decoration: none;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+}
+
+.info-section {
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.highlight-primary {
+    color: var(--accent-color);
+}
+
+/* Alerts */
+.alert {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    background: rgba(255, 69, 58, 0.2);
+    border: 1px solid rgba(255, 69, 58, 0.3);
+    color: #ffcccb;
+}
+
+.alert-success {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    color: #98dfb6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .nav-links {
+        gap: 15px;
+        font-size: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .glass-container {
+        padding: 25px;
+        width: 90%;
+        margin-top: 140px;
+        /* More space for stacked navbar */
+    }
+
+    .glass-container.wide {
+        text-align: center;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}

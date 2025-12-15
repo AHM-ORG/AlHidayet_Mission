@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Forgot Username - Al Hidayet Mission</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="/" class="logo">AHM</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="#">About</a>
+            <a href="#">Services</a>
+            <a href="#">Contact</a>
+            <a href="/login/student" class="nav-btn">Login</a>
+        </div>
+    </nav>
+
+    <div class="glass-container">
+        <h2>Forgot Username</h2>
+
+        {% if username %}
+        <div class="alert alert-success">
+            Your Username is: <strong>{{ username }}</strong>
+        </div>
+        {% endif %}
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert alert-danger">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="input-group">
+                <input type="text" name="name" required placeholder="Enter Full Name">
+            </div>
+            <div class="input-group">
+                <input type="text" name="mobile" required placeholder="Enter Mobile Number">
+            </div>
+
+            <button type="submit" class="glass-button">Retrieve Username</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="/login/student">Back to Login</a>
+        </div>
+    </div>
+
+</body>
+
+</html>
