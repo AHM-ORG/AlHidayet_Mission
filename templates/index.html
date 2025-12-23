@@ -2,232 +2,317 @@
 <html lang="en">
 
 <head>
-    <title>Al Hidayet Mission</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .role-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            justify-content: center;
-            margin-bottom: 40px;
-        }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-        .glass-container img.logo {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.5);
-        }
-
-        /* Banner styling refresh */
-        .admission-banner {
-            background: linear-gradient(90deg, rgba(255, 153, 0, 0.2), rgba(255, 0, 0, 0.1));
-            border: 1px solid rgba(255, 165, 0, 0.3);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }
-
-        .admission-banner h2 {
-            color: #ffa500;
-        }
-
-        .admission-banner p {
-            color: #ddd;
-        }
-
-        .role-desc {
-            color: #aaa;
-        }
-    </style>
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <a href="#home" class="logo">AHM</a>
-        <div class="nav-links">
-            <a href="#home">Home</a>
-            <a href="#about">About</a>
-            <a href="#services">Services</a>
-            <a href="/gallery">Gallery</a>
-            <a href="#contact">Contact</a>
-            <a href="/login/student" class="nav-btn">Login</a>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <img src="{{ logo_url }}" alt="AHM Logo" class="logo-img">
+                <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+            </div>
+            <nav class="main-nav">
+                <a href="#home" class="nav-link active">Home</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-primary">Login</a>
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
         </div>
-    </nav>
+    </header>
 
-    <div id="home" class="glass-container wide">
-        <div class="text-center">
-            <img src="{{ logo_url }}" alt="School Logo" class="logo">
-            <h1>Al Hidayet Mission</h1>
-            <p style="color: #bbb;">Digital Management System</p>
-        </div>
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container hero-container">
+            <div class="hero-content">
 
-        <div class="admission-banner text-center">
-            <h2>ADMISSION OPEN - 2026</h2>
-            <p>Nursery to Class X | Bengali Medium</p>
-        </div>
-
-        <div class="role-grid">
-            <a href="/login/headmaster" class="glass-card">
-                <i class="fas fa-user-tie role-icon"></i>
-                <div class="role-title">Headmaster</div>
-                <div class="role-desc">Admin Access</div>
-            </a>
-
-            <a href="/login/teacher" class="glass-card">
-                <i class="fas fa-chalkboard-teacher role-icon"></i>
-                <div class="role-title">Teacher</div>
-                <div class="role-desc">Upload & View</div>
-            </a>
-
-            <a href="/login/student" class="glass-card">
-                <i class="fas fa-user-graduate role-icon"></i>
-                <div class="role-title">Student</div>
-                <div class="role-desc">View Resources</div>
-            </a>
-
-            <a href="#" class="glass-card" onclick="alert('Guardian portal coming soon!')">
-                <i class="fas fa-user-friends role-icon" style="color: #ccc;"></i>
-                <div class="role-title" style="color: #999;">Guardian</div>
-                <div class="role-desc">Coming Soon</div>
-            </a>
-        </div>
-
-        <div class="info-section">
-            <div class="info-grid">
-                <!-- About Section -->
-                <div id="about" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
-                    <h3
-                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-school"></i> About Mission
-                    </h3>
-                    <p style="font-size: 0.95rem; margin-bottom: 20px; line-height: 1.6; color: #eee;">
-                        An Ideal Residential / Non-Residential / Day-Boarding Educational Institution established in
-                        2010.
-                    </p>
-                    <ul style="list-style: none; padding: 0; width: 100%;">
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
-                            <span>Boys & Girls Hostel</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
-                            <span>Skilled & Experienced Teachers</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
-                            <span>Special Care for Weak Students</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-check" style="color: var(--primary-color); margin-top: 4px;"></i>
-                            <span>Registration No: S/IL/81291</span>
-                        </li>
-                    </ul>
+                <h1 class="hero-title">Al Hidayet Mission</h1>
+                <p class="hero-description">
+                    An Ideal Residential / Non-Residential / Day-Boarding Educational Institution.
+                    <br><strong>Admission Open - 2026</strong> (Nursery to Class X | Bengali Medium)
+                </p>
+                <div class="hero-buttons">
+                    <a href="/register" class="btn btn-primary">Get Started</a>
+                    <a href="/services" class="btn btn-outline">Learn More</a>
                 </div>
+            </div>
+            <div class="hero-image">
+                <!-- Placeholder or Logo -->
+                <div class="hero-shape-blob"></div>
+                <img src="{{ logo_url }}" alt="School Logo" class="hero-img-main"
+                    style="border-radius: 50%; max-width: 300px;">
+            </div>
+        </div>
+        <div class="hero-wave">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
+                <path fill="#ffffff" fill-opacity="1"
+                    d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+                </path>
+            </svg>
+        </div>
+    </section>
 
-                <!-- Services Section -->
-                <div id="services" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
-                    <h3
-                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-concierge-bell"></i> Services & Features
-                    </h3>
-                    <ul style="list-style: none; padding: 0; width: 100%;">
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-laptop-code"
-                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
-                            <span>Computer Education</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-chalkboard"
-                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
-                            <span>Coaching Facilities</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-file-alt"
-                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
-                            <span>Monthly Class Tests</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-user-md"
-                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
-                            <span>Psychological Care</span>
-                        </li>
-                        <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fas fa-bus"
-                                style="color: var(--primary-color); min-width: 20px; margin-top: 4px;"></i>
-                            <span>Transport via Mastanpara</span>
-                        </li>
-                    </ul>
+    <!-- Roles / Login Section -->
+    <section id="roles" class="section bg-pattern">
+        <div class="container">
+            <div class="section-header text-center">
+                <h4 class="section-subtitle">Select Your Role</h4>
+                <h2 class="section-title">Login to Portal</h2>
+
+                <div class="alert-box">
+                    <strong>NOTICE:</strong> Teacher Recruitment: Experienced and qualified teachers are required.
                 </div>
+            </div>
 
-                <!-- Contact Section -->
-                <div id="contact" class="glass-card" style="align-items: flex-start; text-align: left; height: 100%;">
-                    <h3
-                        style="color: var(--accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-map-marker-alt"></i> Contact Us
-                    </h3>
-
-                    <div style="margin-bottom: 20px;">
-                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Main Branch
-                            (Surangapur):</strong>
-                        <span style="color: #ccc; line-height: 1.5; display: block; margin-bottom: 15px;">
-                            Surangapur (Mastanpara), P.O. Samaspur,<br>
-                            P.S. Hemtabad, Dist. Uttar Dinajpur.
-                        </span>
-
-                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Bhogram Branch:</strong>
-                        <span style="color: #ccc; line-height: 1.5; display: block;">
-                            Bhogram (East Side of Bhogram Market),<br>
-                            Hemtabad, Uttar Dinajpur, 733130.
-                        </span>
+            <div class="facilities-grid">
+                <!-- Headmaster -->
+                <a href="/login/headmaster" class="facility-card color-4">
+                    <div class="facility-icon">
+                        <i class="fas fa-user-tie"></i>
                     </div>
+                    <h3>Headmaster</h3>
+                    <p>Admin Access to Dashboard</p>
+                </a>
 
-                    <div style="margin-bottom: 20px;">
-                        <strong style="display: block; color: #fff; margin-bottom: 5px;">Phone:</strong>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <a href="tel:9775357903"
-                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 9775357903
-                            </a>
-                            <a href="tel:8617875908"
-                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 8617875908
-                            </a>
-                            <a href="tel:8145589351"
-                                style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-phone-alt" style="font-size: 0.8rem;"></i> 8145589351
-                            </a>
-                        </div>
+                <!-- Teacher -->
+                <a href="/login/teacher" class="facility-card color-2">
+                    <div class="facility-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
                     </div>
+                    <h3>Teacher</h3>
+                    <p>Upload & View Resources</p>
+                </a>
 
-                    <div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #fff;">Secretary:</strong>
-                            <span style="color: #ccc;">Majidur Rahman Chowdhury</span>
-                        </div>
+                <!-- Student -->
+                <a href="/login/student" class="facility-card color-1">
+                    <div class="facility-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>Student</h3>
+                    <p>View Classes & Results</p>
+                </a>
+
+                <!-- Guardian -->
+                <a href="#" class="facility-card color-3" onclick="alert('Guardian portal coming soon!')">
+                    <div class="facility-icon">
+                        <i class="fas fa-user-friends"></i>
+                    </div>
+                    <h3>Guardian</h3>
+                    <p>Parent Portal (Coming Soon)</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- About & Services -->
+    <section id="about" class="section about-section">
+        <div class="container about-container">
+            <div class="about-content">
+                <h4 class="section-subtitle">Why Choose Us?</h4>
+                <h2 class="section-title">Services & Features</h2>
+                <ul class="feature-list">
+                    <li>
+                        <span class="icon-box"><i class="fas fa-laptop-code"></i></span>
                         <div>
-                            <strong style="color: #fff;">President:</strong>
-                            <span style="color: #ccc;">Habibur Rahman (Ripon)</span>
+                            <h3>Computer Education</h3>
+                            <p>Modern computer labs for all students.</p>
                         </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-chalkboard"></i></span>
+                        <div>
+                            <h3>Coaching Facilities</h3>
+                            <p>Extra care and coaching support available.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-bus"></i></span>
+                        <div>
+                            <h3>Transport Service</h3>
+                            <p>Bus service available via Mastanpara.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-user-md"></i></span>
+                        <div>
+                            <h3>Psychological Care</h3>
+                            <p>Mental health support for student well-being.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="about-content">
+                <h4 class="section-subtitle">About Mission</h4>
+                <h2 class="section-title">Established in 2010</h2>
+                <p class="section-text">
+                    We are dedicated to providing quality education.
+                    <strong>Reg No: S/IL/81291</strong>
+                </p>
+                <ul class="feature-list">
+                    <li>
+                        <span class="icon-box"><i class="fas fa-bed"></i></span>
+                        <div>
+                            <h3>Hostel Facility</h3>
+                            <p>Separate Boys & Girls Hostels available.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-check-circle"></i></span>
+                        <div>
+                            <h3>Experienced Teachers</h3>
+                            <p>Highly skilled and dedicated faculty.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-hand-holding-heart"></i></span>
+                        <div>
+                            <h3>Special Care</h3>
+                            <p>Focused attention on weak students.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Teachers Section -->
+    <section id="teachers" class="section teachers-section">
+        <div class="container">
+            <div class="section-header text-center">
+                <h4 class="section-subtitle">Our Team</h4>
+                <h2 class="section-title">Meet Our Teachers</h2>
+            </div>
+
+            <div class="teachers-grid">
+                <div class="teacher-card">
+                    <div class="teacher-img">
+                        <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                            alt="Teacher 1">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                        </div>
+                    </div>
+                    <div class="teacher-info">
+                        <h3>Majidur Rahman</h3>
+                        <span>Secretary</span>
+                    </div>
+                </div>
+                <div class="teacher-card">
+                    <div class="teacher-img">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                            alt="Teacher 2">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                        </div>
+                    </div>
+                    <div class="teacher-info">
+                        <h3>Habibur Rahman</h3>
+                        <span>President</span>
+                    </div>
+                </div>
+                <div class="teacher-card">
+                    <div class="teacher-img">
+                        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                            alt="Teacher 3">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                        </div>
+                    </div>
+                    <div class="teacher-info">
+                        <h3>Sarah Khan</h3>
+                        <span>Senior Teacher</span>
+                    </div>
+                </div>
+                <div class="teacher-card">
+                    <div class="teacher-img">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                            alt="Teacher 4">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                        </div>
+                    </div>
+                    <div class="teacher-info">
+                        <h3>Ahmed Ali</h3>
+                        <span>Math Teacher</span>
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <div class="alert mt-3">
-                <strong><i class="fas fa-bullhorn"></i> Notice:</strong> Teacher Recruitment: Experienced and qualified
-                teachers are required.
+    <!-- Footer -->
+    <footer class="main-footer" id="contact">
+        <div class="container footer-container">
+            <div class="footer-col">
+                <div class="logo footer-logo">
+                    <span class="logo-text">AHM Mission</span>
+                </div>
+                <p>
+                    <strong>Secretary:</strong> Majidur Rahman Chowdhury<br>
+                    <strong>President:</strong> Habibur Rahman (Ripon)
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Main Branch</h3>
+                <p style="color: #B2BEC3; margin-bottom: 20px;">
+                    Surangapur (Mastanpara), P.O. Samaspur,<br>
+                    P.S. Hemtabad, Dist. Uttar Dinajpur.
+                </p>
+                <h3>Bhogram Branch</h3>
+                <p style="color: #B2BEC3;">
+                    Bhogram (East Side of Bhogram Market),<br>
+                    Hemtabad, Uttar Dinajpur, 733130.
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Contact Us</h3>
+                <ul class="contact-list">
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:9775357903">9775357903</a></li>
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:8617875908">8617875908</a></li>
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:8145589351">8145589351</a></li>
+                </ul>
             </div>
         </div>
-    </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Al Hidayet Mission. All Rights Reserved.</p>
+        </div>
+    </footer>
 
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 
 </html>

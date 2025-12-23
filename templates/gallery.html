@@ -2,137 +2,214 @@
 <html lang="en">
 
 <head>
-    <title>School Gallery - Al Hidayet Mission</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>School Gallery - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
-        .media-grid {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            justify-content: center;
-        }
-
-        .media-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            width: 200px;
+        .gallery-header {
+            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+            color: #fff;
+            padding: 60px 0;
             text-align: center;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 50px;
         }
 
-        .media-item img,
-        .media-item video {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-bottom: 5px;
+        .branch-section {
+            margin-bottom: 60px;
         }
 
         .branch-title {
-            color: var(--accent-color);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 10px;
-            margin-top: 40px;
-            margin-bottom: 20px;
+            color: var(--text-dark);
+            border-left: 5px solid var(--primary-color);
+            padding-left: 15px;
+            margin-bottom: 30px;
+            font-size: 28px;
         }
 
-        .label {
-            display: block;
-            margin-bottom: 10px;
-            color: #ddd;
-            font-weight: bold;
+        .media-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-light);
+            font-weight: 600;
+            margin: 20px 0 15px;
+            font-size: 18px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .gallery-item {
+            background: #fff;
+            padding: 10px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.3s;
+            border: 1px solid #eee;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .gallery-item img,
+        .gallery-item video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: var(--radius);
+            text-align: center;
+            color: #b2bec3;
+            border: 2px dashed #dfe6e9;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <a href="/#home" class="logo">AHM</a>
-        <div class="nav-links">
-            <a href="/#home">Home</a>
-            <a href="/#about">About</a>
-            <a href="/#services">Services</a>
-            <a href="/gallery" style="color: #fff; font-weight: bold;">Gallery</a>
-            <a href="/#contact">Contact</a>
-            <a href="/login/student" class="nav-btn">Login</a>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link active">Gallery</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-outline">Login</a>
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
         </div>
-    </nav>
+    </header>
 
-    <div class="glass-container wide">
-        <h2 class="text-center">School Gallery</h2>
+    <!-- Page Banner -->
+    <div class="gallery-header">
+        <div class="container">
+            <h1 class="hero-title" style="color: #fff; font-size: 42px;">School Gallery</h1>
+            <p>Our memories and moments captured in frames.</p>
+        </div>
+    </div>
 
+    <div class="container section" style="padding-top: 0;">
+
+        <!-- Surangapur Branch -->
         <div class="branch-section">
-            <h2 class="branch-title"><i class="fas fa-school"></i> Surangapur (Main Branch)</h2>
+            <h2 class="branch-title">Surangapur (Main Branch)</h2>
 
-            <span class="label"><i class="fas fa-images"></i> Photos</span>
-            <div class="media-grid">
+            <h3 class="media-label"><i class="fas fa-images" style="color: var(--secondary-color);"></i> Photos</h3>
+            <div class="gallery-grid">
                 {% for img in content['surangapur']['photos'] %}
-                <div class="media-item">
+                <div class="gallery-item">
                     <img src="{{ url_for('static', filename='uploads/surangapur/photos/' + img) }}"
                         onclick="window.open(this.src)">
                 </div>
                 {% else %}
-                <p style="color: #bbb;">No photos available</p>
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i data-lucide="image-off" style="margin-bottom: 10px;"></i>
+                    <p>No photos available</p>
+                </div>
                 {% endfor %}
             </div>
 
-            <span class="label"><i class="fas fa-video"></i> Videos</span>
-            <div class="media-grid">
+            <h3 class="media-label"><i class="fas fa-video" style="color: var(--primary-color);"></i> Videos</h3>
+            <div class="gallery-grid">
                 {% for vid in content['surangapur']['videos'] %}
-                <div class="media-item">
+                <div class="gallery-item">
                     <video controls>
                         <source src="{{ url_for('static', filename='uploads/surangapur/videos/' + vid) }}"
                             type="video/mp4">
                     </video>
                 </div>
                 {% else %}
-                <p style="color: #bbb;">No videos available</p>
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i data-lucide="video-off" style="margin-bottom: 10px;"></i>
+                    <p>No videos available</p>
+                </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="branch-section">
-            <h2 class="branch-title"><i class="fas fa-building"></i> Bhogram Branch</h2>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
 
-            <span class="label"><i class="fas fa-images"></i> Photos</span>
-            <div class="media-grid">
+        <!-- Bhogram Branch -->
+        <div class="branch-section">
+            <h2 class="branch-title">Bhogram Branch</h2>
+
+            <h3 class="media-label"><i class="fas fa-images" style="color: var(--secondary-color);"></i> Photos</h3>
+            <div class="gallery-grid">
                 {% for img in content['bhogram']['photos'] %}
-                <div class="media-item">
+                <div class="gallery-item">
                     <img src="{{ url_for('static', filename='uploads/bhogram/photos/' + img) }}"
                         onclick="window.open(this.src)">
                 </div>
                 {% else %}
-                <p style="color: #bbb;">No photos available</p>
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i data-lucide="image-off" style="margin-bottom: 10px;"></i>
+                    <p>No photos available</p>
+                </div>
                 {% endfor %}
             </div>
 
-            <span class="label"><i class="fas fa-video"></i> Videos</span>
-            <div class="media-grid">
+            <h3 class="media-label"><i class="fas fa-video" style="color: var(--primary-color);"></i> Videos</h3>
+            <div class="gallery-grid">
                 {% for vid in content['bhogram']['videos'] %}
-                <div class="media-item">
+                <div class="gallery-item">
                     <video controls>
                         <source src="{{ url_for('static', filename='uploads/bhogram/videos/' + vid) }}"
                             type="video/mp4">
                     </video>
                 </div>
                 {% else %}
-                <p style="color: #bbb;">No videos available</p>
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i data-lucide="video-off" style="margin-bottom: 10px;"></i>
+                    <p>No videos available</p>
+                </div>
                 {% endfor %}
             </div>
         </div>
 
     </div>
 
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>

@@ -71,7 +71,10 @@ def init_db():
 init_db()
 
 # Upload Configuration
-UPLOAD_BASE = 'D:/AHM/AlHidayet_Mission/static/uploads'
+# Upload Configuration
+# Use dynamic path relative to the current file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_BASE = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_BASE
 
 # Branch Configuration
@@ -101,6 +104,10 @@ create_folders()
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/services')
+def services():
+    return render_template('services.html')
     
 # ... (Previous code)
 

@@ -2,72 +2,89 @@
 <html lang="en">
 
 <head>
-    <title>Login - Al Hidayet Mission</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Login - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .login-header img {
-            display: none;
-            /* Hide logo in modal similar to reference */
-        }
-    </style>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <a href="/" class="logo">AHM</a>
-        <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="#">About</a>
-            <a href="#">Services</a>
-            <a href="#">Contact</a>
-            <a href="/login/student" class="nav-btn">Login</a>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/register" class="btn btn-outline">Register</a>
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
         </div>
-    </nav>
+    </header>
 
-    <div class="glass-container">
-        <!-- Close Button -->
-        <a href="/" class="close-btn"><i class="fas fa-times"></i></a>
+    <!-- Login Section -->
+    <div class="auth-section bg-pattern">
+        <div class="auth-container">
+            <h2>Welcome Back! 👋</h2>
 
-        <h2>Login</h2>
-
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="alert alert-danger">
-            {{ messages[0] }}
-        </div>
-        {% endif %}
-        {% endwith %}
-
-        <form method="POST">
-            <div class="input-group">
-                <input type="text" name="username" required placeholder="Username">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert-danger">
+                {{ messages[0] }}
             </div>
+            {% endif %}
+            {% endwith %}
 
-            <div class="input-group">
-                <input type="password" name="password" required placeholder="Password">
+            <form method="POST">
+                <div class="input-group">
+                    <input type="text" name="username" required placeholder="Username">
+                </div>
+
+                <div class="input-group">
+                    <input type="password" name="password" required placeholder="Password">
+                </div>
+
+                <div class="form-actions">
+                    <label style="color: #7F8C8D; cursor: pointer;">
+                        <input type="checkbox" name="remember" style="width: auto; margin-right: 5px;"> Remember me
+                    </label>
+                    <a href="/forgot-password">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="auth-btn">Login</button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="/register">Register Now</a>
             </div>
-
-            <div class="form-actions">
-                <label>
-                    <input type="checkbox" name="remember" style="width: auto; margin-right: 5px;"> Remember me
-                </label>
-                <a href="/forgot-password">Forgot Password?</a>
-            </div>
-
-            <button type="submit" class="glass-button">Login</button>
-        </form>
-
-        <div class="text-center mt-3 text-small">
-            <span style="color: #ccc;">Don't have an account?</span> <a href="/register"
-                style="color: #fff; font-weight: bold;">Register</a>
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 
 </html>

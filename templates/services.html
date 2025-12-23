@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Services - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        .services-header {
+            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+            color: #fff;
+            padding: 70px 0;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .service-card {
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid #f0f0f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .service-icon-wrapper {
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            color: #fff;
+        }
+
+        .service-content {
+            padding: 30px;
+            text-align: center;
+            flex: 1;
+        }
+
+        .service-content h3 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .service-content p {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Card Colors */
+        .sc-color-1 {
+            background: #4ECDC4;
+        }
+
+        /* Teal */
+        .sc-color-2 {
+            background: #FF6B6B;
+        }
+
+        /* Red */
+        .sc-color-3 {
+            background: #FFE66D;
+        }
+
+        /* Yellow */
+        .sc-color-4 {
+            background: #6C5CE7;
+        }
+
+        /* Purple */
+        .sc-color-5 {
+            background: #FF9F43;
+        }
+
+        /* Orange */
+        .sc-color-6 {
+            background: #54A0FF;
+        }
+
+        /* Blue */
+
+        .cta-section {
+            background: var(--bg-light);
+            padding: 80px 0;
+            text-align: center;
+            margin-top: 60px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link active">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-outline">Login</a>
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Page Banner -->
+    <div class="services-header">
+        <div class="container">
+            <h1 class="hero-title" style="color: #fff; font-size: 42px;">Services & Facilities</h1>
+            <p style="font-size: 18px; max-width: 600px; margin: 0 auto; opacity: 0.9;">
+                Comprehensive educational and residential facilities designed to nurture every student's potential.
+            </p>
+        </div>
+    </div>
+
+    <div class="container section" style="padding-top: 0;">
+        <div class="services-grid">
+
+            <!-- Computer Education -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-1">
+                    <i class="fas fa-laptop-code"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Computer Education</h3>
+                    <p>State-of-the-art computer labs with high-speed internet and modern software. We emphasize digital
+                        literacy from an early age, covering programming basics to office applications.</p>
+                </div>
+            </div>
+
+            <!-- Hostel Facility -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-2">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Hostel Facility</h3>
+                    <p>Secure and separate hostel buildings for Boys and Girls. Our wardens ensure a disciplined yet
+                        homely environment with study hours, regular meals, and 24/7 supervision.</p>
+                </div>
+            </div>
+
+            <!-- Transport Service -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-3">
+                    <i class="fas fa-bus-alt" style="color: #444;"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Transport Service</h3>
+                    <p>Reliable bus services covering major routes including Mastanpara and surrounding areas. Our
+                        vehicles are well-maintained and staffed with attendants for student safety.</p>
+                </div>
+            </div>
+
+            <!-- Psychological Care -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-4">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Psychological Care</h3>
+                    <p>We believe in mental well-being alongside academic success. Regular counseling sessions help
+                        students manage stress, build confidence, and maintain a healthy mindset.</p>
+                </div>
+            </div>
+
+            <!-- Coaching Facilities -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-5">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Special Coaching</h3>
+                    <p>Extra coaching support is available for students needing additional help. Our dedicated teachers
+                        provide personalized attention to ensure every concept is clearly understood.</p>
+                </div>
+            </div>
+
+            <!-- Smart Classrooms -->
+            <div class="service-card">
+                <div class="service-icon-wrapper sc-color-6">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="service-content">
+                    <h3>Digital Classrooms</h3>
+                    <p>Modern classrooms equipped with audio-visual aids to make learning interactive and engaging. We
+                        integrate technology into daily lessons for better retention.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="cta-section">
+        <div class="container">
+            <h2 style="margin-bottom: 20px;">Ready to Join Our Mission?</h2>
+            <p style="margin-bottom: 30px; font-size: 18px; color: #666;">Admission Open for the Academic Session 2026
+            </p>
+            <a href="/#contact" class="btn btn-primary" style="padding: 15px 40px; font-size: 18px;">Contact Us
+                Today</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer" id="contact" style="margin-top: 0;">
+        <div class="container footer-container">
+            <div class="footer-col">
+                <div class="logo footer-logo">
+                    <span class="logo-text">AHM Mission</span>
+                </div>
+                <p>
+                    <strong>Secretary:</strong> Majidur Rahman Chowdhury<br>
+                    <strong>President:</strong> Habibur Rahman (Ripon)
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Main Branch</h3>
+                <p style="color: #B2BEC3; margin-bottom: 20px;">
+                    Surangapur (Mastanpara), P.O. Samaspur,<br>
+                    P.S. Hemtabad, Dist. Uttar Dinajpur.
+                </p>
+                <h3>Bhogram Branch</h3>
+                <p style="color: #B2BEC3;">
+                    Bhogram (East Side of Bhogram Market),<br>
+                    Hemtabad, Uttar Dinajpur, 733130.
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Contact Us</h3>
+                <ul class="contact-list">
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:9775357903">9775357903</a></li>
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:8617875908">8617875908</a></li>
+                    <li><i class="fas fa-phone-alt"></i> <a href="tel:8145589351">8145589351</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Al Hidayet Mission. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

@@ -2,44 +2,85 @@
 <html lang="en">
 
 <head>
-    <title>Verify OTP</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <a href="/" class="logo">AHM</a>
-    </nav>
-
-    <div class="glass-container">
-        <h2>Verify OTP</h2>
-        <p style="color: #ccc;">We have sent a verification code to <br> <strong style="color: #fff;">{{ email
-                }}</strong></p>
-
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="alert">{{ messages[0] }}</div>
-        {% endif %}
-        {% endwith %}
-
-        <div class="alert-success" style="margin-bottom: 20px; font-size: 13px;">
-            <i class="fas fa-info-circle"></i> Check your server console/logs for the specific OTP.
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
         </div>
+    </header>
 
-        <form action="{{ url_for('verify_otp', context=context) }}" method="post">
-            <div class="input-group">
-                <label>Enter OTP Code</label>
-                <input type="text" name="otp" required placeholder="6-digit code">
+    <!-- OTP Section -->
+    <div class="auth-section bg-pattern">
+        <div class="auth-container">
+            <h2>Verify Your Email 📧</h2>
+            <p style="color: #7F8C8D; margin-bottom: 20px;">
+                We have sent a code to <br>
+                <strong style="color: var(--primary-color);">{{ email }}</strong>
+            </p>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert-danger">
+                {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Fake Success Alert as per previous implementation logic -->
+            <div
+                style="background: #E8F8F5; color: #00B894; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; border: 1px solid #00B894;">
+                <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                Check your server console/logs for the specific OTP.
             </div>
 
-            <button type="submit" class="glass-button">Verify Code</button>
-        </form>
+            <form action="{{ url_for('verify_otp', context=context) }}" method="post">
+                <div class="input-group">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Enter 6-Digit Code</label>
+                    <input type="text" name="otp" required placeholder="123456"
+                        style="text-align: center; letter-spacing: 5px; font-weight: 700; font-size: 20px;">
+                </div>
+
+                <div class="form-actions" style="justify-content: center;">
+                    <a href="#">Resend Code</a>
+                </div>
+
+                <button type="submit" class="auth-btn">Verify Account</button>
+            </form>
+        </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 
 </html>
