@@ -1649,6 +1649,37 @@ def delete_from_google_drive(file_id):
         print(f" [GOOGLE DRIVE DELETE EXCEPTION] {e}")
     return False
 
+def find_file_in_google_drive(filename):
+    access_token = get_drive_access_token()
+    if not access_token:
+        print(" [GOOGLE DRIVE] Access token not available for find_file_in_google_drive.")
+        return None
+        
+    import urllib.parse
+    import requests
+    
+    # Escape single quotes in filenames for Google Drive API query syntax
+    escaped_filename = filename.replace("'", "\\'")
+    q = f"name = '{escaped_filename}' and trashed = false"
+    url = f"https://www.googleapis.com/drive/v3/files?q={urllib.parse.quote(q)}&fields=files(id,mimeType,name)"
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code == 200:
+            files_list = res.json().get('files', [])
+            if files_list:
+                file_id = files_list[0].get('id')
+                print(f" [GOOGLE DRIVE] Found file '{filename}' on Drive with ID: {file_id}")
+                return file_id
+        else:
+            print(f" [GOOGLE DRIVE FIND ERROR] {res.status_code}: {res.text}")
+    except Exception as e:
+        print(f" [GOOGLE DRIVE FIND EXCEPTION] {e}")
+    return None
+
 def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None):
     drive_file_id = None
     if os.path.exists(local_path):
@@ -1660,18 +1691,35 @@ def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None
             print(f"Error uploading file {filename} to Google Drive: {e}")
             
     if drive_file_id:
-        try:
-            conn = sqlite3.connect(DB_NAME)
-            c = conn.cursor()
-            c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
-            conn.commit()
-            conn.close()
-            
-            # Delete local file to save space
-            os.remove(local_path)
-            print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local file deleted.")
-        except Exception as e:
-            print(f"Error saving drive mapping: {e}")
+        import time
+        db_saved = False
+        for attempt in range(5):
+            try:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
+                conn.commit()
+                conn.close()
+                db_saved = True
+                break
+            except sqlite3.OperationalError as oe:
+                if "locked" in str(oe).lower():
+                    print(f" [GOOGLE DRIVE] Database locked on attempt {attempt+1} when saving mapping for {filename}, retrying in 1s...")
+                    time.sleep(1)
+                else:
+                    print(f"Error saving drive mapping: {oe}")
+                    break
+            except Exception as e:
+                print(f"Error saving drive mapping: {e}")
+                break
+                
+        if db_saved:
+            try:
+                if os.path.exists(local_path):
+                    os.remove(local_path)
+                print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local file deleted.")
+            except Exception as e:
+                print(f"Error removing local file: {e}")
             
     return drive_file_id
 
@@ -1680,11 +1728,11 @@ def delete_old_mapped_file(file_path):
         return
     filename = os.path.basename(file_path)
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         row = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
-        if row and row[0]:
-            drive_file_id = row[0]
+        if row and row['drive_file_id']:
+            drive_file_id = row['drive_file_id']
             delete_from_google_drive(drive_file_id)
             c.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
         conn.commit()
@@ -1736,19 +1784,24 @@ def drive_view(file_id):
 
 @app.route('/static/uploads/<path:filepath>')
 def serve_static_upload(filepath):
+    # 1. Fast path: check if local file exists
+    local_path = os.path.join(app.root_path, 'static', 'uploads', filepath)
+    if os.path.exists(local_path):
+        return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+        
+    # 2. Local file missing: check DB mapping
     filename = os.path.basename(filepath)
     drive_file_id = None
     try:
-        conn = sqlite3.connect(DB_NAME)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Check in pending_media (approved items)
+        # Check in pending_media (approved items)
         row = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
         if row and row['drive_file_id']:
             drive_file_id = row['drive_file_id']
         else:
-            # 2. Check in general drive_mappings
+            # Check in general drive_mappings
             row2 = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
             if row2:
                 drive_file_id = row2['drive_file_id']
@@ -1759,6 +1812,29 @@ def serve_static_upload(filepath):
     if drive_file_id:
         return drive_view(drive_file_id)
         
+    # 3. Dynamic Google Drive lookup fallback
+    drive_file_id = find_file_in_google_drive(filename)
+    if drive_file_id:
+        import time
+        # Save recovered mapping
+        for attempt in range(5):
+            try:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
+                conn.commit()
+                conn.close()
+                break
+            except sqlite3.OperationalError as oe:
+                if "locked" in str(oe).lower():
+                    time.sleep(1)
+                else:
+                    break
+            except Exception:
+                break
+        return drive_view(drive_file_id)
+        
+    # 4. Fallback to send_from_directory (returns 404 since file does not exist)
     return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
 
 # Initialize DB and run absolute path sidebar updater
@@ -3380,8 +3456,7 @@ def change_password_directory(user_id):
 def media_action(media_id, action):
     if 'user' in session and session['role'] == 'admin':
         status = 'Approved' if action == 'approve' else 'Rejected'
-        conn = sqlite3.connect(DB_NAME)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
         c = conn.cursor()
         media = c.execute("SELECT * FROM pending_media WHERE id = ?", (media_id,)).fetchone()
         
@@ -3466,8 +3541,7 @@ def delete_gallery_item():
     
     deleted_from_drive = False
     try:
-        conn = sqlite3.connect(DB_NAME)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
         c = conn.cursor()
         row = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
         if row and row['drive_file_id']:
@@ -6501,15 +6575,11 @@ def delete_document():
             try:
                 filename = os.path.basename(doc['file_path'])
                 drive_file_id = None
-                conn_tmp = sqlite3.connect(DB_NAME)
-                c_tmp = conn_tmp.cursor()
-                row = c_tmp.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
-                if row:
-                    drive_file_id = row[0]
+                row = conn.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+                if row and row['drive_file_id']:
+                    drive_file_id = row['drive_file_id']
                     delete_from_google_drive(drive_file_id)
-                    c_tmp.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
-                conn_tmp.commit()
-                conn_tmp.close()
+                    conn.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
                 
                 file_abs_path = os.path.join(app.root_path, doc['file_path'])
                 if os.path.exists(file_abs_path):
