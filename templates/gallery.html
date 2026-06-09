@@ -633,18 +633,18 @@
                 
                 <!-- LOOP BHOGRAM PHOTOS -->
                 {% for img in content['bhogram']['photos'] %}
-                {% set clean_title = img.split('_')[-1].split('.')[0] | title %}
+                {% set clean_title = img.clean_title %}
                 <div class="gallery-item" data-branch="bhogram" data-media="photo" data-caption="{{ clean_title }}">
                     <div class="media-wrapper">
                         <div class="media-badge-group">
                             <span class="media-badge badge-type">Photo</span>
                         </div>
                         {% if role == 'admin' %}
-                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'photos', '{{ img }}')" title="Delete Item">
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'photos', '{{ img.filename }}')" title="Delete Item">
                             <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                         </button>
                         {% endif %}
-                        <img src="{{ url_for('static', filename='uploads/bhogram/photos/' + img) }}" alt="{{ clean_title }}">
+                        <img src="{{ img.url }}" alt="{{ clean_title }}">
                     </div>
                     <div class="card-caption">
                         <div class="card-caption-title">{{ clean_title }}</div>
@@ -655,19 +655,19 @@
 
                 <!-- LOOP BHOGRAM VIDEOS -->
                 {% for vid in content['bhogram']['videos'] %}
-                {% set clean_title = vid.split('_')[-1].split('.')[0] | title %}
+                {% set clean_title = vid.clean_title %}
                 <div class="gallery-item" data-branch="bhogram" data-media="video" data-caption="{{ clean_title }}">
                     <div class="media-wrapper">
                         <div class="media-badge-group">
                             <span class="media-badge badge-type badge-type-video">Video</span>
                         </div>
                         {% if role == 'admin' %}
-                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'videos', '{{ vid }}')" title="Delete Item">
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'videos', '{{ vid.filename }}')" title="Delete Item">
                             <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                         </button>
                         {% endif %}
-                        <video muted preload="metadata" data-src="{{ url_for('static', filename='uploads/bhogram/videos/' + vid) }}">
-                            <source src="{{ url_for('static', filename='uploads/bhogram/videos/' + vid) }}" type="video/mp4">
+                        <video muted preload="metadata" data-src="{{ vid.url }}">
+                            <source src="{{ vid.url }}" type="video/mp4">
                         </video>
                         <div class="video-overlay-btn">
                             <i data-lucide="play" style="width: 20px; height: 20px; fill: currentColor; margin-left: 2px;"></i>

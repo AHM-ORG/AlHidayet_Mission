@@ -12,7 +12,6 @@ __pycache__/
 venv/
 static/uploads/
 records/
-scratch_check_admin.py
 
 # Ignore all photos and images
 *.jpg
@@ -21,3 +20,60 @@ scratch_check_admin.py
 *.gif
 *.webp
 *.ico
+
+# Temporary scratch files and directories
+scratch/
+scratch_*
+extracted_content_*
+
+# Temporary python app copies
+app_may8.py
+app_reconstructed_a712.py
+app_recovered_*.py
+app_recovered_text_*.py
+
+# Migration and utility scripts
+add_logo.py
+add_logo_header.py
+add_search.py
+add_search_global.py
+check_db.py
+check_db_rows.py
+check_helper.py
+check_routes.py
+db_check.py
+db_inspect.py
+db_migrate.py
+db_migrate_*.py
+debug_*.py
+debug_*.txt
+dump_history.py
+extract_dashboard.py
+extract_view_steps.py
+get_schema.py
+get_schema_all.py
+inspect_student_ids.py
+inspect_writes.py
+read_schema.py
+recover_dashboard.py
+remove_sms_portal.py
+replace_names.py
+replace_sql.py
+search_*.py
+search_*.txt
+test_*.py
+test_*.txt
+update_email.py
+update_sidebars.py
+update_sidebars_*.py
+verify_branch_logic.py
+verify_changes.py
+wrap_templates.py
+
+# Temporary html files
+templates/dashboard_git.html
+templates/dashboard_git_utf8.html
+templates/dashboard_restored.html
+templates/dashboard_restored_clean.html
+templates/dashboard_stitched.html
+templates/dashboard_utf8.html

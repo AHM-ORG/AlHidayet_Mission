@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response, send_from_directory
 import sqlite3
 import json
 import random
@@ -1194,6 +1194,7 @@ def init_db():
             filename TEXT,
             status TEXT DEFAULT 'Pending',
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            drive_file_id TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
@@ -1534,9 +1535,237 @@ def init_db():
     conn.commit()
     conn.close()
 
+def migrate_pending_media_drive_id():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    # 1. Add drive_file_id to pending_media for existing dbs
+    try:
+        c.execute("ALTER TABLE pending_media ADD COLUMN drive_file_id TEXT")
+        print(" [DB MIGRATE] Added column drive_file_id to pending_media")
+    except sqlite3.OperationalError:
+        pass
+        
+    # 2. Create drive_mappings table
+    try:
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS drive_mappings (
+                filename TEXT PRIMARY KEY,
+                drive_file_id TEXT NOT NULL
+            )
+        ''')
+        print(" [DB MIGRATE] Created drive_mappings table")
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] Failed to create drive_mappings: {e}")
+        
+    conn.commit()
+    conn.close()
+
+# Google Drive API Client Helpers
+def get_drive_access_token():
+    client_id = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
+    refresh_token = os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')
+    
+    if not client_id or not client_secret or not refresh_token:
+        return None
+        
+    url = "https://oauth2.googleapis.com/token"
+    payload = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token"
+    }
+    try:
+        import requests
+        res = requests.post(url, data=payload, timeout=10)
+        if res.status_code == 200:
+            return res.json().get('access_token')
+        else:
+            print(f" [GOOGLE DRIVE AUTH ERROR] {res.status_code}: {res.text}")
+    except Exception as e:
+        print(f" [GOOGLE DRIVE AUTH EXCEPTION] {e}")
+    return None
+
+def upload_to_google_drive(file_bytes, file_name, mime_type, folder_id=None):
+    access_token = get_drive_access_token()
+    if not access_token:
+        print(" [GOOGLE DRIVE] Credentials not configured or failed to refresh access token.")
+        return None
+        
+    metadata = {
+        "name": file_name
+    }
+    
+    parent_id = folder_id or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+    if parent_id:
+        metadata["parents"] = [parent_id]
+        
+    import json
+    import requests
+    
+    files = {
+        'data': ('metadata', json.dumps(metadata), 'application/json; charset=UTF-8'),
+        'file': (file_name, file_bytes, mime_type)
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id"
+    
+    try:
+        res = requests.post(url, headers=headers, files=files, timeout=30)
+        if res.status_code == 200:
+            file_id = res.json().get('id')
+            print(f" [GOOGLE DRIVE] File uploaded successfully. File ID: {file_id}")
+            return file_id
+        else:
+            print(f" [GOOGLE DRIVE UPLOAD ERROR] {res.status_code}: {res.text}")
+    except Exception as e:
+        print(f" [GOOGLE DRIVE UPLOAD EXCEPTION] {e}")
+    return None
+
+def delete_from_google_drive(file_id):
+    access_token = get_drive_access_token()
+    if not access_token:
+        print(" [GOOGLE DRIVE] Access token not available for deletion.")
+        return False
+        
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    try:
+        import requests
+        res = requests.delete(url, headers=headers, timeout=10)
+        if res.status_code == 204:
+            print(f" [GOOGLE DRIVE] File {file_id} deleted successfully.")
+            return True
+        else:
+            print(f" [GOOGLE DRIVE DELETE ERROR] {res.status_code}: {res.text}")
+    except Exception as e:
+        print(f" [GOOGLE DRIVE DELETE EXCEPTION] {e}")
+    return False
+
+def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None):
+    drive_file_id = None
+    if os.path.exists(local_path):
+        try:
+            with open(local_path, 'rb') as f:
+                file_bytes = f.read()
+            drive_file_id = upload_to_google_drive(file_bytes, filename, mime_type, folder_id=folder_id)
+        except Exception as e:
+            print(f"Error uploading file {filename} to Google Drive: {e}")
+            
+    if drive_file_id:
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            c = conn.cursor()
+            c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
+            conn.commit()
+            conn.close()
+            
+            # Delete local file to save space
+            os.remove(local_path)
+            print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local file deleted.")
+        except Exception as e:
+            print(f"Error saving drive mapping: {e}")
+            
+    return drive_file_id
+
+def delete_old_mapped_file(file_path):
+    if not file_path:
+        return
+    filename = os.path.basename(file_path)
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        row = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+        if row and row[0]:
+            drive_file_id = row[0]
+            delete_from_google_drive(drive_file_id)
+            c.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f" [GOOGLE DRIVE DELETE ERROR] Failed to delete old mapped file {filename}: {e}")
+
+# Google Drive View and Intercept Routes
+@app.route('/drive/view/<file_id>')
+def drive_view(file_id):
+    access_token = get_drive_access_token()
+    if not access_token:
+        return "Google Drive is not configured.", 500
+        
+    import requests
+    
+    metadata_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?fields=mimeType,name"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    mime_type = "application/octet-stream"
+    filename = "download"
+    try:
+        meta_res = requests.get(metadata_url, headers=headers, timeout=10)
+        if meta_res.status_code == 200:
+            meta = meta_res.json()
+            mime_type = meta.get('mimeType', mime_type)
+            filename = meta.get('name', filename)
+    except Exception as e:
+        print(f" [GOOGLE DRIVE VIEW METADATA ERROR] {e}")
+        
+    download_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+    
+    try:
+        drive_res = requests.get(download_url, headers=headers, stream=True, timeout=30)
+        if drive_res.status_code != 200:
+            return f"Failed to fetch file from Google Drive: {drive_res.status_code}", drive_res.status_code
+            
+        def generate():
+            for chunk in drive_res.iter_content(chunk_size=4096):
+                yield chunk
+                
+        return Response(generate(), mimetype=mime_type, headers={
+            "Content-Disposition": f"inline; filename=\"{filename}\""
+        })
+    except Exception as e:
+        return f"Error streaming file from Google Drive: {str(e)}", 500
+
+@app.route('/static/uploads/<path:filepath>')
+def serve_static_upload(filepath):
+    filename = os.path.basename(filepath)
+    drive_file_id = None
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # 1. Check in pending_media (approved items)
+        row = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
+        if row and row['drive_file_id']:
+            drive_file_id = row['drive_file_id']
+        else:
+            # 2. Check in general drive_mappings
+            row2 = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+            if row2:
+                drive_file_id = row2['drive_file_id']
+        conn.close()
+    except Exception as e:
+        print(f"Error checking drive mapping for {filename}: {e}")
+
+    if drive_file_id:
+        return drive_view(drive_file_id)
+        
+    return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+
 # Initialize DB and run absolute path sidebar updater
 init_db()
 migrate_student_info_schema()
+migrate_pending_media_drive_id()
+
 
 # Clean up temporary debug files
 import os
@@ -1876,12 +2105,61 @@ def services():
 @app.route('/gallery')
 def gallery():
     gallery_data = {}
+    db_media = []
+    try:
+        conn = get_db_connection()
+        db_media = conn.execute(
+            "SELECT branch, category, filename, drive_file_id FROM pending_media WHERE status = 'Approved'"
+        ).fetchall()
+        conn.close()
+    except Exception as e:
+        print(f"Error reading media from database: {e}")
+
+    added_filenames = set()
     for branch in BRANCHES:
         gallery_data[branch] = {}
         for category in CATEGORIES:
+            gallery_data[branch][category] = []
+
+    for row in db_media:
+        branch = row['branch']
+        category = row['category']
+        filename = row['filename']
+        drive_file_id = row['drive_file_id']
+        
+        if branch in gallery_data and category in gallery_data[branch]:
+            if filename not in added_filenames:
+                added_filenames.add(filename)
+                clean_title = filename.split('_')[-1].split('.')[0].replace('-', ' ').replace('_', ' ').strip().title()
+                if drive_file_id:
+                    url = url_for('drive_view', file_id=drive_file_id)
+                else:
+                    url = url_for('static', filename=f'uploads/{branch}/{category}/{filename}')
+                gallery_data[branch][category].append({
+                    'filename': filename,
+                    'url': url,
+                    'drive_file_id': drive_file_id,
+                    'clean_title': clean_title
+                })
+
+    for branch in BRANCHES:
+        for category in CATEGORIES:
             path = os.path.join(app.config['UPLOAD_FOLDER'], branch, category)
-            files = os.listdir(path) if os.path.exists(path) else []
-            gallery_data[branch][category] = files
+            if os.path.exists(path):
+                try:
+                    for filename in os.listdir(path):
+                        if filename not in added_filenames:
+                            added_filenames.add(filename)
+                            clean_title = filename.split('_')[-1].split('.')[0].replace('-', ' ').replace('_', ' ').strip().title()
+                            url = url_for('static', filename=f'uploads/{branch}/{category}/{filename}')
+                            gallery_data[branch][category].append({
+                                'filename': filename,
+                                'url': url,
+                                'drive_file_id': None,
+                                'clean_title': clean_title
+                            })
+                except Exception as e:
+                    print(f"Error listing folder {path}: {e}")
 
     # Check if there is any actual content
     has_content = any(any(items) for branch, categories in gallery_data.items() for items in categories.values())
@@ -2480,11 +2758,20 @@ def upload_avatar():
         flash('Invalid image filename.')
         return redirect(url_for('profile'))
 
+    old_avatar = session.get('avatar_url')
+    if old_avatar:
+        try:
+            delete_old_mapped_file(os.path.basename(old_avatar))
+        except Exception as e:
+            print(f"Error deleting old avatar: {e}")
+
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     saved_name = f"{user['id']}_{timestamp}_{filename}"
     avatar_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
     os.makedirs(avatar_folder, exist_ok=True)
-    file.save(os.path.join(avatar_folder, saved_name))
+    local_path = os.path.join(avatar_folder, saved_name)
+    file.save(local_path)
+    upload_file_to_drive_and_map(local_path, saved_name, file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_AVATARS'))
     session['avatar_url'] = url_for('static', filename=f'uploads/avatars/{saved_name}')
     flash('Profile photo uploaded successfully.')
     return redirect(url_for('profile'))
@@ -2518,7 +2805,9 @@ def submit_application():
                         os.makedirs(upload_dir, exist_ok=True)
                         timestamp = int(datetime.utcnow().timestamp())
                         saved_filename = f"{input_name}_{timestamp}_{filename}"
-                        file_obj.save(os.path.join(upload_dir, saved_filename))
+                        local_path = os.path.join(upload_dir, saved_filename)
+                        file_obj.save(local_path)
+                        upload_file_to_drive_and_map(local_path, saved_filename, file_obj.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_DOCUMENTS'))
                         uploaded_documents[doc_name] = f"uploads/documents/{saved_filename}"
         form_data['uploaded_documents'] = uploaded_documents
 
@@ -2535,11 +2824,11 @@ def submit_application():
             
         upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'cvs')
         os.makedirs(upload_dir, exist_ok=True)
-        
         timestamp = int(datetime.utcnow().timestamp())
         saved_filename = f"cv_{timestamp}_{filename}"
-        cv_file.save(os.path.join(upload_dir, saved_filename))
-        
+        local_path = os.path.join(upload_dir, saved_filename)
+        cv_file.save(local_path)
+        upload_file_to_drive_and_map(local_path, saved_filename, cv_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_CV'))
         form_data['cv_path'] = f"uploads/cvs/{saved_filename}"
     
     user_id = None
@@ -2941,13 +3230,26 @@ def delete_application(form_id):
     if 'user' in session and session['role'] == 'admin':
         conn = get_db_connection()
         
-        # Check permissions for Branch Admin
+        # Check permissions and retrieve data for file deletion
+        form = conn.execute("SELECT branch, data FROM applications WHERE id = ?", (form_id,)).fetchone()
         if session.get('branch'):
-            form = conn.execute("SELECT branch FROM applications WHERE id = ?", (form_id,)).fetchone()
             if not form or form['branch'] != session['branch']:
                 conn.close()
                 flash('Permission denied: This application belongs to another campus.')
                 return redirect(url_for('admin_applications'))
+
+        # Delete any uploaded files from Google Drive/disk
+        if form and form['data']:
+            try:
+                import json
+                data = json.loads(form['data'])
+                if data.get('cv_path'):
+                    delete_old_mapped_file(data['cv_path'])
+                uploaded_docs = data.get('uploaded_documents') or {}
+                for doc_path in uploaded_docs.values():
+                    delete_old_mapped_file(doc_path)
+            except Exception as e:
+                print(f"Error cleaning up application files: {e}")
 
         conn.execute("DELETE FROM applications WHERE id = ?", (form_id,))
         conn.commit()
@@ -3092,15 +3394,31 @@ def media_action(media_id, action):
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp', filename)
             
             if status == 'Approved':
-                dest_folder = os.path.join(app.config['UPLOAD_FOLDER'], branch, category)
-                dest_path = os.path.join(dest_folder, filename)
+                drive_file_id = None
                 if os.path.exists(temp_path):
                     try:
-                        os.makedirs(dest_folder, exist_ok=True)
-                        shutil.move(temp_path, dest_path)
+                        import mimetypes
+                        mime_type, _ = mimetypes.guess_type(temp_path)
+                        if not mime_type:
+                            mime_type = "application/octet-stream"
+                        drive_file_id = upload_file_to_drive_and_map(temp_path, filename, mime_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_GALLERY'))
                     except Exception as e:
-                        print(f"Error moving approved file: {e}")
-                c.execute("UPDATE pending_media SET status = 'Approved' WHERE id = ?", (media_id,))
+                        print(f"Error uploading approved file to Google Drive: {e}")
+                
+                if drive_file_id:
+                    c.execute("UPDATE pending_media SET status = 'Approved', drive_file_id = ? WHERE id = ?", (drive_file_id, media_id))
+                    flash('Media approved and uploaded directly to Google Drive!')
+                else:
+                    dest_folder = os.path.join(app.config['UPLOAD_FOLDER'], branch, category)
+                    dest_path = os.path.join(dest_folder, filename)
+                    if os.path.exists(temp_path):
+                        try:
+                            os.makedirs(dest_folder, exist_ok=True)
+                            shutil.move(temp_path, dest_path)
+                        except Exception as e:
+                            print(f"Error moving approved file locally: {e}")
+                    c.execute("UPDATE pending_media SET status = 'Approved' WHERE id = ?", (media_id,))
+                    flash('Media approved and stored locally.')
             else:
                 if os.path.exists(temp_path):
                     try:
@@ -3146,12 +3464,27 @@ def delete_gallery_item():
         except Exception as e:
             return jsonify({'success': False, 'message': f'Failed to delete file from disk: {str(e)}'}), 500
     
-    # Also delete record from database if it exists in pending_media
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("DELETE FROM pending_media WHERE filename = ?", (filename,))
-    conn.commit()
-    conn.close()
+    deleted_from_drive = False
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        row = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
+        if row and row['drive_file_id']:
+            delete_from_google_drive(row['drive_file_id'])
+            deleted_from_drive = True
+            
+        row2 = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+        if row2 and row2['drive_file_id']:
+            delete_from_google_drive(row2['drive_file_id'])
+            c.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
+            deleted_from_drive = True
+            
+        c.execute("DELETE FROM pending_media WHERE filename = ?", (filename,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error deleting media record/mapping: {e}")
 
     return jsonify({'success': True, 'message': 'Gallery item deleted successfully', 'deleted_from_disk': deleted_from_disk})
 
@@ -3572,11 +3905,14 @@ def edit_student(user_id):
                         old_photo = conn.execute("SELECT photo_path FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
                         if old_photo and old_photo['photo_path']:
                             try:
+                                delete_old_mapped_file(old_photo['photo_path'])
                                 os.remove(os.path.join(upload_folder, old_photo['photo_path']))
                             except:
                                 pass
                         
-                        photo_file.save(os.path.join(upload_folder, filename))
+                        local_path = os.path.join(upload_folder, filename)
+                        photo_file.save(local_path)
+                        upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'))
                         conn.execute("UPDATE student_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
                 
                 conn.commit()
@@ -3680,11 +4016,14 @@ def edit_teacher(user_id):
                     old_photo = conn.execute("SELECT photo_path FROM teacher_info WHERE user_id = ?", (user_id,)).fetchone()
                     if old_photo and old_photo['photo_path']:
                         try:
+                            delete_old_mapped_file(old_photo['photo_path'])
                             os.remove(os.path.join(upload_folder, old_photo['photo_path']))
                         except:
                             pass
                     
-                    photo_file.save(os.path.join(upload_folder, filename))
+                    local_path = os.path.join(upload_folder, filename)
+                    photo_file.save(local_path)
+                    upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'))
                     conn.execute("UPDATE teacher_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
 
             # Handle CV Upload
@@ -3696,12 +4035,15 @@ def edit_teacher(user_id):
                     os.makedirs(upload_dir, exist_ok=True)
                     timestamp = int(datetime.utcnow().timestamp())
                     saved_filename = f"cv_{timestamp}_{filename}"
-                    cv_file.save(os.path.join(upload_dir, saved_filename))
+                    local_path = os.path.join(upload_dir, saved_filename)
+                    cv_file.save(local_path)
+                    upload_file_to_drive_and_map(local_path, saved_filename, cv_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_CV'))
                     
                     # Delete old CV if exists
                     old_cv = conn.execute("SELECT cv_path FROM teacher_info WHERE user_id = ?", (user_id,)).fetchone()
                     if old_cv and old_cv['cv_path']:
                         try:
+                            delete_old_mapped_file(old_cv['cv_path'])
                             os.remove(os.path.join(app.root_path, 'static', old_cv['cv_path']))
                         except:
                             pass
@@ -5318,8 +5660,23 @@ def upload_file():
     if user['role'] == 'admin':
         target_folder = os.path.join(app.config['UPLOAD_FOLDER'], branch, category)
         os.makedirs(target_folder, exist_ok=True)
-        file.save(os.path.join(target_folder, saved_name))
-        flash(f'{branch.title()} {category} uploaded successfully.')
+        local_path = os.path.join(target_folder, saved_name)
+        file.save(local_path)
+        
+        drive_file_id = upload_file_to_drive_and_map(local_path, saved_name, file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_GALLERY'))
+        
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO pending_media (user_id, branch, category, filename, status, drive_file_id) VALUES (?, ?, ?, ?, 'Approved', ?)",
+            (user['id'], branch, category, saved_name, drive_file_id)
+        )
+        conn.commit()
+        conn.close()
+        
+        if drive_file_id:
+            flash(f'{branch.title()} {category} uploaded directly to Google Drive successfully.')
+        else:
+            flash(f'{branch.title()} {category} uploaded successfully (local storage).')
     else:
         temp_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'temp')
         os.makedirs(temp_folder, exist_ok=True)
@@ -5649,7 +6006,9 @@ def spend():
                     saved_name = f"{timestamp}_{filename}"
                     proofs_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'proofs')
                     os.makedirs(proofs_folder, exist_ok=True)
-                    proof_file.save(os.path.join(proofs_folder, saved_name))
+                    local_path = os.path.join(proofs_folder, saved_name)
+                    proof_file.save(local_path)
+                    upload_file_to_drive_and_map(local_path, saved_name, proof_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_PROOFS'))
                     proof_path = saved_name
             
             conn.execute('''
@@ -6121,7 +6480,9 @@ def upload_document():
             upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'documents')
             os.makedirs(upload_dir, exist_ok=True)
             file_path = os.path.join('static', 'uploads', 'documents', filename).replace('\\', '/')
-            file.save(os.path.join(app.root_path, 'static', 'uploads', 'documents', filename))
+            local_path = os.path.join(app.root_path, 'static', 'uploads', 'documents', filename)
+            file.save(local_path)
+            upload_file_to_drive_and_map(local_path, filename, file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_DOCUMENTS'))
             
             conn = get_db_connection()
             conn.execute("INSERT INTO registration_documents (title, description, file_path) VALUES (?, ?, ?)", (title, description, file_path))
@@ -6138,11 +6499,23 @@ def delete_document():
         doc = conn.execute("SELECT * FROM registration_documents WHERE id = ?", (doc_id,)).fetchone()
         if doc:
             try:
+                filename = os.path.basename(doc['file_path'])
+                drive_file_id = None
+                conn_tmp = sqlite3.connect(DB_NAME)
+                c_tmp = conn_tmp.cursor()
+                row = c_tmp.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+                if row:
+                    drive_file_id = row[0]
+                    delete_from_google_drive(drive_file_id)
+                    c_tmp.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
+                conn_tmp.commit()
+                conn_tmp.close()
+                
                 file_abs_path = os.path.join(app.root_path, doc['file_path'])
                 if os.path.exists(file_abs_path):
                     os.remove(file_abs_path)
             except Exception as e:
-                print(f"Error deleting file from disk: {e}")
+                print(f"Error deleting file from disk/drive: {e}")
                 
             conn.execute("DELETE FROM registration_documents WHERE id = ?", (doc_id,))
             conn.commit()
@@ -7008,11 +7381,14 @@ def teacher_edit_info():
                 old_photo = conn.execute("SELECT photo_path FROM teacher_info WHERE user_id = ?", (user['id'],)).fetchone()
                 if old_photo and old_photo['photo_path']:
                     try:
+                        delete_old_mapped_file(old_photo['photo_path'])
                         os.remove(os.path.join(upload_folder, old_photo['photo_path']))
                     except:
                         pass
                 
-                photo_file.save(os.path.join(upload_folder, filename))
+                local_path = os.path.join(upload_folder, filename)
+                photo_file.save(local_path)
+                upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'))
                 conn.execute("UPDATE teacher_info SET photo_path = ? WHERE user_id = ?", (filename, user['id']))
 
         # Parse bank details and serialize
