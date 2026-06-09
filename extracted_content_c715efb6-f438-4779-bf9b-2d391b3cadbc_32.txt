@@ -1,0 +1,79 @@
+Created At: 2026-06-02T05:04:43Z
+Completed At: 2026-06-02T05:04:43Z
+File Path: `file:///d:/AHM/AHM-Web/app.py`
+Total Lines: 4442
+Total Bytes: 219103
+Showing lines 4000 to 4150
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+4000:                            role=user['role'], 
+4001:                            classes=CLASSES, 
+4002:                            days=DAYS, 
+4003:                            distinct_subjects=distinct_subjects, 
+4004:                            teachers=teachers, 
+4005:                            logo_url=logo_url)
+4006: 
+4007: # ================= ATTENDANCE ROUTES =================
+4008: 
+4009: @app.route('/admin/attendance', methods=['GET', 'POST'])
+4010: @login_required
+4011: def admin_attendance():
+4012:     user = get_session_user()
+4013:     if user['role'] not in ['admin', 'teacher']:
+4014:         flash('Access denied.')
+4015:         return redirect(url_for('dashboard'))
+4016:         
+4017:     conn = get_db_connection()
+4018:     
+4019:     CLASSES = ['Nursery', 'U/N', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+4020:     
+4021:     if session.get('branch'):
+4022:         branch_filter = session['branch']
+4023:     else:
+4024:         branch_filter = request.args.get('branch', 'surangapur').strip().lower()
+4025:         if branch_filter not in ['surangapur', 'bhogram']:
+4026:             branch_filter = 'surangapur'
+4027:             
+4028:     role_filter = request.args.get('role_filter', 'student').strip().lower()
+4029:     class_filter = request.args.get('class_filter', '').strip()
+4030:     date_filter = request.args.get('date_filter', datetime.today().strftime('%Y-%m-%d')).strip()
+4031:     
+4032:     if request.method == 'POST':
+4033:         role_type = request.form.get('role_type')
+4034:         date_val = re
+<truncated 4333 bytes>
+).lower(): str(v).strip() for k, v in row.items() if k}
+4117:             
+4118:             username = row_keys.get('username') or row_keys.get('student_code') or row_keys.get('code') or row_keys.get('user')
+4119:             date_val = row_keys.get('date') or row_keys.get('attendance_date')
+4120:             status = row_keys.get('status') or row_keys.get('attendance_status') or 'Present'
+4121:             remarks = row_keys.get('remarks') or row_keys.get('comment') or ''
+4122:             
+4123:             if not username or not date_val:
+4124:                 continue
+4125:                 
+4126:             status = status.strip().title()
+4127:             if status not in ['Present', 'Absent', 'Late', 'Half Day', 'On Leave']:
+4128:                 status = 'Present'
+4129:                 
+4130:             target_user = conn.execute('''
+4131:                 SELECT u.id, u.role FROM users u 
+4132:                 LEFT JOIN student_info si ON u.id = si.user_id
+4133:                 WHERE u.username = ? OR si.unique_code = ?
+4134:             ''', (username, username)).fetchone()
+4135:             
+4136:             if target_user:
+4137:                 conn.execute('''
+4138:                     INSERT OR REPLACE INTO attendance (user_id, role, date, status, remarks)
+4139:                     VALUES (?, ?, ?, ?, ?)
+4140:                 ''', (target_user['id'], target_user['role'], date_val, status, remarks))
+4141:                 success_count += 1
+4142:             else:
+4143:                 errors.append(f"User '{username}' not found.")
+4144:                 
+4145:         conn.commit()
+4146:         conn.close()
+4147:         
+4148:         flash(f"Successfully uploaded {success_count} attendance records!")
+4149:         for err in errors[:5]:
+4150:             flash(f"Warning: {err}")
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

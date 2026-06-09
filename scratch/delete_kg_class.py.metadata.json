@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "Create delete_kg_class.py in scratch directory to find and delete all 'KG' records across database tables.",
+  "updatedAt": "2026-06-02T05:41:39.127455600Z"
+}

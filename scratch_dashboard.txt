@@ -1,0 +1,68 @@
+Created At: 2026-05-21T10:04:12Z
+Completed At: 2026-05-21T10:04:12Z
+
+				The command completed successfully.
+				Output:
+				<truncated 1 lines>
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+320:                     </div>
+321:                 </div>
+322: 
+323:                 <!-- ================= TEACHER DASHBOARD ================= -->
+324:                 {% elif role == 'teacher' %}
+325:                 
+326:                 <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+327:                     <a href="/admin/student-list" class="facility-card color-1" style="text-decoration: none; text-align: center; padding: 30px;">
+328:                         <i class="fas fa-users" style="font-size: 30px; margin-bottom: 10px;"></i>
+329:                         <h3>Student List</h3>
+330:                         <p>View all students</p>
+331:                     </a>
+332:                     <a href="/admin/bulk-marks" class="facility-card color-2" style="text-decoration: none; text-align: center; padding: 30px;">
+333:                          <i class="fas fa-edit" style="font-size: 30px; margin-bottom: 10px;"></i>
+334:                         <h3>Input Marks</h3>
+335:                         <p>Update results</p>
+336:                     </a>
+337:                     <a href="/admin/marksheet" class="facility-card color-3" style="text-decoration: none; text-align: center; padding: 30px;">
+338:                          <i class="fas fa-file-alt" style="font-size: 30px; margin-bottom: 10px;"></i>
+339:                         <h3>Marksheets</h3>
+340:                         <p>Generate reports</p>
+341:                     </a>
+342:                 </div>
+343: 
+344:                  <div class="auth-contain
+<truncated 4231 bytes>
+id }})" type="button" style="background:none; border:none; cursor:pointer;" title="Delete User"><i data-lucide="trash-2" style="color: var(--danger-color);"></i></button>
+315:                                     </td>
+316:                                 </tr>
+317:                                 {% endfor %}
+318:                             </tbody>
+319:                         </table>
+320:                     </div>
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+Created At: 2026-05-21T10:03:15Z
+Completed At: 2026-05-21T10:03:15Z
+File Path: `file:///d:/AHM/AHM-Web/templates/dashboard.html`
+Total Lines: 503
+Total Bytes: 28106
+Showing lines 110 to 125
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+110:                     <i data-lucide="contact"></i> Id Card
+111:                 </a>
+112: 
+113:                 <!-- ACADEMICS -->
+114:                 <div class="sidebar-label">Academics</div>
+115:                 <a href="/admin/academics-setting" class="sidebar-item">
+116:                     <i data-lucide="settings"></i> Academics Setting
+117:                 </a>
+118:                 <a href="/admin/input-result" class="sidebar-item">
+119:                     <i data-lucide="edit-3"></i> Input Result
+120:                 </a>
+121:                 <a href="/admin/student-promotion" class="sidebar-item">
+122:                     <i data-lucide="user-check"></i> Student Promotion
+123:                 </a>
+124:                 {% endif %}
+125: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+

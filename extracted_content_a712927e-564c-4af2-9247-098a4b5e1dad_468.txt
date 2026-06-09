@@ -1,0 +1,87 @@
+Created At: 2026-06-01T17:42:13Z
+Completed At: 2026-06-01T17:42:13Z
+File Path: `file:///d:/AHM/AHM-Web/app.py`
+Total Lines: 4366
+Total Bytes: 215137
+Showing lines 3930 to 4100
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3930: 
+3931: # ================= ATTENDANCE ROUTES =================
+3932: 
+3933: @app.route('/admin/attendance', methods=['GET', 'POST'])
+3934: @login_required
+3935: def admin_attendance():
+3936:     user = get_session_user()
+3937:     if user['role'] not in ['admin', 'teacher']:
+3938:         flash('Access denied.')
+3939:         return redirect(url_for('dashboard'))
+3940:         
+3941:     conn = get_db_connection()
+3942:     
+3943:     CLASSES = ['Nursery', 'U/N', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+3944:     
+3945:     if session.get('branch'):
+3946:         branch_filter = session['branch']
+3947:     else:
+3948:         branch_filter = request.args.get('branch', 'surangapur').strip().lower()
+3949:         if branch_filter not in ['surangapur', 'bhogram']:
+3950:             branch_filter = 'surangapur'
+3951:             
+3952:     role_filter = request.args.get('role_filter', 'student').strip().lower()
+3953:     class_filter = request.args.get('class_filter', '').strip()
+3954:     date_filter = request.args.get('date_filter', datetime.today().strftime('%Y-%m-%d')).strip()
+3955:     
+3956:     if request.method == 'POST':
+3957:         role_type = request.form.get('role_type')
+3958:         date_val = request.form.get('date')
+3959:         user_ids = request.form.getlist('user_ids')
+3960:         
+3961:         if not user_ids:
+3962:             flash('No records to save.')
+3963:             conn.close()
+3964:             return redirect(url_for('admin_attendance', branch=branch_filter, role_filter=role_filter, class_filte
+<truncated 5091 bytes>
+sername, username)).fetchone()
+4059:             
+4060:             if target_user:
+4061:                 conn.execute('''
+4062:                     INSERT OR REPLACE INTO attendance (user_id, role, date, status, remarks)
+4063:                     VALUES (?, ?, ?, ?, ?)
+4064:                 ''', (target_user['id'], target_user['role'], date_val, status, remarks))
+4065:                 success_count += 1
+4066:             else:
+4067:                 errors.append(f"User '{username}' not found.")
+4068:                 
+4069:         conn.commit()
+4070:         conn.close()
+4071:         
+4072:         flash(f"Successfully uploaded {success_count} attendance records!")
+4073:         for err in errors[:5]:
+4074:             flash(f"Warning: {err}")
+4075:     except Exception as e:
+4076:         flash(f"Error parsing CSV: {str(e)}")
+4077:         
+4078:     return redirect(url_for('admin_attendance', role_filter=role_type))
+4079: 
+4080: 
+4081: # ================= LEAVES ROUTES =================
+4082: 
+4083: @app.route('/admin/leaves', methods=['GET'])
+4084: @login_required
+4085: def admin_leaves():
+4086:     user = get_session_user()
+4087:     if user['role'] != 'admin':
+4088:         flash('Access denied.')
+4089:         return redirect(url_for('dashboard'))
+4090:         
+4091:     conn = get_db_connection()
+4092:     
+4093:     pending_leaves = conn.execute('''
+4094:         SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as applicant_name,
+4095:                COALESCE(si.class, '') as class_name, COALESCE(si.branch, u.branch) as branch_name
+4096:         FROM leaves l
+4097:         JOIN users u ON l.user_id = u.id
+4098:         LEFT JOIN student_info si ON u.id = si.user_id
+4099:         LEFT JOIN teacher_info ti ON u.id = ti.user_id
+4100:         WHERE l.status = 'Pending'
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

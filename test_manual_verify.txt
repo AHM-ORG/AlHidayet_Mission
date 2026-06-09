@@ -1,0 +1,1 @@
+This is a dummy text file to manually verify that any file format can be uploaded as a registration document.

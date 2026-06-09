@@ -1,0 +1,28 @@
+Created At: 2026-06-01T18:11:46Z
+Completed At: 2026-06-01T18:11:46Z
+File Path: `file:///d:/AHM/AHM-Web/app.py`
+Total Lines: 4373
+Total Bytes: 215593
+Showing lines 3936 to 3955
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+3936:     return render_template('routine.html', routine_data=routine_data, role=role)
+3937: 
+3938: # ================= ATTENDANCE ROUTES =================
+3939: 
+3940: @app.route('/admin/attendance', methods=['GET', 'POST'])
+3941: @login_required
+3942: def admin_attendance():
+3943:     user = get_session_user()
+3944:     if user['role'] not in ['admin', 'teacher']:
+3945:         flash('Access denied.')
+3946:         return redirect(url_for('dashboard'))
+3947:         
+3948:     conn = get_db_connection()
+3949:     
+3950:     CLASSES = ['Nursery', 'U/N', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+3951:     
+3952:     if session.get('branch'):
+3953:         branch_filter = session['branch']
+3954:     else:
+3955:         branch_filter = request.args.get('branch', 'surangapur').strip().lower()
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

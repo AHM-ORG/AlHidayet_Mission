@@ -1,0 +1,6 @@
+gunicorn
+flask
+python-dotenv
+razorpay
+requests
+google-generativeai

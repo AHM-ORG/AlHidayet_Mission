@@ -1,0 +1,92 @@
+Created At: 2026-06-01T17:36:49Z
+Completed At: 2026-06-01T17:36:52Z
+The following changes were made by the replace_file_content tool to: d:\AHM\AHM-Web\app.py. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -3928,6 +3928,433 @@
+     role = session.get('role', None)
+     return render_template('routine.html', routine_data=routine_data, role=role)
+ 
++# ================= ATTENDANCE ROUTES =================
++
++@app.route('/admin/attendance', methods=['GET', 'POST'])
++@login_required
++def admin_attendance():
++    user = get_session_user()
++    if user['role'] not in ['admin', 'teacher']:
++        flash('Access denied.')
++        return redirect(url_for('dashboard'))
++        
++    conn = get_db_connection()
++    
++    CLASSES = ['Nursery', 'U/N', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
++    
++    if session.get('branch'):
++        branch_filter = session['branch']
++    else:
++        branch_filter = request.args.get('branch', 'surangapur').strip().lower()
++        if branch_filter not in ['surangapur', 'bhogram']:
++            branch_filter = 'surangapur'
++            
++    role_filter = request.args.get('role_filter', 'student').strip().lower()
++    class_filter = request.args.get('class_filter', '').strip()
++    date_filter = request.args.get('date_filter', datetime.today().strftime('%Y-%m-%d')).strip()
++    
++    if request.method == 'POST':
++        role_type = request.form.get('role_type')
++        date_val = request.form.get('date')
++        user_ids = request.form.getlist('user_ids')
++        
++        if not user_ids:
++            flash('No records to save.')
++            conn.close()
++            return redirect(url_for('admin_attendance', branch=branch_filter, role_filter=role_filter, class_filter=class_filter, date_filter=date_val))
++            
++        for uid in user_ids:
++            status = request.form.get(f'status_{uid}', 'Present')
++     
+<truncated 15132 bytes>
+get('reason', '').strip()
++        
++        if not start_date or not end_date:
++            flash('Error: Date range is required.')
++            conn.close()
++            return redirect(url_for('student_attendance_leaves'))
++            
++        conn.execute('''
++            INSERT INTO leaves (user_id, role, leave_type, start_date, end_date, reason, status)
++            VALUES (?, 'student', ?, ?, ?, ?, 'Pending')
++        ''', (user['id'], leave_type, start_date, end_date, reason))
++        conn.commit()
++        conn.close()
++        
++        flash('Leave application submitted successfully! Awaiting Admin approval.')
++        return redirect(url_for('student_attendance_leaves'))
++        
++    leave_history = conn.execute('''
++        SELECT * FROM leaves WHERE user_id = ? ORDER BY submitted_at DESC
++    ''', (user['id'],)).fetchall()
++    
++    attendance_log = conn.execute('''
++        SELECT * FROM attendance WHERE user_id = ? ORDER BY date DESC LIMIT 30
++    ''', (user['id'],)).fetchall()
++    
++    total_att = len(attendance_log)
++    present_att = len([r for r in attendance_log if r['status'] == 'Present'])
++    percentage = int((present_att / total_att) * 100) if total_att > 0 else 100
++    
++    conn.close()
++    logo_url = url_for('static', filename='images/logo.png')
++    return render_template('student/leaves.html',
++                           leave_history=leave_history,
++                           attendance_log=attendance_log,
++                           att_percentage=percentage,
++                           role=user['role'],
++                           username=user['username'],
++                           logo_url=logo_url)
++
+ @app.route('/logout', methods=['GET', 'POST'])
+ def logout():
+     session.clear()
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.

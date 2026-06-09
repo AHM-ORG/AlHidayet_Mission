@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .form-section {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 30px;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .form-section h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+        }
+
+        .readonly-field {
+            background-color: #f1f2f6 !important;
+            border-color: #eee !important;
+            color: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #FF9F43 0%, #ee5253 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(238, 82, 83, 0.3);
+        }
+
+        .banner-pending {
+            background: #fff9db;
+            border-left: 5px solid #f59f00;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: var(--shadow-sm);
+        }
+    </style>
+</head>
+
+<body class="bg-pattern" style="background-color: #F7F9FC; font-family: 'Outfit', sans-serif;">
+
+    <!-- Header -->
+    <header class="main-header" style="background: #fff;">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #333; text-decoration: none;">
+                    <i data-lucide="arrow-left"></i>
+                    <span class="logo-text">Back to <span class="highlight">Dashboard</span></span>
+                </a>
+            </div>
+            <div class="header-cta">
+                <a href="/logout" class="btn btn-outline" style="border-color: #e17055; color: #e17055;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container section" style="max-width: 900px; margin-top: 40px; margin-bottom: 40px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color); font-family: 'Fredoka', sans-serif;">Edit Profile Details</h1>
+            <p style="color: var(--text-light);">Submit corrections for Admin approval</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div style="background: #ff7675; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Pending Request Active Alert -->
+        {% if pending_edit %}
+        <div class="banner-pending">
+            <i data-lucide="alert-circle" style="color: #f59f00; width: 28px; height: 28px; flex-shrink: 0;"></i>
+            <div>
+                <h4 style="margin: 0; color: #f59f00; font-size: 16px; font-weight: 600;">Request Pending Approval</h4>
+                <p style="margin: 3px 0 0 0; color: #666; font-size: 14px;">
+                    You already submitted a profile update request on <strong>{{ pending_edit.submitted_at }}</strong>. 
+                    Re-submitting this form will overwrite your previous pending edits.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <form action="/teacher/edit-info" method="POST" enctype="multipart/form-data">
+            <!-- 1. Administrative Details (Read-only) -->
+            <div class="form-section" style="border-top-color: #636e72;">
+                <h3><i class="fas fa-lock"></i> Administrative Details (Read-Only)</h3>
+                <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 20px;">
+                    These official details are locked and can only be modified directly by the school administration.
+                </p>
+                <div style="display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex: 0 0 150px; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 15px;">
+                        <span style="font-weight: 500; font-size: 13px; color: #666;">Profile Photo</span>
+                        {% if teacher_info.photo_path %}
+                            <img src="{{ url_for('static', filename='uploads/teacher_photos/' + teacher_info.photo_path) }}" alt="Photo" style="width:120px; height:120px; object-fit:cover; border:1px solid #ccc; border-radius:8px;">
+                        {% else %}
+                            <div style="width:120px; height:120px; border-radius:8px; background:#f8f9fa; border:2px dashed #ccc; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#999; font-size:12px; gap:5px;">
+                                <i data-lucide="user" style="width:24px; height:24px; color:#ccc;"></i>
+                                No Photo
+                            </div>
+                        {% endif %}
+                        <input type="file" name="photo" accept="image/*" style="margin-top: 10px; font-size: 12px; width: 100%; max-width: 150px;">
+                    </div>
+                    <div style="flex: 1; min-width: 250px;" class="form-grid">
+                        <div class="input-group">
+                            <label>Joining Date</label>
+                            <input type="text" class="readonly-field" readonly value="{{ teacher_info.joining_date if teacher_info else 'N/A' }}">
+                        </div>
+                        <div class="input-group">
+                            <label>Campus Branch</label>
+                            <input type="text" class="readonly-field" readonly value="{{ role|title if role else 'N/A' }}">
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Assigned Classes & Subjects</label>
+                            <textarea class="readonly-field" readonly rows="2" style="resize: none;">{{ teacher_info.assigned_classes if teacher_info else 'N/A' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Personal Teacher Details -->
+            <div class="form-section" style="border-top-color: #0984e3;">
+                <h3><i class="fas fa-id-card"></i> Profile Information</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Full Name*</label>
+                        {% set current_name = pending_data.get('full_name') if pending_edit else teacher_info.full_name %}
+                        <input type="text" name="full_name" required placeholder="Enter your full name" value="{{ current_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Contact Phone Number*</label>
+                        {% set current_phone = pending_data.get('phone_number') if pending_edit else teacher_info.phone_number %}
+                        <input type="tel" name="phone_number" required placeholder="10-digit Mobile No" pattern="\d{10}" minlength="10" maxlength="10" id="phone_input" value="{{ current_phone or '' }}">
+                        <small class="error-msg" id="error-phone" style="color: #e74c3c; display: none; margin-top: 5px; font-size: 12px;">
+                            <i class="fas fa-exclamation-circle"></i> Must be exactly 10 digits
+                        </small>
+                    </div>
+                    <div class="input-group">
+                        <label>Highest Qualification*</label>
+                        {% set current_qual = pending_data.get('qualification') if pending_edit else teacher_info.qualification %}
+                        <input type="text" name="qualification" required placeholder="e.g. M.A. in English, B.Ed" value="{{ current_qual or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Aadhaar Number</label>
+                        {% set current_aadhar = pending_data.get('aadhaar_number') if pending_edit else teacher_info.aadhaar_number %}
+                        <input type="text" name="aadhaar_number" placeholder="12-digit Aadhaar Number" pattern="\d{12}" minlength="12" maxlength="12" id="aadhar_input" value="{{ current_aadhar or '' }}">
+                        <small class="error-msg" id="error-aadhar" style="color: #e74c3c; display: none; margin-top: 5px; font-size: 12px;">
+                            <i class="fas fa-exclamation-circle"></i> Must be exactly 12 digits
+                        </small>
+                    </div>
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label>Address*</label>
+                        {% set current_address = pending_data.get('address') if pending_edit else teacher_info.address %}
+                        <input type="text" name="address" required placeholder="Enter full address details" value="{{ current_address or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Bank Account Details -->
+            {% set bank = parse_bank_details(pending_data.get('bank_details') if pending_edit else (teacher_info.bank_details if teacher_info else '')) %}
+            <div class="form-section" style="border-top-color: #a29bfe;">
+                <h3><i class="fas fa-university"></i> Bank Account Details</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Bank Name</label>
+                        <input type="text" name="bank_name" placeholder="Bank Name" value="{{ bank.bank_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Branch Name</label>
+                        <input type="text" name="branch_name" placeholder="Branch Name" value="{{ bank.branch_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Account Number</label>
+                        <input type="text" name="account_no" placeholder="Account Number" value="{{ bank.account_no or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>IFSC Code</label>
+                        <input type="text" name="ifsc_code" placeholder="IFSC Code" value="{{ bank.ifsc_code or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Edit Request</button>
+        </form>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+
+        function setupValidation(inputId, errorId, length) {
+            const input = document.getElementById(inputId);
+            const errorMsg = document.getElementById(errorId);
+
+            if (!input) return;
+
+            input.addEventListener('input', function () {
+                const value = this.value;
+                if (value.length > 0 && (value.length !== length || !/^\d+$/.test(value))) {
+                    errorMsg.style.display = 'block';
+                    this.style.borderColor = '#e74c3c';
+                } else {
+                    errorMsg.style.display = 'none';
+                    this.style.borderColor = '#ddd';
+                    if (value.length === length) this.style.borderColor = '#2ecc71';
+                }
+            });
+        }
+
+        setupValidation('aadhar_input', 'error-aadhar', 12);
+        setupValidation('phone_input', 'error-phone', 10);
+    </script>
+</body>
+
+</html>
