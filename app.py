@@ -168,7 +168,7 @@ def migrate_student_info_schema():
     conn.commit()
     conn.close()
 
-migrate_student_info_schema()
+# migrate_student_info_schema() was called here, but moved to run after init_db() on startup to support blank databases.
 
 def update_bhogram_class_fees():
     try:
@@ -1536,6 +1536,7 @@ def init_db():
 
 # Initialize DB and run absolute path sidebar updater
 init_db()
+migrate_student_info_schema()
 
 # Clean up temporary debug files
 import os
@@ -1611,6 +1612,9 @@ def create_folders():
     os.makedirs(os.path.join(UPLOAD_BASE, 'temp'), exist_ok=True)
     os.makedirs(os.path.join(UPLOAD_BASE, 'avatars'), exist_ok=True)
     os.makedirs(os.path.join(UPLOAD_BASE, 'proofs'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_BASE, 'student_photos'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_BASE, 'teacher_photos'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_BASE, 'cvs'), exist_ok=True)
 
 create_folders()
 
@@ -3075,14 +3079,81 @@ def media_action(media_id, action):
     if 'user' in session and session['role'] == 'admin':
         status = 'Approved' if action == 'approve' else 'Rejected'
         conn = sqlite3.connect(DB_NAME)
-        if status == 'Approved':
-            conn.execute("UPDATE pending_media SET status = 'Approved' WHERE id = ?", (media_id,))
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        media = c.execute("SELECT * FROM pending_media WHERE id = ?", (media_id,)).fetchone()
+        
+        if media:
+            branch = media['branch']
+            category = media['category']
+            filename = media['filename']
+            
+            import shutil
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp', filename)
+            
+            if status == 'Approved':
+                dest_folder = os.path.join(app.config['UPLOAD_FOLDER'], branch, category)
+                dest_path = os.path.join(dest_folder, filename)
+                if os.path.exists(temp_path):
+                    try:
+                        os.makedirs(dest_folder, exist_ok=True)
+                        shutil.move(temp_path, dest_path)
+                    except Exception as e:
+                        print(f"Error moving approved file: {e}")
+                c.execute("UPDATE pending_media SET status = 'Approved' WHERE id = ?", (media_id,))
+            else:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception as e:
+                        print(f"Error removing rejected file: {e}")
+                c.execute("UPDATE pending_media SET status = 'Rejected' WHERE id = ?", (media_id,))
+            
+            conn.commit()
+            flash(f'Media {status}!')
         else:
-            conn.execute("UPDATE pending_media SET status = 'Rejected' WHERE id = ?", (media_id,))
-        conn.commit()
+            flash('Media record not found.')
         conn.close()
-        flash(f'Media {status}!')
+    else:
+        flash('Unauthorized')
     return redirect(url_for('dashboard'))
+
+@app.route('/admin/delete-gallery-item', methods=['POST'])
+def delete_gallery_item():
+    if 'user' not in session or session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    branch = data.get('branch')
+    category = data.get('category')
+    filename = data.get('filename')
+
+    if not branch or not category or not filename:
+        return jsonify({'success': False, 'message': 'Missing parameters'}), 400
+
+    # Prevent directory traversal
+    filename = secure_filename(filename)
+    if not filename or branch not in BRANCHES or category not in CATEGORIES:
+        return jsonify({'success': False, 'message': 'Invalid parameters'}), 400
+
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], branch, category, filename)
+    
+    deleted_from_disk = False
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            deleted_from_disk = True
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Failed to delete file from disk: {str(e)}'}), 500
+    
+    # Also delete record from database if it exists in pending_media
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("DELETE FROM pending_media WHERE filename = ?", (filename,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': 'Gallery item deleted successfully', 'deleted_from_disk': deleted_from_disk})
 
 @app.route('/admin/run-sidebar-update')
 @login_required
@@ -6844,6 +6915,45 @@ def student_edit_info():
         JOIN users u ON si.user_id = u.id 
         WHERE u.id = ?
     ''', (user['id'],)).fetchone()
+    
+    if not student_info:
+        student_info = {
+            'photo_path': '',
+            'class': '',
+            'roll_number': '',
+            'unique_code': '',
+            'date_of_admission': '',
+            'full_name': user['username'],
+            'dob': '',
+            'section': '',
+            'gender': 'Male',
+            'caste': 'General',
+            'religion': '',
+            'nationality': 'Indian',
+            'whatsapp_no': '',
+            'identification_mark': '',
+            'previous_class': '',
+            'prev_marks_percentage': '',
+            'sl_no': '',
+            'session': '2026',
+            'mode_of_admission': 'School',
+            'coaching_opted': 0,
+            'car_opted': 0,
+            'guardian_name': '',
+            'mothers_name': '',
+            'father_qualification': '',
+            'father_occupation': '',
+            'father_monthly_income': '',
+            'mother_qualification': '',
+            'mother_occupation': '',
+            'mother_monthly_income': '',
+            'village': '',
+            'post_office': '',
+            'police_station': '',
+            'district': '',
+            'bank_details': '',
+            'attached_documents': ''
+        }
     
     pending_edit = conn.execute('''
         SELECT * FROM applications 
