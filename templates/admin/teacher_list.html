@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachers List - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/staff" class="sidebar-item {% if request.path == '/admin/staff' %}active{% endif %}"><i data-lucide="contact"></i> Staff Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Teachers Directory</div>
+            </header>
+            <div class="content-wrapper">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div class="auth-container" style="max-width: 100%; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div>
+                            <h2 style="margin: 0; color: var(--primary-color);">Teachers List</h2>
+                            <p style="margin: 4px 0 0; color: var(--text-muted);">Manage teacher profiles, login IDs, and password resets.</p>
+                        </div>
+                        {% if role == 'admin' %}
+                        <a href="/admin/add-user" class="btn btn-primary" style="width: auto; min-height: 38px; padding: 8px 16px;">
+                            <i data-lucide="user-plus"></i> Add Teacher
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="table-scroll-container">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee; text-align: left;">
+                                <th style="padding: 12px;">SL</th>
+                                <th style="padding: 12px;">Name</th>
+                                <th style="padding: 12px;">Username</th>
+                                <th style="padding: 12px;">Email</th>
+                                <th style="padding: 12px;">Phone</th>
+                                <th style="padding: 12px;">Type</th>
+                                <th style="padding: 12px;">Qualification</th>
+                                <th style="padding: 12px;">CV</th>
+                                <th style="padding: 12px;">Joining Date</th>
+                                <th style="padding: 12px;">Aadhaar</th>
+                                <th style="padding: 12px;">Bank Details</th>
+                                {% if role == 'admin' %}
+                                <th style="padding: 12px; min-width: 210px;">Password</th>
+                                <th style="padding: 12px; min-width: 210px;">Edit Section</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for teacher in teachers %}
+                            <tr style="border-bottom: 1px solid #eee;" id="teacher-row-{{ teacher.id }}">
+                                <td style="padding: 12px;">{{ loop.index }}</td>
+                                <td style="padding: 12px;"><strong>{{ teacher.full_name or (teacher.username | clean_name) }}</strong></td>
+                                <td style="padding: 12px;">{{ teacher.username }}</td>
+                                <td style="padding: 12px;">{{ teacher.email or 'N/A' }}</td>
+                                <td style="padding: 12px;">{{ teacher.phone_number or 'N/A' }}</td>
+                                <td style="padding: 12px;">
+                                    <span class="badge" style="background-color: #e8f4fd; color: #0984e3; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">
+                                        {{ teacher.teacher_type or 'Regular Class' }}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px;">{{ teacher.qualification or 'N/A' }}</td>
+                                <td style="padding: 12px;">
+                                    {% if teacher.cv_path %}
+                                        <a href="{{ url_for('static', filename=teacher.cv_path) }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i data-lucide="file-text" style="width: 16px; height: 16px;"></i> View CV
+                                        </a>
+                                    {% else %}
+                                        <span style="color: #bbb;">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 12px;">{{ teacher.joining_date or 'N/A' }}</td>
+                                <td style="padding: 12px;">{{ teacher.aadhaar_number or 'N/A' }}</td>
+                                <td style="padding: 12px;">
+                                    {% set bank = parse_bank_details(teacher.bank_details) %}
+                                    {% if bank.bank_name %}
+                                        {{ bank.bank_name }}<br>
+                                        <span style="font-size: 11px; color:#666;">A/C: {{ bank.account_no or 'N/A' }} | IFSC: {{ bank.ifsc_code or 'N/A' }}</span>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                {% if role == 'admin' %}
+                                <td style="padding: 12px;">
+                                    <div style="display: grid; gap: 8px;">
+                                        <form action="/admin/reset-password/{{ teacher.id }}" method="POST" onsubmit="return confirm('Reset password for {{ teacher.full_name or (teacher.username | clean_name) }}?');" style="margin: 0;">
+                                            <input type="hidden" name="next" value="teacher_list">
+                                            <button type="submit" class="badge" style="background-color: #fdcb6e; border: none; cursor: pointer; color: #2d3436; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; width: 100%; justify-content: center; box-sizing: border-box;">
+                                                <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Reset Password
+                                            </button>
+                                        </form>
+                                        <button onclick="openChangePasswordModal({{ teacher.id }}, '{{ teacher.username }}')" type="button" class="badge" style="background-color: #3498db; border: none; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; width: 100%; justify-content: center; box-sizing: border-box;">
+                                            <i data-lucide="key-round" style="width: 12px; height: 12px;"></i> Change Password
+                                        </button>
+                                    </div>
+                                </td>
+                                <td style="padding: 12px;">
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <a href="/admin/edit-teacher/{{ teacher.id }}" class="badge badge-warning" style="background-color: #f39c12; color: white; text-decoration: none;">
+                                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i> Edit
+                                        </a>
+                                        <button onclick="deleteUserAJAX({{ teacher.id }}, 'teacher')" type="button" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white;">
+                                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Remove
+                                        </button>
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                             {% else %}
+                             <tr>
+                                  <td colspan="{% if role == 'admin' %}14{% else %}12{% endif %}" style="text-align: center; padding: 20px;">No teachers found. Upload via Bulk Upload.</td>
+                             </tr>
+                             {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+
+        function deleteUserAJAX(userId, userType) {
+            window.showConfirm('Are you sure you want to remove this ' + userType + '?', () => {
+                fetch('/admin/delete-user/' + userId, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.status === 'success') {
+                          const row = document.getElementById(userType + '-row-' + userId);
+                          if (row) row.remove();
+                          window.showToast(userType.charAt(0).toUpperCase() + userType.slice(1) + ' removed successfully.', 'success');
+                      } else {
+                          window.showToast('Failed to remove user: ' + (data.message || 'Unknown error'), 'error');
+                      }
+                  }).catch(err => {
+                      console.error(err);
+                      window.showToast('Network error while removing user.', 'error');
+                  });
+            });
+        }
+
+        function openChangePasswordModal(userId, username) {
+            const form = document.getElementById('changePasswordForm');
+            form.action = `/admin/change-password/${userId}`;
+            document.getElementById('passwordTargetUser').textContent = `For user: ${username}`;
+            document.getElementById('new_password').value = '';
+            
+            const modal = document.getElementById('changePasswordModal');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.querySelector('.auth-container').style.transform = 'translateY(0)';
+            }, 10);
+            
+            lucide.createIcons();
+        }
+
+        function closePasswordModal() {
+            const modal = document.getElementById('changePasswordModal');
+            modal.style.opacity = '0';
+            modal.querySelector('.auth-container').style.transform = 'translateY(-30px)';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const passwordModal = document.getElementById('changePasswordModal');
+            if (event.target == passwordModal) {
+                closePasswordModal();
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- CHANGE PASSWORD MODAL -->
+    <div id="changePasswordModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(45, 52, 54, 0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+        <div class="auth-container" style="max-width: 450px; width: 90%; background: #ffffff; border-radius: 16px; box-shadow: var(--shadow-lg); border-top: 5px solid #3498db; padding: 30px; position: relative; transform: translateY(-30px); transition: transform 0.3s ease; margin: auto;">
+            <!-- Close button -->
+            <button onclick="closePasswordModal()" style="position: absolute; right: 20px; top: 20px; border: none; background: #f1f2f6; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #2d3436; transition: 0.3s;"><i data-lucide="x" style="width: 18px; height: 18px;"></i></button>
+            
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+                <div style="background: #e8f0fe; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #3498db;">
+                    <i data-lucide="key-round" style="width: 32px; height: 32px;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; color: var(--text-dark); font-size: 20px;">Change Password</h2>
+                    <p id="passwordTargetUser" style="margin: 4px 0 0; color: var(--text-muted); font-size: 14px; font-weight: 500;"></p>
+                </div>
+            </div>
+
+            <form id="changePasswordForm" method="POST" action="">
+                <input type="hidden" name="next" value="teacher_list">
+                <div style="margin-bottom: 20px; text-align: left;">
+                    <label for="new_password" style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-dark); font-size: 14px;">New Password</label>
+                    <input type="password" id="new_password" name="new_password" required minlength="6" placeholder="Enter new password (min 6 chars)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;">
+                </div>
+
+                {% if role != 'admin' %}
+                <div style="background-color: #ffeaa7; color: #d63031; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; text-align: left; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="alert-triangle" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+                    <span>This request will be submitted to the Admin for approval.</span>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button type="button" onclick="closePasswordModal()" class="auth-btn" style="width: auto; background-color: #b2bec3; padding: 8px 16px; font-size: 14px; border: none; color: white; border-radius: 8px; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="auth-btn" style="width: auto; background-color: #3498db; padding: 8px 20px; font-size: 14px; border: none; color: white; border-radius: 8px; cursor: pointer;">
+                        {% if role == 'admin' %}Change Password{% else %}Submit Request{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

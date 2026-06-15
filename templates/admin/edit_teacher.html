@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Teacher - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Edit Teacher: {{ teacher.full_name or (teacher.username | clean_name) }}</div>
+            </header>
+            
+            <div class="content-wrapper">
+                <div class="auth-container" style="max-width: 800px; margin: 0 auto; text-align: left; padding: 40px;">
+                    <h2 style="margin-bottom: 30px; color: var(--primary-color);">Edit Teacher Details</h2>
+
+                    {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                    <div class="alert-danger" style="margin-bottom: 20px;">
+                        {{ messages[0] }}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Username *</label>
+                                <input type="text" name="username" required value="{{ teacher.username }}">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Email</label>
+                                <input type="email" name="email" value="{{ teacher.email or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Profile Photo Field -->
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Profile Photo (shown on Homepage)</label>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                {% if teacher.photo_path %}
+                                    <img src="{{ url_for('static', filename='uploads/teacher_photos/' + teacher.photo_path) }}" alt="Current Photo" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid var(--primary-color);">
+                                {% else %}
+                                    <div style="width: 60px; height: 60px; border-radius: 8px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 12px; border: 2px dashed #ccc;">No Photo</div>
+                                {% endif %}
+                                <input type="file" name="photo" accept="image/*" style="width: 100%; padding: 8px; border: 2px solid #eee; border-radius: 8px;">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Full Name</label>
+                                <input type="text" name="full_name" value="{{ teacher.full_name or '' }}">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Phone Number</label>
+                                <input type="text" name="phone_number" value="{{ teacher.phone_number or '' }}">
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Teacher Type *</label>
+                            <select name="teacher_type" style="width:100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                <option value="Regular Class" {% if teacher.teacher_type == 'Regular Class' or not teacher.teacher_type %}selected{% endif %}>Regular Class</option>
+                                <option value="Coaching Class" {% if teacher.teacher_type == 'Coaching Class' %}selected{% endif %}>Coaching Class</option>
+                                <option value="Both" {% if teacher.teacher_type == 'Both' %}selected{% endif %}>Both</option>
+                                <option value="Guest Teacher" {% if teacher.teacher_type == 'Guest Teacher' %}selected{% endif %}>Guest Teacher</option>
+                            </select>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Qualification</label>
+                                <input type="text" name="qualification" value="{{ teacher.qualification or '' }}">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Joining Date</label>
+                                <input type="date" name="joining_date" value="{{ teacher.joining_date or '' }}">
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Address</label>
+                            <input type="text" name="address" value="{{ teacher.address or '' }}">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Aadhaar Number</label>
+                                <input type="text" name="aadhaar_number" placeholder="12-digit Aadhaar Number" pattern="\d{12}" minlength="12" maxlength="12" id="aadhar_input" value="{{ teacher.aadhaar_number or '' }}">
+                                <small class="error-msg" id="error-aadhar" style="color: #e74c3c; display: none; margin-top: 5px; font-size: 12px;">
+                                    Must be exactly 12 digits
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Assigned Classes & Subjects</label>
+                            <textarea name="assigned_classes" placeholder="e.g. Class I: English, Class II: Math" rows="4" style="width: 100%; min-height: 100px; padding: 10px 12px; border: 1px solid var(--border-color) !important; border-radius: 14px !important; background: var(--surface); color: var(--text-dark); font-family: inherit; resize: vertical;">{{ teacher.assigned_classes or '' }}</textarea>
+                        </div>
+
+                        {% set bank = parse_bank_details(teacher.bank_details) %}
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Bank Name</label>
+                                <input type="text" name="bank_name" placeholder="Bank Name" value="{{ bank.bank_name }}">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Branch Name</label>
+                                <input type="text" name="branch_name" placeholder="Branch Name" value="{{ bank.branch_name or '' }}">
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Account Number</label>
+                            <input type="text" name="account_no" placeholder="Account Number" value="{{ bank.account_no }}">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">IFSC Code</label>
+                            <input type="text" name="ifsc_code" placeholder="IFSC Code" value="{{ bank.ifsc_code }}">
+                        </div>
+
+                        <!-- CV Document Field -->
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">CV Document (PDF or Image)</label>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                {% if teacher.cv_path %}
+                                    <a href="{{ url_for('static', filename=teacher.cv_path) }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i data-lucide="file-text" style="width: 18px; height: 18px;"></i> View CV
+                                    </a>
+                                {% else %}
+                                    <div style="font-size: 12px; color: #aaa;">No CV Uploaded</div>
+                                {% endif %}
+                                <input type="file" name="cv_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" style="width: 100%; padding: 8px; border: 2px solid #eee; border-radius: 8px;">
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom: 30px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">New Password</label>
+                            <input type="password" name="password" placeholder="Leave blank to keep current password">
+                        </div>
+
+                        <button type="submit" class="auth-btn">Update Teacher</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+        document.addEventListener("DOMContentLoaded", function() {
+            const aadharInput = document.getElementById('aadhar_input');
+            const errorAadhar = document.getElementById('error-aadhar');
+            if (aadharInput) {
+                aadharInput.addEventListener('input', function() {
+                    const val = this.value;
+                    if (val.length > 0 && (val.length !== 12 || !/^\d+$/.test(val))) {
+                        errorAadhar.style.display = 'block';
+                        this.style.borderColor = '#e74c3c';
+                    } else {
+                        errorAadhar.style.display = 'none';
+                        this.style.borderColor = '#eee';
+                        if (val.length === 12) this.style.borderColor = '#2ecc71';
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

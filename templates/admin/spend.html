@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/staff" class="sidebar-item {% if request.path == '/admin/staff' %}active{% endif %}"><i data-lucide="contact"></i> Staff Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Expense Tracker</div>
+            </header>
+            <div class="content-wrapper">
+                <!-- ALERTS -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                        <h3>Record New Expense</h3>
+                        <form action="/admin/spend" method="post" enctype="multipart/form-data">
+                            <div class="input-group">
+                                <label>Amount:</label>
+                                <input type="number" name="amount" id="amount" required step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label>Category:</label>
+                                <select name="category" id="category" required
+                                    style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="">-- Select Category --</option>
+                                    <option value="Salary">Salary</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Electricity">Electricity</option>
+                                    <option value="Stationery">Stationery</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+
+                            <!-- Salary Recipient Details -->
+                            <div id="salary-sub-section" style="display: none; border: 1px solid #eee; padding: 15px; border-radius: 8px; background: #fafafa; margin-bottom: 15px;">
+                                <div class="input-group">
+                                    <label>Recipient Type:</label>
+                                    <select name="salary_recipient_type" id="salary_recipient_type" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="">-- Select Recipient Type --</option>
+                                        <option value="Teacher">Teacher</option>
+                                        <option value="Staff">Staff</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" id="teacher-recipient-group" style="display: none;">
+                                    <label>Select Teacher:</label>
+                                    <select name="teacher_recipient_id" id="teacher_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="" data-salary="0">-- Select Teacher --</option>
+                                        {% for t in teachers %}
+                                        <option value="{{ t.id }}" data-salary="{{ t.salary }}">{{ t.full_name or (t.username | clean_name) }} (Salary: ₹{{ t.salary }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="input-group" id="staff-recipient-group" style="display: none;">
+                                    <label>Select Staff:</label>
+                                    <select name="staff_recipient_id" id="staff_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="" data-salary="0">-- Select Staff Member --</option>
+                                        {% for s in staff_list %}
+                                        <option value="{{ s.id }}" data-salary="{{ s.salary }}">{{ s.full_name }} ({{ s.staff_type }}) (Salary: ₹{{ s.salary }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Description:</label>
+                                <textarea name="description"
+                                    style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;"
+                                    rows="3"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>Upload Proof of Spend (Optional):</label>
+                                <input type="file" name="proof" accept="image/*,application/pdf" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: white;">
+                            </div>
+                            <button type="submit" class="auth-btn">Record Expense</button>
+                        </form>
+                    </div>
+
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                        <h3>Recent Expenses</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #eee;">
+                                    <th style="padding: 10px; text-align: left;">Category</th>
+                                    <th style="padding: 10px; text-align: left;">Amount</th>
+                                    <th style="padding: 10px; text-align: left;">Date</th>
+                                    <th style="padding: 10px; text-align: left;">Proof</th>
+                                    {% if role == 'admin' %}
+                                    <th style="padding: 10px; text-align: center;">Action</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for e in expenses %}
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 10px;">
+                                        {{ e.category }}
+                                        {% if e.recipient_name %}
+                                            <div style="font-size: 12px; color: #555; margin-top: 4px;">
+                                                <span style="background: #e8f0fe; color: #1a73e8; padding: 2px 6px; border-radius: 4px;">
+                                                    {{ e.recipient_type | capitalize }}: {{ e.recipient_name }}
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 10px;">{{ e.amount }}</td>
+                                    <td style="padding: 10px; font-size: 12px;">{{ e.date.split(' ')[0] }}</td>
+                                    <td style="padding: 10px;">
+                                        {% if e.proof_path %}
+                                            <a href="{{ url_for('static', filename='uploads/proofs/' + e.proof_path) }}" target="_blank" style="color: var(--primary-color); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i> View
+                                            </a>
+                                        {% else %}
+                                            <span style="color: var(--text-light); font-size: 13px;">No proof</span>
+                                        {% endif %}
+                                    </td>
+                                    {% if role == 'admin' %}
+                                    <td style="padding: 10px; text-align: center;">
+                                        <form action="{{ url_for('delete_expense', expense_id=e.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense?');">
+                                            <button type="submit" style="background: none; border: none; color: #ff7675; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // First initialize TomSelect for all dropdowns
+            document.querySelectorAll('select').forEach((el)=>{
+                if (!el.classList.contains('search-select')) {
+                    el.classList.add('search-select');
+                }
+                new TomSelect(el,{
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    }
+                });
+            });
+
+            // Dynamic logic for Salary Category split
+            const categorySelect = document.getElementById('category');
+            const salarySubSection = document.getElementById('salary-sub-section');
+            const salaryRecipientType = document.getElementById('salary_recipient_type');
+            const teacherRecipientGroup = document.getElementById('teacher-recipient-group');
+            const staffRecipientGroup = document.getElementById('staff-recipient-group');
+            const teacherSelect = document.getElementById('teacher_recipient_id');
+            const staffSelect = document.getElementById('staff_recipient_id');
+            const amountInput = document.getElementById('amount');
+            
+            function toggleSalaryFields() {
+                if (categorySelect.value === 'Salary') {
+                    salarySubSection.style.display = 'block';
+                } else {
+                    salarySubSection.style.display = 'none';
+                    if (salaryRecipientType.tomselect) {
+                        salaryRecipientType.tomselect.setValue('');
+                    } else {
+                        salaryRecipientType.value = '';
+                    }
+                    toggleRecipientTypeFields();
+                }
+            }
+            
+            function toggleRecipientTypeFields() {
+                const type = salaryRecipientType.value;
+                if (type === 'Teacher') {
+                    teacherRecipientGroup.style.display = 'block';
+                    staffRecipientGroup.style.display = 'none';
+                    if (staffSelect.tomselect) {
+                        staffSelect.tomselect.setValue('');
+                    } else {
+                        staffSelect.value = '';
+                    }
+                } else if (type === 'Staff') {
+                    staffRecipientGroup.style.display = 'block';
+                    teacherRecipientGroup.style.display = 'none';
+                    if (teacherSelect.tomselect) {
+                        teacherSelect.tomselect.setValue('');
+                    } else {
+                        teacherSelect.value = '';
+                    }
+                } else {
+                    teacherRecipientGroup.style.display = 'none';
+                    staffRecipientGroup.style.display = 'none';
+                    if (teacherSelect.tomselect) teacherSelect.tomselect.setValue('');
+                    if (staffSelect.tomselect) staffSelect.tomselect.setValue('');
+                }
+                updateAmount();
+            }
+            
+            function updateAmount() {
+                const type = salaryRecipientType.value;
+                let salary = 0;
+                if (type === 'Teacher') {
+                    const val = teacherSelect.value;
+                    const opt = teacherSelect.querySelector(`option[value="${val}"]`);
+                    if (opt) {
+                        salary = opt.getAttribute('data-salary') || 0;
+                    }
+                } else if (type === 'Staff') {
+                    const val = staffSelect.value;
+                    const opt = staffSelect.querySelector(`option[value="${val}"]`);
+                    if (opt) {
+                        salary = opt.getAttribute('data-salary') || 0;
+                    }
+                }
+                if (salary && parseFloat(salary) > 0) {
+                    amountInput.value = salary;
+                }
+            }
+            
+            if (categorySelect) {
+                // If TomSelect initialized on categorySelect, hook into its change
+                if (categorySelect.tomselect) {
+                    categorySelect.tomselect.on('change', toggleSalaryFields);
+                } else {
+                    categorySelect.addEventListener('change', toggleSalaryFields);
+                }
+            }
+            if (salaryRecipientType) {
+                if (salaryRecipientType.tomselect) {
+                    salaryRecipientType.tomselect.on('change', toggleRecipientTypeFields);
+                } else {
+                    salaryRecipientType.addEventListener('change', toggleRecipientTypeFields);
+                }
+            }
+            if (teacherSelect) {
+                if (teacherSelect.tomselect) {
+                    teacherSelect.tomselect.on('change', updateAmount);
+                } else {
+                    teacherSelect.addEventListener('change', updateAmount);
+                }
+            }
+            if (staffSelect) {
+                if (staffSelect.tomselect) {
+                    staffSelect.tomselect.on('change', updateAmount);
+                } else {
+                    staffSelect.addEventListener('change', updateAmount);
+                }
+            }
+            
+            // Initial call
+            toggleSalaryFields();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

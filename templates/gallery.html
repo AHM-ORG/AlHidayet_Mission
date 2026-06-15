@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Gallery - Bhogram Al-Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* Modern Premium Gallery styles */
+        :root {
+            --gallery-primary: #8b5cf6;
+            --gallery-primary-hover: #7c3aed;
+            --gallery-dark: #0f172a;
+            --gallery-dark-slate: #1e293b;
+            --gallery-glass: rgba(255, 255, 255, 0.75);
+            --gallery-radius-lg: 20px;
+            --gallery-radius-md: 12px;
+            --gallery-transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gallery-header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            color: #fff;
+            padding: 90px 0 70px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 -10px 20px rgba(0,0,0,0.15);
+        }
+
+        /* Floating background particles */
+        .particle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(139, 92, 246, 0.15);
+            border-radius: 50%;
+            filter: blur(10px);
+            animation: float-around 20s infinite linear;
+        }
+
+        @keyframes float-around {
+            0% { transform: translateY(100%) translateX(0) scale(1); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-20%) translateX(100px) scale(1.5); opacity: 0; }
+        }
+
+        .gallery-title {
+            font-family: 'Fredoka', sans-serif;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+            color: #fff;
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .gallery-subtitle {
+            font-size: 17px;
+            opacity: 0.85;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 400;
+            font-family: 'Outfit', sans-serif;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Dynamic Filter & Search Center */
+        .search-filter-hub {
+            background: var(--gallery-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 24px;
+            border-radius: var(--gallery-radius-lg);
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+            margin: -40px auto 45px;
+            position: relative;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: var(--gallery-transition);
+        }
+
+        .search-filter-hub:hover {
+            box-shadow: 0 25px 50px rgba(15, 23, 42, 0.12);
+        }
+
+        .search-bar-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-bar-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            pointer-events: none;
+            width: 20px;
+            height: 20px;
+        }
+
+        .gallery-search {
+            width: 100%;
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            padding: 14px 20px 14px 48px;
+            font-size: 15px;
+            font-family: 'Outfit', sans-serif;
+            border-radius: 30px;
+            outline: none;
+            color: var(--gallery-dark-slate);
+            transition: var(--gallery-transition);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.01);
+        }
+
+        .gallery-search:focus {
+            border-color: var(--gallery-primary);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.01);
+        }
+
+        .filter-controls-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .filter-controls-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        .filter-card-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-card-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Outfit', sans-serif;
+            padding-left: 4px;
+        }
+
+        .filter-options-flex {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: rgba(241, 245, 249, 0.8);
+            padding: 5px;
+            border-radius: 30px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-pill {
+            background: transparent;
+            color: #64748b;
+            border: none;
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: var(--gallery-transition);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-pill:hover {
+            color: var(--gallery-dark);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .filter-pill.active {
+            background: #fff;
+            color: var(--gallery-primary);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+            font-weight: 700;
+        }
+
+        /* Fluid Premium Grid Layout */
+        .gallery-container {
+            min-height: 450px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 30px;
+            transition: var(--gallery-transition);
+        }
+
+        .gallery-item {
+            background: #fff;
+            border-radius: var(--gallery-radius-md);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.03);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: var(--gallery-transition);
+            opacity: 1;
+            transform: scale(1);
+            display: flex;
+            flex-direction: column;
+            will-change: transform, opacity;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.09);
+            border-color: #e2e8f0;
+        }
+
+        .media-wrapper {
+            position: relative;
+            width: 100%;
+            height: 230px;
+            background: #0f172a;
+            overflow: hidden;
+        }
+
+        .gallery-item img,
+        .gallery-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.08);
+        }
+
+        .media-badge-group {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 5;
+        }
+
+        .media-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .badge-campus {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .badge-type {
+            background: var(--gallery-primary);
+        }
+
+        .badge-type-video {
+            background: #ef4444;
+        }
+
+        .video-overlay-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 52px;
+            height: 52px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+            color: var(--gallery-dark);
+            transition: var(--gallery-transition);
+            pointer-events: none;
+        }
+
+        .gallery-item:hover .video-overlay-btn {
+            transform: translate(-50%, -50%) scale(1.12);
+            background: var(--gallery-primary);
+            color: #fff;
+        }
+
+        .card-caption {
+            padding: 18px;
+            font-family: 'Outfit', sans-serif;
+            background: #fff;
+            border-top: 1px solid #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .card-caption-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--gallery-dark-slate);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.3s;
+        }
+
+        .gallery-item:hover .card-caption-title {
+            color: var(--gallery-primary);
+        }
+
+        .card-caption-sub {
+            font-size: 13px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Lightbox CSS with Play controls */
+        .lightbox-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.98);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--gallery-transition);
+            padding: 24px;
+            box-sizing: border-box;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .lightbox-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .lightbox-dialog {
+            max-width: 90vw;
+            max-height: 85vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform: scale(0.96);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .lightbox-modal.show .lightbox-dialog {
+            transform: scale(1);
+        }
+
+        .lightbox-content {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: var(--gallery-radius-md);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255,255,255,0.06);
+            display: block;
+            object-fit: contain;
+            opacity: 0;
+            transform: scale(0.97);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .lightbox-content.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .lightbox-bottom-tray {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .lightbox-caption {
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 16px;
+            border-radius: 30px;
+        }
+
+        .lightbox-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--gallery-transition);
+            outline: none;
+        }
+
+        .lightbox-btn:hover {
+            background: #fff;
+            color: var(--gallery-dark);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            transform: scale(1.08);
+        }
+
+        .lightbox-btn.active-play {
+            background: var(--gallery-primary);
+            border-color: var(--gallery-primary);
+            color: #fff;
+            animation: pulse-glow 2.5s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -55px;
+            right: 0;
+        }
+
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+
+        .lightbox-prev {
+            left: -70px;
+        }
+
+        .lightbox-next {
+            right: -70px;
+        }
+
+        @media (max-width: 992px) {
+            .lightbox-prev { left: -10px; background: rgba(15, 23, 42, 0.7); }
+            .lightbox-next { right: -10px; background: rgba(15, 23, 42, 0.7); }
+            .lightbox-close { top: -55px; right: 0; }
+        }
+
+        /* Filter animations classes */
+        .gallery-item.hide {
+            opacity: 0;
+            transform: scale(0.9);
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+            border: none;
+            padding: 0;
+            margin: 0;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            background: #fff;
+            padding: 70px 40px;
+            border-radius: var(--gallery-radius-md);
+            text-align: center;
+            color: #64748b;
+            border: 2px dashed #cbd5e1;
+            grid-column: 1 / -1;
+            font-family: 'Outfit', sans-serif;
+            display: none;
+        }
+
+        .empty-state.show {
+            display: block;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(239, 68, 68, 0.9);
+            color: #fff;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: var(--gallery-transition);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .delete-btn:hover {
+            background: #ef4444;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none;">
+                    <img src="{{ logo_url }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span class="logo-text" style="margin:0;">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/#faq" class="nav-link">FAQ</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link active">Gallery</a>
+            </nav>
+            <div class="header-cta">
+                {% if session.get('user') %}
+                    <a href="/dashboard" class="btn btn-outline">Dashboard</a>
+                {% else %}
+                    <a href="/login/student" class="btn btn-outline">Login</a>
+                {% endif %}
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Page Banner with floaty particles -->
+    <div class="gallery-header">
+        <div class="particle-container" id="particleContainer"></div>
+        <div class="container">
+            <h1 class="gallery-title">School Gallery</h1>
+            <p class="gallery-subtitle">Explore visual highlights of school life, events, and campus activities at Bhogram Al-Hidayet Mission.</p>
+        </div>
+    </div>
+
+    <div class="container" style="padding-bottom: 90px;">
+
+        <!-- Dynamic Filter & Search Center -->
+        <div class="search-filter-hub">
+            <div class="search-bar-wrapper">
+                <i data-lucide="search" class="search-bar-icon"></i>
+                <input type="text" class="gallery-search" id="gallerySearch" placeholder="Search gallery by caption or keyword...">
+            </div>
+            <div class="filter-controls-row">
+                <div class="filter-card-group" style="width: 100%;">
+                    <span class="filter-card-label">Media Type</span>
+                    <div class="filter-options-flex">
+                        <button class="filter-pill active" data-filter-media="all">
+                            <i data-lucide="layers" style="width: 14px; height: 14px;"></i> All Media
+                        </button>
+                        <button class="filter-pill" data-filter-media="photo">
+                            <i data-lucide="image" style="width: 14px; height: 14px;"></i> Photos
+                        </button>
+                        <button class="filter-pill" data-filter-media="video">
+                            <i data-lucide="video" style="width: 14px; height: 14px;"></i> Videos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Public Grid Container -->
+        <div class="gallery-container">
+            <div class="gallery-grid">
+                
+                <!-- LOOP BHOGRAM PHOTOS -->
+                {% for img in content['bhogram']['photos'] %}
+                {% set clean_title = img.clean_title %}
+                <div class="gallery-item" data-branch="bhogram" data-media="photo" data-caption="{{ clean_title }}">
+                    <div class="media-wrapper">
+                        <div class="media-badge-group">
+                            <span class="media-badge badge-type">Photo</span>
+                        </div>
+                        {% if role == 'admin' %}
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'photos', '{{ img.filename }}')" title="Delete Item">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        {% endif %}
+                        <img src="{{ img.url }}" alt="{{ clean_title }}">
+                    </div>
+                    <div class="card-caption">
+                        <div class="card-caption-title">{{ clean_title }}</div>
+                        <div class="card-caption-sub"><i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> Bhogram Campus</div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- LOOP BHOGRAM VIDEOS -->
+                {% for vid in content['bhogram']['videos'] %}
+                {% set clean_title = vid.clean_title %}
+                <div class="gallery-item" data-branch="bhogram" data-media="video" data-caption="{{ clean_title }}">
+                    <div class="media-wrapper">
+                        <div class="media-badge-group">
+                            <span class="media-badge badge-type badge-type-video">Video</span>
+                        </div>
+                        {% if role == 'admin' %}
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteGalleryItem('bhogram', 'videos', '{{ vid.filename }}')" title="Delete Item">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        {% endif %}
+                        <video muted preload="metadata" data-src="{{ vid.url }}">
+                            <source src="{{ vid.url }}" type="video/mp4">
+                        </video>
+                        <div class="video-overlay-btn">
+                            <i data-lucide="play" style="width: 20px; height: 20px; fill: currentColor; margin-left: 2px;"></i>
+                        </div>
+                    </div>
+                    <div class="card-caption">
+                        <div class="card-caption-title">{{ clean_title }}</div>
+                        <div class="card-caption-sub"><i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> Bhogram Campus</div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Empty State -->
+                <div class="empty-state" id="gallery-empty-state">
+                    <i data-lucide="image-off" style="width: 52px; height: 52px; margin: 0 auto 15px; opacity: 0.6; color: var(--gallery-primary);"></i>
+                    <h3>No Media Found</h3>
+                    <p style="margin-top: 5px; opacity:0.75;">No items match the selected combination of campus, category, or search keyword.</p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Premium Lightbox Modal -->
+    <div class="lightbox-modal" id="lightbox">
+        <button class="lightbox-btn lightbox-close" id="lightbox-close" title="Close (Esc)"><i data-lucide="x" style="width: 22px; height: 22px;"></i></button>
+        <button class="lightbox-btn lightbox-nav lightbox-prev" id="lightbox-prev" title="Previous"><i data-lucide="chevron-left" style="width: 28px; height: 28px;"></i></button>
+        <button class="lightbox-btn lightbox-nav lightbox-next" id="lightbox-next" title="Next"><i data-lucide="chevron-right" style="width: 28px; height: 28px;"></i></button>
+        
+        <div class="lightbox-dialog">
+            <div id="lightbox-media-container" style="display: flex; justify-content: center; align-items: center; min-height: 200px; min-width: 300px;">
+                <!-- Media injected here dynamically -->
+            </div>
+            
+            <div class="lightbox-bottom-tray">
+                <div class="lightbox-caption" id="lightbox-caption">Caption Text</div>
+                <button class="lightbox-btn" id="lightbox-play-btn" title="Toggle Slideshow (Spacebar)">
+                    <i data-lucide="play" id="slideshow-icon" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+
+        function deleteGalleryItem(branch, category, filename) {
+            if (!confirm("Are you sure you want to delete this gallery item? This action is permanent and cannot be undone.")) {
+                return;
+            }
+            
+            fetch('/admin/delete-gallery-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    branch: branch,
+                    category: category,
+                    filename: filename
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Gallery item deleted successfully.");
+                    window.location.reload();
+                } else {
+                    alert("Failed to delete item: " + (data.message || "Unknown error"));
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("An error occurred while deleting the gallery item.");
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Generate Floating Particles
+            const particleContainer = document.getElementById('particleContainer');
+            if (particleContainer) {
+                const count = 15;
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.width = Math.random() * 80 + 20 + 'px';
+                    particle.style.height = particle.style.width;
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 10 + 's';
+                    particle.style.animationDuration = Math.random() * 15 + 10 + 's';
+                    particleContainer.appendChild(particle);
+                }
+            }
+
+            let activeBranch = 'all';
+            let activeMedia = 'all';
+            let searchQuery = '';
+
+            const items = document.querySelectorAll('.gallery-item');
+            const emptyState = document.getElementById('gallery-empty-state');
+            const searchInput = document.getElementById('gallerySearch');
+
+            // Filtering & Searching Logic
+            const filterItems = () => {
+                let visibleCount = 0;
+                items.forEach(item => {
+                    const branch = item.getAttribute('data-branch');
+                    const media = item.getAttribute('data-media');
+                    const caption = (item.getAttribute('data-caption') || '').toLowerCase();
+
+                    const matchesBranch = (activeBranch === 'all' || branch === activeBranch);
+                    const matchesMedia = (activeMedia === 'all' || media === activeMedia);
+                    const matchesSearch = (searchQuery === '' || caption.includes(searchQuery));
+
+                    if (matchesBranch && matchesMedia && matchesSearch) {
+                        item.classList.remove('hide');
+                        visibleCount++;
+                    } else {
+                        item.classList.add('hide');
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    emptyState.classList.add('show');
+                } else {
+                    emptyState.classList.remove('show');
+                }
+            };
+
+            // Branch filters click listener
+            document.querySelectorAll('[data-filter-branch]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-filter-branch]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeBranch = btn.getAttribute('data-filter-branch');
+                    filterItems();
+                });
+            });
+
+            // Media type filters click listener
+            document.querySelectorAll('[data-filter-media]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-filter-media]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeMedia = btn.getAttribute('data-filter-media');
+                    filterItems();
+                });
+            });
+
+            // Live Search input listener
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchQuery = e.target.value.toLowerCase().trim();
+                    filterItems();
+                });
+            }
+
+            // Lightbox Modal Logic with Playlist and Slideshow
+            const lightbox = document.getElementById('lightbox');
+            const lightboxContainer = document.getElementById('lightbox-media-container');
+            const lightboxCaption = document.getElementById('lightbox-caption');
+            const closeBtn = document.getElementById('lightbox-close');
+            const prevBtn = document.getElementById('lightbox-prev');
+            const nextBtn = document.getElementById('lightbox-next');
+            const playBtn = document.getElementById('lightbox-play-btn');
+            const playIcon = document.getElementById('slideshow-icon');
+
+            let currentVisibleItems = [];
+            let currentIndex = -1;
+            let slideshowTimer = null;
+            let isPlaying = false;
+
+            const openLightbox = (index) => {
+                currentIndex = index;
+                const item = currentVisibleItems[currentIndex];
+                const mediaType = item.getAttribute('data-media');
+                const title = item.querySelector('.card-caption-title').textContent;
+                const campus = item.querySelector('.media-badge-group span').textContent;
+
+                lightboxContainer.innerHTML = '';
+                
+                if (mediaType === 'photo') {
+                    const src = item.querySelector('img').src;
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.className = 'lightbox-content';
+                    img.alt = title;
+                    lightboxContainer.appendChild(img);
+                    
+                    // Trigger fade in animation
+                    setTimeout(() => img.classList.add('active'), 20);
+                } else if (mediaType === 'video') {
+                    const src = item.querySelector('video').querySelector('source').src;
+                    const video = document.createElement('video');
+                    video.src = src;
+                    video.className = 'lightbox-content';
+                    video.controls = true;
+                    video.autoplay = true;
+                    video.style.maxHeight = '70vh';
+                    video.style.outline = 'none';
+                    lightboxContainer.appendChild(video);
+                    
+                    // Pause slideshow if a video starts
+                    if (isPlaying) toggleSlideshow();
+                    
+                    setTimeout(() => video.classList.add('active'), 20);
+                }
+
+                lightboxCaption.textContent = `${title} (${campus})`;
+                lightbox.classList.add('show');
+                document.body.style.overflow = 'hidden'; // stop background scroll
+                lucide.createIcons();
+            };
+
+            const closeLightbox = () => {
+                lightbox.classList.remove('show');
+                if (isPlaying) toggleSlideshow();
+                lightboxContainer.innerHTML = '';
+                document.body.style.overflow = '';
+            };
+
+            const getVisibleItems = () => {
+                return Array.from(items).filter(item => !item.classList.contains('hide'));
+            };
+
+            const showPrev = () => {
+                currentVisibleItems = getVisibleItems();
+                if (currentVisibleItems.length === 0) return;
+                let newIndex = currentIndex - 1;
+                if (newIndex < 0) newIndex = currentVisibleItems.length - 1;
+                openLightbox(newIndex);
+            };
+
+            const showNext = () => {
+                currentVisibleItems = getVisibleItems();
+                if (currentVisibleItems.length === 0) return;
+                let newIndex = currentIndex + 1;
+                if (newIndex >= currentVisibleItems.length) newIndex = 0;
+                openLightbox(newIndex);
+            };
+
+            const toggleSlideshow = () => {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    playBtn.classList.add('active-play');
+                    playIcon.setAttribute('data-lucide', 'pause');
+                    slideshowTimer = setInterval(showNext, 3000);
+                } else {
+                    playBtn.classList.remove('active-play');
+                    playIcon.setAttribute('data-lucide', 'play');
+                    clearInterval(slideshowTimer);
+                    slideshowTimer = null;
+                }
+                lucide.createIcons();
+            };
+
+            // Card click listener to trigger Lightbox
+            items.forEach(item => {
+                item.addEventListener('click', () => {
+                    currentVisibleItems = getVisibleItems();
+                    const index = currentVisibleItems.indexOf(item);
+                    if (index !== -1) {
+                        openLightbox(index);
+                    }
+                });
+            });
+
+            closeBtn.addEventListener('click', closeLightbox);
+            prevBtn.addEventListener('click', (e) => { e.stopPropagation(); showPrev(); });
+            nextBtn.addEventListener('click', (e) => { e.stopPropagation(); showNext(); });
+            playBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSlideshow(); });
+            
+            lightbox.addEventListener('click', (e) => {
+                if (e.target === lightbox) closeLightbox();
+            });
+
+            // Keyboard navigation support
+            document.addEventListener('keydown', (e) => {
+                if (!lightbox.classList.contains('show')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') { showPrev(); e.preventDefault(); }
+                if (e.key === 'ArrowRight') { showNext(); e.preventDefault(); }
+                if (e.key === ' ') { toggleSlideshow(); e.preventDefault(); }
+            });
+        });
+    </script>
+</body>
+
+</html>

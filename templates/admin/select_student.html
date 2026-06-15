@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Student - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Select Student</div>
+            </header>
+            <div class="content-wrapper" style="padding: 20px;">
+                {% if role in ['admin', 'teacher'] and action == 'admit-card' %}
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0 0 30px 0; border-top: 4px solid var(--primary-color);">
+                    <h3 style="margin: 0 0 15px 0; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="printer"></i> Bulk Print Class Admit Cards
+                    </h3>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Generate and print admit cards for all students in a class. You can choose a layout of 2 or 4 admit cards per A4 page and upload the exam schedule routine.</p>
+                    
+                    <form action="/admin/admit-card/bulk" method="POST" enctype="multipart/form-data" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: flex-end;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Class:</label>
+                            <select name="class_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Select Class</option>
+                                <option value="Nursery">Nursery</option>
+                                <option value="Upper Nursery">Upper Nursery</option>
+                                <option value="I">I</option>
+                                <option value="II">II</option>
+                                <option value="III">III</option>
+                                <option value="IV">IV</option>
+                                <option value="V">V</option>
+                                <option value="VI">VI</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Term / Exam:</label>
+                            <select name="term_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="1st Unit">1st Unit</option>
+                                <option value="2nd Unit">2nd Unit</option>
+                                <option value="Final Exam">Final Exam</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Cards per A4 Page:</label>
+                            <select name="cards_per_page" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="2">2 Admit Cards</option>
+                                <option value="4">4 Admit Cards</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0; grid-column: span 1;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Routine Setup Mode:</label>
+                            <div style="display: flex; gap: 15px; height: 42px; align-items: center;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;">
+                                    <input type="radio" name="schedule_mode" value="image" checked onclick="toggleScheduleMode('image')"> Upload Image
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;">
+                                    <input type="radio" name="schedule_mode" value="manual" onclick="toggleScheduleMode('manual')"> Enter Manually
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="image-schedule-box" class="input-group" style="margin-bottom: 0; grid-column: span 1;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Exam Schedule (Image):</label>
+                            <input type="file" name="schedule_image" accept="image/*" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 6px; height: 42px; box-sizing: border-box;">
+                        </div>
+
+                        <!-- Manual Schedule Component -->
+                        <div id="manual-schedule-box" style="display: none; grid-column: 1 / -1; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; margin-top: 10px; box-sizing: border-box;">
+                            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 6px; font-family: 'Fredoka', sans-serif;">
+                                <i data-lucide="list-todo" style="width:16px; height:16px;"></i> Edit Exam Routine Schedule
+                            </h4>
+                            <input type="hidden" name="schedule_text_json" id="schedule_text_json" value="[]">
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;" id="manual-schedule-table">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                                        <th style="padding: 8px; font-size: 13px; font-weight: 600; color: #475569; width: 30%;">Date</th>
+                                        <th style="padding: 8px; font-size: 13px; font-weight: 600; color: #475569; width: 35%;">Time</th>
+                                        <th style="padding: 8px; font-size: 13px; font-weight: 600; color: #475569; width: 30%;">Subject</th>
+                                        <th style="padding: 8px; font-size: 13px; font-weight: 600; color: #475569; width: 5%; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manual-schedule-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                            
+                            <button type="button" class="btn" style="padding: 8px 16px; font-size: 13px; border-radius: 6px; border: 1.5px solid var(--primary-color); color: var(--primary-color); background: transparent; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;" onclick="addScheduleRow()">
+                                <i data-lucide="plus" style="width:14px; height:14px;"></i> Add Exam Day
+                            </button>
+                        </div>
+
+                        <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 15px;">
+                            <button type="submit" class="auth-btn" style="margin: 0; padding: 10px 25px; background: var(--primary-color); height: 42px; font-weight: 600; font-family: 'Outfit', sans-serif;">Generate Bulk Admits</button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if role in ['admin', 'teacher'] and action == 'marksheet' %}
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0 0 30px 0; border-top: 4px solid var(--primary-color);">
+                    <h3 style="margin: 0 0 15px 0; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="file-spreadsheet"></i> Class-wise Marksheets & Tabulation Sheets
+                    </h3>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Print all student marksheets for a class on individual A4 pages, or view/print the class tabulation result sheet.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <!-- Bulk Marksheet Form -->
+                        <form action="/admin/marksheet/bulk" method="GET" style="display: flex; flex-direction: column; gap: 15px; border-right: 1px solid #eee; padding-right: 30px;">
+                            <h4 style="margin: 0; color: var(--text-dark);">Bulk Print Marksheets</h4>
+                            <div class="input-group">
+                                <label style="font-weight: 500;">Select Class</label>
+                                <select name="class_name" required style="width: 100%;">
+                                    <option value="">Select Class</option>
+                                    <option value="Nursery">Nursery</option>
+                                    <option value="Upper Nursery">Upper Nursery</option>
+                                    <option value="I">I</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                    <option value="V">V</option>
+                                    <option value="VI">VI</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 500;">Select Term / Exam</label>
+                                <select name="term_name" required style="width: 100%;">
+                                    <option value="1st Unit">1st Unit</option>
+                                    <option value="2nd Unit">2nd Unit</option>
+                                    <option value="Final Exam">Final Exam</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="auth-btn" style="margin: 0; background: var(--primary-color);">Print Class Marksheets (A4)</button>
+                        </form>
+                        
+                        <!-- Tabulation Sheet Form -->
+                        <form action="/admin/result-sheet" method="GET" style="display: flex; flex-direction: column; gap: 15px;">
+                            <h4 style="margin: 0; color: var(--text-dark);">Class Tabulation / Result Sheet</h4>
+                            <div class="input-group">
+                                <label style="font-weight: 500;">Select Class</label>
+                                <select name="class_name" required style="width: 100%;">
+                                    <option value="">Select Class</option>
+                                    <option value="Nursery">Nursery</option>
+                                    <option value="Upper Nursery">Upper Nursery</option>
+                                    <option value="I">I</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                    <option value="V">V</option>
+                                    <option value="VI">VI</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 500;">Select Term / Exam</label>
+                                <select name="term_name" required style="width: 100%;">
+                                    <option value="1st Unit">1st Unit</option>
+                                    <option value="2nd Unit">2nd Unit</option>
+                                    <option value="Final Exam">Final Exam</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="auth-btn" style="margin: 0; background: var(--secondary-color);">Generate Tabulation Sheet</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin: 0;">Choose a Student</h3>
+                        <div style="display: flex; gap: 10px; width: 100%; max-width: 500px; flex-wrap: wrap;">
+                            <input type="text" id="tableSearch" onkeyup="filterSelectStudentTable()" placeholder="Search by name..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
+                            <select id="sortBySelect" onchange="handleSelectStudentSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                                <option value="roll">Sort: Roll No</option>
+                                <option value="name">Sort: Name</option>
+                            </select>
+                        </div>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee;">
+                                <th style="padding: 12px;">SL</th>
+                                <th style="padding: 12px;">Student Name</th>
+                                <th style="padding: 12px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr style="border-bottom: 1px solid #eee;" class="student-row" data-roll="{{ s.roll_number or '' }}" data-name="{{ (s.full_name or s.username or '')|lower }}">
+                                <td style="padding: 12px;">{{ loop.index }}</td>
+                                <td style="padding: 12px;">{{ s.full_name or s.username }}</td>
+                                <td style="padding: 12px;">
+                                    <a href="/admin/{{ action }}?student_id={{ s.id }}"
+                                        class="badge badge-success">Select</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+
+        function filterSelectStudentTable() {
+            let input = document.getElementById('tableSearch').value.toLowerCase();
+            let rows = document.querySelectorAll('.student-row');
+            rows.forEach(row => {
+                let name = row.getAttribute('data-name') || '';
+                if (name.includes(input)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function handleSelectStudentSort() {
+            const criteria = document.getElementById('sortBySelect').value;
+            const tbody = document.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr.student-row'));
+            
+            rows.sort((a, b) => {
+                if (criteria === 'name') {
+                    const nameA = (a.getAttribute('data-name') || '').trim();
+                    const nameB = (b.getAttribute('data-name') || '').trim();
+                    return nameA.localeCompare(nameB);
+                } else {
+                    const rollA = a.getAttribute('data-roll') || '';
+                    const rollB = b.getAttribute('data-roll') || '';
+                    const numA = parseInt((rollA.match(/\d+/) || [999999])[0], 10);
+                    const numB = parseInt((rollB.match(/\d+/) || [999999])[0], 10);
+                    if (numA !== numB) return numA - numB;
+                    return rollA.localeCompare(rollB);
+                }
+            });
+            
+            rows.forEach((row, index) => {
+                tbody.appendChild(row);
+                const slTd = row.cells[0];
+                if (slTd) {
+                    slTd.textContent = index + 1;
+                }
+            });
+        }
+
+        function toggleScheduleMode(mode) {
+            const imgBox = document.getElementById('image-schedule-box');
+            const manualBox = document.getElementById('manual-schedule-box');
+            if (mode === 'image') {
+                imgBox.style.display = '';
+                manualBox.style.display = 'none';
+            } else {
+                imgBox.style.display = 'none';
+                manualBox.style.display = 'block';
+                
+                const tbody = document.getElementById('manual-schedule-body');
+                if (tbody.children.length === 0) {
+                    addScheduleRow();
+                }
+            }
+        }
+
+        function addScheduleRow(date = '', time = '', subject = '') {
+            const tbody = document.getElementById('manual-schedule-body');
+            const rowId = 'row-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            
+            tr.innerHTML = `
+                <td style="padding: 8px;"><input type="text" class="sched-date" placeholder="e.g. 15-06-2026" value="${date}" oninput="updateScheduleJSON()" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; box-sizing: border-box;"></td>
+                <td style="padding: 8px;"><input type="text" class="sched-time" placeholder="e.g. 08:00 AM - 10:30 AM" value="${time}" oninput="updateScheduleJSON()" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; box-sizing: border-box;"></td>
+                <td style="padding: 8px;"><input type="text" class="sched-subject" placeholder="e.g. Bengali" value="${subject}" oninput="updateScheduleJSON()" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; box-sizing: border-box;"></td>
+                <td style="padding: 8px; text-align: center;"><button type="button" style="background:none; border:none; color:#ef4444; cursor:pointer; padding: 4px;" onclick="deleteScheduleRow('${rowId}')"><i data-lucide="trash-2" style="width: 18px; height: 18px;"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            updateScheduleJSON();
+        }
+
+        function deleteScheduleRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.parentNode.removeChild(row);
+            }
+            updateScheduleJSON();
+        }
+
+        function updateScheduleJSON() {
+            const tbody = document.getElementById('manual-schedule-body');
+            const rows = tbody.querySelectorAll('tr');
+            const data = [];
+            rows.forEach(tr => {
+                const dateInput = tr.querySelector('.sched-date');
+                const timeInput = tr.querySelector('.sched-time');
+                const subjInput = tr.querySelector('.sched-subject');
+                if (dateInput && timeInput && subjInput) {
+                    const date = dateInput.value.trim();
+                    const time = timeInput.value.trim();
+                    const subject = subjInput.value.trim();
+                    if (date || time || subject) {
+                        data.push({ date, time, subject });
+                    }
+                }
+            });
+            document.getElementById('schedule_text_json').value = JSON.stringify(data);
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

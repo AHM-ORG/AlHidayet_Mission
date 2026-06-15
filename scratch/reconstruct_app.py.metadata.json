@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "Reconstruction script to parse previous session's transcript logs, extract all replace_file_content edits to app.py, and apply them sequentially to the clean May 31 base file.",
+  "updatedAt": "2026-06-02T05:27:54.706998900Z"
+}

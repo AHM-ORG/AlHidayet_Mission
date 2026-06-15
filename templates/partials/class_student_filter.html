@@ -1,0 +1,55 @@
+{# 
+   Reusable class-wise student filter widget.
+   Usage: {% set filter_id = 'myid' %} {% include 'partials/class_student_filter.html' %}
+   Requires: `students` variable in context (with .class, .id, .full_name, .username, .roll_number, .guardian_name)
+#}
+{% set fid = filter_id|default('main') %}
+
+<div class="input-group">
+    <label>Filter by Class:</label>
+    <select id="classFilter_{{ fid }}" class="search-select" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+        <option value="all">All Classes</option>
+        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+        {% set ns = namespace(classes=[]) %}
+        {% for s in students %}
+            {% if s.class and s.class.strip().lower() not in ns.classes %}
+                {% set ns.classes = ns.classes + [s.class.strip().lower()] %}
+            {% endif %}
+        {% endfor %}
+        {% for c in class_order %}
+            {% if c.strip().lower() in ns.classes %}
+            <option value="Class {{ c }}">Class {{ c }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+</div>
+<div class="input-group">
+    <label>{{ student_label|default('Student') }}:</label>
+    <select name="student_id" id="studentSelect_{{ fid }}" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+        {% for c in class_order %}
+            {% set ns_group = namespace(students=[]) %}
+            {% for s in students %}
+                {% if s.class and s.class.strip().lower() == c.strip().lower() %}
+                    {% set ns_group.students = ns_group.students + [s] %}
+                {% endif %}
+            {% endfor %}
+            {% if ns_group.students %}
+            <optgroup label="Class {{ c }}">
+                {% for s in ns_group.students %}
+                <option value="{{ s.id }}" 
+                        data-branch="{{ s.branch or '' }}" 
+                        data-monthly-fee="{{ s.monthly_fee or 0.0 }}" 
+                        data-hostel-fee="{{ s.hostel_fee or 0.0 }}"
+                        data-take-school="{{ s.take_school or 0 }}"
+                        data-take-coaching="{{ s.take_coaching or 0 }}"
+                        data-take-day-hostel="{{ s.take_day_hostel or 0 }}"
+                        data-take-car="{{ s.take_car or 0 }}"
+                        data-admission-fee="{{ s.admission_fee or 0.0 }}"
+                        data-readmission-fee="{{ s.readmission_fee or 0.0 }}">{{ s.full_name or s.username }}{% if s.guardian_name %} — G: {{ s.guardian_name }}{% endif %} ({{ s.roll_number or 'N/A' }})</option>
+                {% endfor %}
+            </optgroup>
+            {% endif %}
+        {% endfor %}
+    </select>
+</div>

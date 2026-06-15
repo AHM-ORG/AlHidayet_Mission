@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Keep FontAwesome for existing icons in logic -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        .dashboard-header-bg {
+            background: linear-gradient(135deg, #6C5CE7 0%, #a29bfe 100%);
+            color: #fff;
+            padding: 40px;
+            border-radius: var(--radius);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #fff;
+            padding: 5px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .dashboard-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .dash-card {
+            background: #fff;
+            padding: 25px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            text-align: center;
+            border-bottom: 4px solid var(--primary-color);
+            cursor: pointer;
+        }
+
+        .dash-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dash-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body class="bg-pattern" style="background-color: #F7F9FC;">
+
+    <!-- Navigation Bar -->
+    <header class="main-header" style="background: #fff;">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <span class="logo-text">Al Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/#faq" class="nav-link">FAQ</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/logout" class="btn btn-outline" style="border-color: #e17055; color: #e17055;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container section">
+
+        <!-- Welcome Banner -->
+        <div class="dashboard-header-bg">
+            <div class="dashboard-avatar">
+                <img src="{{ logo_url }}" alt="Logo">
+            </div>
+            <div>
+                <h1 style="font-size: 32px; margin-bottom: 5px;">{{ role|title }} Panel</h1>
+                <p style="opacity: 0.9;">Welcome back to your dashboard!</p>
+            </div>
+        </div>
+
+        {% if role == 'admin' %}
+        <div class="auth-container" style="max-width: 600px; margin: 0 auto;">
+            <h2><i class="fas fa-cloud-upload-alt" style="color: var(--secondary-color);"></i> Upload New File</h2>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div style="background: #E8F8F5; color: #00B894; padding: 10px; border-radius: 8px; margin-bottom: 20px;">
+                {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form action="/upload" method="post" enctype="multipart/form-data">
+
+                <div class="input-group">
+                    <label style="font-weight: 500;">1. Select Branch:</label>
+                    <select name="branch" required
+                        style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                        <option value="" disabled selected>-- Select Branch --</option>
+                        <option value="surangapur">Surangapur (Main)</option>
+                        <option value="bhogram">Bhogram Branch</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-weight: 500;">2. File Type:</label>
+                    <select name="category" required
+                        style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                        <option value="photos">Photo</option>
+                        <option value="videos">Video</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-weight: 500;">3. Select File:</label>
+                    <input type="file" name="file" required
+                        style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                </div>
+
+                <button type="submit" class="auth-btn">Upload Now</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if role == 'student' %}
+        <div class="dashboard-grid">
+            <!-- Form Fill Up -->
+            <div class="dash-card" onclick="alert('Form Fill Up System Coming Soon!')" style="border-color: #00c6ff;">
+                <div class="dash-icon" style="color: #00c6ff;">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>Form Fill Up</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Admission & Exam Forms</p>
+                <button class="btn btn-outline"
+                    style="border-color: #00c6ff; color: #00c6ff; padding: 8px 20px; font-size: 14px;">Start
+                    Now</button>
+            </div>
+
+            <!-- Fee Payment -->
+            <div class="dash-card" onclick="alert('Fee Payment Pending!')" style="border-color: #ffa500;">
+                <div class="dash-icon" style="color: #ffa500;">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <h3>Fee Payment</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Monthly & Session Fees</p>
+                <button class="btn btn-outline"
+                    style="border-color: #ffa500; color: #ffa500; padding: 8px 20px; font-size: 14px;">Pay Now</button>
+            </div>
+
+            <!-- Admit Card -->
+            <div class="dash-card" onclick="alert('Admit Card Download Coming Soon!')" style="border-color: #e91e63;">
+                <div class="dash-icon" style="color: #e91e63;">
+                    <i class="fas fa-id-card"></i>
+                </div>
+                <h3>Admit Card</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Download Exam Admit</p>
+                <button class="btn btn-outline"
+                    style="border-color: #e91e63; color: #e91e63; padding: 8px 20px; font-size: 14px;">Download</button>
+            </div>
+
+            <!-- Result -->
+            <div class="dash-card" onclick="alert('Result System Pending!')" style="border-color: #4caf50;">
+                <div class="dash-icon" style="color: #4caf50;">
+                    <i class="fas fa-poll-h"></i>
+                </div>
+                <h3>Result</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Check Exam Results</p>
+                <button class="btn btn-outline"
+                    style="border-color: #4caf50; color: #4caf50; padding: 8px 20px; font-size: 14px;">View</button>
+            </div>
+
+            <!-- Resources -->
+            <div class="dash-card" style="border-color: #3f51b5;">
+                <div class="dash-icon" style="color: #3f51b5;">
+                    <i class="fas fa-book"></i>
+                </div>
+                <h3>Resources</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Access Class Materials</p>
+                <button class="btn btn-outline"
+                    style="border-color: #3f51b5; color: #3f51b5; padding: 8px 20px; font-size: 14px;">Access</button>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

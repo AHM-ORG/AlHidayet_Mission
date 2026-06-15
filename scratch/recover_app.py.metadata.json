@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "Updating recover_app.py with precise Windows directory scanning and jsonl file loading to extract recent app.py source content.",
+  "updatedAt": "2026-06-02T05:18:42.978505900Z"
+}

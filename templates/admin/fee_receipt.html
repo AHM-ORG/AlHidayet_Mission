@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Receipt - {{ student.full_name or student.username }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .receipt-card {
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #eee;
+            margin: 20px auto;
+            max-width: 750px;
+            position: relative;
+        }
+
+        .receipt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px double #ddd;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .school-info h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .school-info p {
+            margin: 4px 0 0 0;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .receipt-meta {
+            text-align: right;
+        }
+
+        .receipt-meta h3 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .receipt-meta p {
+            margin: 4px 0 0 0;
+            color: #7f8c8d;
+            font-size: 13px;
+        }
+
+        .student-details-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .detail-item {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .detail-item strong {
+            color: #555;
+        }
+
+        .receipt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .receipt-table th {
+            background: #f1f2f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .receipt-table td {
+            padding: 12px;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .badge-paid {
+            background: #d4edda;
+            color: #155724;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-due {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-upcoming {
+            background: #e2e3e5;
+            color: #383d41;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .summary-box {
+            display: flex;
+            justify-content: flex-end;
+            gap: 40px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            text-align: right;
+            font-size: 16px;
+        }
+
+        .summary-item span {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .receipt-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 15px;
+            border: none;
+        }
+
+        .btn-print {
+            background: #6c5ce7;
+            color: white;
+        }
+
+        .btn-print:hover {
+            background: #5b4cc4;
+            transform: translateY(-2px);
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+        }
+
+        .btn-whatsapp:hover {
+            background: #1ebd5b;
+            transform: translateY(-2px);
+        }
+
+        .btn-back {
+            background: #f1f2f6;
+            color: #333;
+        }
+
+        .btn-back:hover {
+            background: #dfe4ea;
+            transform: translateY(-2px);
+        }
+
+        /* Print styling */
+        @media print {
+            body {
+                background: white !important;
+                font-size: 12pt;
+                color: black;
+            }
+
+            .sidebar, .top-bar, .receipt-actions, .btn-back, .main-content header, .top-bar-left {
+                display: none !important;
+            }
+
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            .receipt-card {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+            }
+
+            .summary-box {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar (Hidden on print) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                <a href="/admin/reminder-fees" class="sidebar-item active"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/get-fees" class="sidebar-item"><i data-lucide="wallet"></i> Get Fees</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Fee Receipt & Summary</div>
+            </header>
+
+            <div class="content-wrapper">
+                <div class="receipt-card">
+                    <!-- School Header -->
+                    <div class="receipt-header">
+                        <div class="school-info">
+                            <h2>AL-HIDAYET MISSION</h2>
+                            <p>Bhogram, Surangapur, Murshidabad, West Bengal</p>
+                            <p>Contact: +91 8001748636 | Email: info@alhidayetmission.org</p>
+                        </div>
+                        <div class="receipt-meta">
+                            <h3>FEE RECEIPT</h3>
+                            <p>Session: {{ current_year }}</p>
+                            <p>Date: {{ current_date }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Student Info Box -->
+                    <div class="student-details-box">
+                        <div class="detail-item"><strong>Student Name:</strong> {{ student.full_name or student.username }}</div>
+                        <div class="detail-item"><strong>Class:</strong> {{ student.class or 'N/A' }}</div>
+                        <div class="detail-item"><strong>Roll Number:</strong> {{ student.roll_number or 'N/A' }}</div>
+                        <div class="detail-item"><strong>Unique Code:</strong> {{ student.unique_code or 'N/A' }}</div>
+                        <div class="detail-item"><strong>Guardian Name:</strong> {{ student.guardian_name or 'N/A' }}</div>
+                        <div class="detail-item"><strong>Campus Branch:</strong> {{ (student.branch or 'Bhogram')|title }}</div>
+                    </div>
+
+                    <!-- Monthly fee breakdown table -->
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Status</th>
+                                <th>Payment Date</th>
+                                <th style="text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detail in fee_details %}
+                            <tr>
+                                <td>{{ detail.month }}</td>
+                                <td>
+                                    {% if detail.status == 'Paid' %}
+                                        <span class="badge-paid">Paid</span>
+                                    {% elif detail.status == 'Due' %}
+                                        <span class="badge-due">Due</span>
+                                    {% else %}
+                                        <span class="badge-upcoming">Upcoming</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ detail.date }}</td>
+                                <td style="text-align: right; font-weight: bold;">
+                                    {% if detail.status == 'Upcoming' %}-{% else %}₹{{ "%.2f"|format(detail.amount) }}{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <!-- Summary box -->
+                    <div class="summary-box">
+                        <div class="summary-item" style="color: #2f3542;">
+                            Total Paid: <span style="color: #2ed573;">₹{{ "%.2f"|format(total_paid) }}</span>
+                        </div>
+                        <div class="summary-item" style="color: #2f3542;">
+                            Total Dues: <span style="color: #ff4757;">₹{{ "%.2f"|format(total_due) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="receipt-actions">
+                        <a href="/admin/reminder-fees" class="action-btn btn-back">
+                            <i data-lucide="arrow-left"></i> Back
+                        </a>
+                        <button onclick="window.print()" class="action-btn btn-print">
+                            <i data-lucide="printer"></i> Print Receipt
+                        </button>
+                        
+                        {% set ns = namespace(num='') %}
+                        {% for char in (student.whatsapp_no or student.phone_number or '')|string %}
+                            {% if char in '0123456789' %}
+                                {% set ns.num = ns.num + char %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if ns.num|length == 10 %}
+                            {% set wa_num = '91' + ns.num %}
+                        {% else %}
+                            {% set wa_num = ns.num %}
+                        {% endif %}
+
+                        {% set paid_months = [] %}
+                        {% set due_months = [] %}
+                        {% for d in fee_details %}
+                            {% if d.status == 'Paid' %}
+                                {% set _ = paid_months.append(d.month) %}
+                            {% elif d.status == 'Due' %}
+                                {% set _ = due_months.append(d.month + ' (₹' + d.amount|string + ')') %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% set wa_msg = 'Dear Guardian,
+
+Here is the Fee Receipt & Dues Summary for ' + (student.full_name or student.username) + ' (Class: ' + (student.class or 'N/A') + ', Roll: ' + (student.roll_number or 'N/A') + ') as of ' + current_date + '.
+
+Year ' + current_year + ' Payments:
+Paid Months: ' + (paid_months|join(', ') if paid_months|length > 0 else 'None') + '
+Total Paid: Rs. ' + total_paid|string + '
+
+Pending Dues:
+Due Months: ' + (due_months|join(', ') if due_months|length > 0 else 'None') + '
+Total Due: Rs. ' + total_due|string + '
+
+Please clear the pending fees as soon as possible.
+Thank you,
+Al Hidayet Mission' %}
+
+                        {% if wa_num %}
+                        <a href="https://wa.me/{{ wa_num }}?text={{ wa_msg|urlencode }}" target="_blank" class="action-btn btn-whatsapp">
+                            <i data-lucide="message-circle"></i> Send WhatsApp
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "A script to scan previous session transcripts and print all writes or replacements to app.py to reconstruct the missing code.",
+  "updatedAt": "2026-06-02T05:27:18.178098400Z"
+}

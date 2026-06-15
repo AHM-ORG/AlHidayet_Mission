@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "A python script to scan dangling git commits/trees and extract app.py versions to find the active 219KB source text.",
+  "updatedAt": "2026-06-02T05:16:20.755624100Z"
+}

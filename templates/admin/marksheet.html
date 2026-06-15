@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marksheet - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern marksheet-page">
+    <style>
+        @media print {
+            body { background: #fff !important; }
+            .sidebar, .top-bar, .class-filter-btn, #marksheetSearch, .print-hide { display: none !important; }
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+            .dashboard-container { display: block !important; }
+            .printable-marksheet {
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+            }
+            .marksheet-tab-content {
+                display: none !important;
+            }
+            .marksheet-tab-content.active-print {
+                display: block !important;
+            }
+            /* A4 printable sizes */
+            .annual-page {
+                width: 210mm !important;
+                height: 296mm !important;
+                padding: 4mm !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                page-break-after: always !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        .tab-btn:hover {
+            color: var(--primary-color) !important;
+            border-bottom-color: rgba(31, 111, 120, 0.4) !important;
+            transform: translateY(-1px);
+        }
+        .tab-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Annual Report Custom Styles */
+        .annual-page {
+            width: 210mm;
+            height: 296mm;
+            position: relative;
+            padding: 4mm;
+            box-sizing: border-box;
+            overflow: hidden;
+            background-color: #FFFFF0;
+            margin: 0 auto 20px auto;
+            color: #000;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-family: 'Times New Roman', Times, serif;
+        }
+        .watermark {
+            position: absolute;
+            top: 25%;
+            left: 15%;
+            width: 70%;
+            height: 50%;
+            background-image: url('https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            opacity: 0.08;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .border-container {
+            border: 3px double black;
+            height: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            z-index: 2;
+        }
+        .header {
+            text-align: center;
+            position: relative;
+            margin-bottom: 3px;
+            border-bottom: 2px solid #d60000;
+            padding-bottom: 3px;
+            flex-shrink: 0;
+        }
+        .logo {
+            width: 60px;
+            position: absolute;
+            top: 0;
+        }
+        .logo-left { left: 5px; }
+        .logo-right { right: 5px; }
+        .ahm-h1 {
+            color: #d60000;
+            font-size: 24pt;
+            margin: 0;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 1px 1px 0px #eee;
+            font-family: 'Times New Roman', serif;
+        }
+        .branch {
+            color: #333;
+            font-size: 11pt;
+            font-weight: bold;
+            margin: 1px 0;
+            letter-spacing: 1px;
+        }
+        .addr {
+            font-size: 9pt;
+            margin: 1px 0;
+            color: #444;
+        }
+        .title {
+            background-color: #d60000;
+            color: white;
+            font-weight: bold;
+            font-size: 13pt;
+            padding: 3px 25px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 3px;
+            text-decoration: none;
+        }
+        .annual-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-bottom: 4px;
+            background: transparent;
+        }
+        .annual-tbl td, .annual-tbl th {
+            border: 1px solid #444;
+            padding: 2.5px 2px;
+            text-align: center;
+            color: #000 !important;
+        }
+        .info-tbl {
+            margin-bottom: 4px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-tbl td {
+            text-align: left;
+            padding: 2px 4px;
+            border: 1px solid #000;
+            color: #000 !important;
+        }
+        .info-tbl td.lbl-name, .info-tbl td.lbl-class, .info-tbl td.lbl-roll, .info-tbl td.lbl-sec {
+            background-color: #1a237e;
+            color: white !important;
+            text-align: center !important;
+            font-weight: bold;
+        }
+        .lbl-name { width: 15%; }
+        .lbl-class { width: 10%; }
+        .lbl-roll { width: 8%; }
+        .lbl-sec { width: 8%; }
+        .val {
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+            font-size: 11pt;
+            padding-left: 5px;
+        }
+        .green {
+            color: #006400;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        .th-main {
+            background-color: #333;
+            color: white !important;
+            font-weight: bold;
+        }
+        .th-u1 {
+            background-color: #cce5ff;
+            color: black !important;
+        }
+        .bg-unit1 { background-color: #f0f8ff; }
+        .th-u2 {
+            background-color: #d4edda;
+            color: black !important;
+        }
+        .bg-unit2 { background-color: #f8fff9; }
+        .th-final {
+            background-color: #f8d7da;
+            color: black !important;
+        }
+        .bg-final { background-color: #fff5f6; }
+        .th-total {
+            background-color: #fff3cd;
+            color: black !important;
+        }
+        .bg-total {
+            background-color: #fff9db;
+            font-weight: bold;
+        }
+        .bg-grade { background-color: white; font-weight: bold; }
+        .sub-tot { font-weight: bold; background-color: rgba(0, 0, 0, 0.05); }
+        .footer-table {
+            border: none;
+            margin-top: 4px;
+            flex-grow: 1;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .footer-table td {
+            border: none;
+            vertical-align: top;
+            padding: 2px;
+        }
+        .col-left {
+            width: 55%;
+            padding-right: 12px !important;
+        }
+        .col-right {
+            width: 45%;
+        }
+        .sub-table {
+            border: 2px solid black;
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 8pt;
+        }
+        .sub-table td, .sub-table th {
+            border: 1px solid black;
+            padding: 2px 3px;
+            color: #000 !important;
+        }
+        .sub-table th.sub-header {
+            background-color: #444;
+            color: white !important;
+            padding: 3px;
+            font-weight: bold;
+            border: 1px solid black;
+            font-size: 8.5pt;
+        }
+        .summary-box { margin-top: 4px; }
+        .stamp-container {
+            position: relative;
+            height: auto;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            margin-top: 4px;
+            background-color: #fcfcfc;
+        }
+        .stamp-container img {
+            width: 85px !important;
+            height: auto;
+        }
+        .passed {
+            color: #2e7d32;
+            font-size: 16pt;
+            font-weight: 900;
+            font-family: 'Arial Black', sans-serif;
+            border: 2px solid #2e7d32;
+            padding: 2px 6px;
+            transform: rotate(-8deg);
+            opacity: 0.9;
+            background: rgba(255, 255, 255, 0.95);
+            margin-top: 2px;
+            z-index: 10;
+        }
+        .sig-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+            align-items: flex-end;
+        }
+        .sig-box {
+            width: 30%;
+            border-top: 1px solid black;
+            text-align: center;
+            font-size: 9.5pt;
+            font-weight: bold;
+            padding-top: 3px;
+            position: relative;
+            height: 24px;
+            color: #000 !important;
+        }
+        .tic-img {
+            position: absolute;
+            bottom: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Student Marksheet</div>
+            </header>
+            <div class="content-wrapper">
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                    {% if marks or monthly_marks or annual_composite %}
+                    
+                    <!-- Premium HSL Glassmorphic Tab Switcher -->
+                    <div class="tab-container print-hide" id="marksheet-tab-switcher" data-has-term="{% if marks %}true{% else %}false{% endif %}" data-has-monthly="{% if monthly_marks %}true{% else %}false{% endif %}" style="display: flex; gap: 8px; margin-bottom: 25px; border-bottom: 2px solid rgba(31, 111, 120, 0.12); padding-bottom: 12px; font-family: 'Outfit', sans-serif;">
+                        <button class="tab-btn active" onclick="switchMarksheetTab('term')" id="tab-btn-term" style="background: transparent; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 3px solid var(--primary-color); color: var(--primary-color); display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i data-lucide="award" style="width: 16px; height: 16px;"></i> Term Exams
+                        </button>
+                        <button class="tab-btn" onclick="switchMarksheetTab('monthly')" id="tab-btn-monthly" style="background: transparent; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: #7f8c8d; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i data-lucide="calendar" style="width: 16px; height: 16px;"></i> Monthly Tests
+                        </button>
+                        <button class="tab-btn" onclick="switchMarksheetTab('annual')" id="tab-btn-annual" style="background: transparent; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: #7f8c8d; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i data-lucide="file-spreadsheet" style="width: 16px; height: 16px;"></i> Annual Progress Report
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: TERM EXAMS -->
+                    <div id="marksheet-tab-term" class="marksheet-tab-content active-print printable-marksheet" style="position: relative;">
+                        <!-- Print Button -->
+                        <button onclick="window.print()" class="btn btn-primary print-hide" style="position: absolute; top: 20px; right: 20px; z-index: 100;"><i data-lucide="printer"></i> Print</button>
+                        
+                        <!-- Term Selector Dropdown -->
+                        {% if distinct_terms %}
+                        <div class="print-hide" style="margin-bottom: 25px; display: flex; align-items: center; gap: 12px; font-family: 'Outfit', sans-serif;">
+                            <label for="term-select" style="font-weight: 600; font-size: 14px; color: #2d3436;">Select Exam Term:</label>
+                            <select id="term-select" onchange="changeTerm(this.value)" style="padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500; outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); min-width: 180px;">
+                                {% for term in distinct_terms %}
+                                    <option value="{{ term }}" {% if term == selected_term %}selected{% endif %}>{{ term }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="annual-page">
+                            <div class="watermark"></div>
+                            <div class="border-container">
+                                <div>
+                                    <div class="header">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-left">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
+                                        <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
+                                        <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
+                                        <div class="title">{{ selected_term | upper if selected_term else 'TERM RESULT' }} - 2025</div>
+                                    </div>
+                                    <table class="info-tbl">
+                                        <tr>
+                                            <td class="lbl-name">NAME</td>
+                                            <td style="width:40%"><span class="val green">{{ student_info.name or student_info.student_name if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-class">CLASS</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.class or 'N/A' if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-roll">ROLL</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.roll_number or 'N/A' if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-sec">SEC</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.section or 'A' if student_info else 'N/A' }}</span></td>
+                                        </tr>
+                                    </table>
+                                    
+                                    {% if marks %}
+                                    {% set is_unit = selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] %}
+                                    {% set is_final = selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}
+                                    
+                                    {% set header_bg = '#333' %}
+                                    {% set sub_header_bg = '#eee' %}
+                                    {% set row_bg_class = 'bg-grade' %}
+                                    
+                                    {% if selected_term in ['1st Unit', '1st Term'] %}
+                                        {% set header_bg = '#0056b3' %}
+                                        {% set sub_header_bg = '#cce5ff' %}
+                                        {% set row_bg_class = 'bg-unit1' %}
+                                    {% elif selected_term in ['2nd Unit', '2nd Term'] %}
+                                        {% set header_bg = '#1e7e34' %}
+                                        {% set sub_header_bg = '#d4edda' %}
+                                        {% set row_bg_class = 'bg-unit2' %}
+                                    {% elif selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}
+                                        {% set header_bg = '#bd2130' %}
+                                        {% set sub_header_bg = '#f8d7da' %}
+                                        {% set row_bg_class = 'bg-final' %}
+                                    {% endif %}
+                                    
+                                    <table class="annual-tbl">
+                                        <thead>
+                                            <tr class="th-main">
+                                                <th rowspan="3" style="width: 35%; color: white !important; background-color: #333; vertical-align: middle;">SUBJECT</th>
+                                                {% if is_unit %}
+                                                    <th colspan="3" style="background-color: {{ header_bg }}; color: white !important; vertical-align: middle;">{{ selected_term | upper }}</th>
+                                                {% elif is_final %}
+                                                    <th colspan="4" style="background-color: {{ header_bg }}; color: white !important; vertical-align: middle;">{{ selected_term | upper }}</th>
+                                                {% else %}
+                                                    <th colspan="2" style="background-color: {{ header_bg }}; color: white !important; vertical-align: middle;">{{ selected_term | upper }}</th>
+                                                {% endif %}
+                                                <th rowspan="3" style="background-color: #333; color: white !important; width: 15%; vertical-align: middle;">GR</th>
+                                            </tr>
+                                            <tr>
+                                                {% if is_unit %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">OR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">WR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">TOT</th>
+                                                {% elif is_final %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">OR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">WR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">CT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">TOT</th>
+                                                {% else %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">F.M</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-weight: bold;">OBT</th>
+                                                {% endif %}
+                                            </tr>
+                                            <tr>
+                                                {% if is_unit %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">LIMIT</th>
+                                                {% elif is_final %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">LIMIT</th>
+                                                {% else %}
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">-</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">-</th>
+                                                {% endif %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% set ns = namespace(total_obtained=0, total_possible=0) %}
+                                            {% for mark in marks %}
+                                                {% set percent = 0 %}
+                                                {% if mark.total_marks %}
+                                                    {% set percent = (mark.marks / mark.total_marks * 100)|round(1) %}
+                                                    {% set ns.total_obtained = ns.total_obtained + mark.marks %}
+                                                    {% set ns.total_possible = ns.total_possible + mark.total_marks %}
+                                                {% endif %}
+                                                
+                                                {% set pct = (mark.marks / mark.total_marks * 100) if mark.total_marks else 0 %}
+                                                {% set grade = 'D' %}
+                                                {% if pct >= 90 %}{% set grade = 'AA' %}
+                                                {% elif pct >= 80 %}{% set grade = 'A+' %}
+                                                {% elif pct >= 60 %}{% set grade = 'A' %}
+                                                {% elif pct >= 45 %}{% set grade = 'B+' %}
+                                                {% elif pct >= 35 %}{% set grade = 'B' %}
+                                                {% elif pct >= 25 %}{% set grade = 'C' %}
+                                                {% endif %}
+                                                
+                                                {% if mark.subject.strip().lower() == 'art' %}
+                                                <tr style="background-color: #fafafa;">
+                                                    <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
+                                                    {% if is_unit %}
+                                                        <td colspan="3" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% elif is_final %}
+                                                        <td colspan="4" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% else %}
+                                                        <td colspan="2" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% endif %}
+                                                    <td class="bg-grade">{{ grade }}</td>
+                                                </tr>
+                                                {% else %}
+                                                <tr>
+                                                    <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
+                                                    {% if is_unit %}
+                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}{% if mark.oral_marks is not none %}/{{ mark.oral_limit }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}{% if mark.written_marks is not none %}/{{ mark.written_limit }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% elif is_final %}
+                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}{% if mark.oral_marks is not none %}/{{ mark.oral_limit }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}{% if mark.written_marks is not none %}/{{ mark.written_limit }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.ct_marks|round(1)|string|replace('.0', '') if mark.ct_marks is not none else '-' }}{% if mark.ct_marks is not none %}/{{ mark.ct_limit }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% else %}
+                                                        <td class="{{ row_bg_class }}">{{ mark.total_marks|round(1)|string|replace('.0', '') if mark.total_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                    {% endif %}
+                                                    <td class="bg-grade">{{ grade }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% else %}
+                                    <div style="text-align: center; padding: 40px; font-style: italic; color: #7f8c8d; border: 1px dashed #ddd; margin: 20px;">
+                                        No Term Exam marks recorded for this student.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                                    {% if marks %}
+                                    {% set overall_percent = 0 %}
+                                    {% if ns.total_possible > 0 %}
+                                        {% set overall_percent = (ns.total_obtained / ns.total_possible * 100)|round(1) %}
+                                    {% endif %}
+                                    
+                                    {% set overall_grade = 'D' %}
+                                    {% if overall_percent >= 90 %}{% set overall_grade = 'AA' %}
+                                    {% elif overall_percent >= 80 %}{% set overall_grade = 'A+' %}
+                                    {% elif overall_percent >= 60 %}{% set overall_grade = 'A' %}
+                                    {% elif overall_percent >= 45 %}{% set overall_grade = 'B+' %}
+                                    {% elif overall_percent >= 35 %}{% set overall_grade = 'B' %}
+                                    {% elif overall_percent >= 25 %}{% set overall_grade = 'C' %}
+                                    {% endif %}
+                                    
+                                    <table class="footer-table">
+                                        <tr>
+                                            <td class="col-left">
+                                                {% if additional_marks %}
+                                                <table class="sub-table" style="margin-bottom: 8px;">
+                                                    <tr><th colspan="3" class="sub-header" style="background-color:#000;">ADDITIONAL SUBJECTS</th></tr>
+                                                    <tr style="background:#eee"><th style="text-align:left; width: 70%;">SUBJECT</th><th style="width: 15%;">F.M</th><th style="width: 15%;">OBT</th></tr>
+                                                    {% for add in additional_marks %}
+                                                    <tr>
+                                                        <td style="text-align:left; width: 70%;">{{ add.subject|upper }}</td>
+                                                        <td style="width: 15%;">{{ add.total_marks|round(1)|string|replace('.0', '') }}</td>
+                                                        <td style="width: 15%;">{{ add.marks|round(1)|string|replace('.0', '') if add.marks is not none else '-' }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </table>
+                                                {% endif %}
+                                                
+                                                <table class="sub-table summary-box">
+                                                    <tr><th colspan="2" class="sub-header" style="background-color:#000;">RESULT ABSTRACT</th></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">GRAND TOTAL ({{ ns.total_possible|round(1)|string|replace('.0', '') }})</td><td style="width: 30%; font-weight:bold;">{{ ns.total_obtained|round(1)|string|replace('.0', '') }}</td></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">PERCENTAGE</td><td style="width: 30%; font-weight:bold;">{{ overall_percent }}%</td></tr>
+                                                    <tr style="background:#ffffcc"><td style="text-align:left; font-weight:bold; width: 70%;">OVERALL GRADE</td><td style="color:red; font-size:12pt; font-weight:900; width: 30%;">{{ overall_grade }}</td></tr>
+                                                </table>
+                                            </td>
+                                            <td class="col-right">
+                                                <table class="sub-table">
+                                                    <tr class="sub-header"><th>PERCENT RANGE</th><th>GRADE</th></tr>
+                                                    <tr><td>90% - 100%</td><td>AA</td></tr>
+                                                    <tr><td>80% - 89%</td><td>A+</td></tr>
+                                                    <tr><td>60% - 79%</td><td>A</td></tr>
+                                                    <tr><td>45% - 59%</td><td>B+</td></tr>
+                                                    <tr><td>35% - 44%</td><td>B</td></tr>
+                                                    <tr><td>25% - 34%</td><td>C</td></tr>
+                                                    <tr><td>BELOW 25%</td><td>D</td></tr>
+                                                </table>
+                                                <div class="stamp-container">
+                                                    <img src="https://i.ibb.co/LhYbFJR0/20250604-163002-removebg-preview.png" style="width:110px; opacity:0.9;">
+                                                    <div class="passed">{% if overall_percent >= 35 %}PASSED{% else %}FAILED{% endif %}</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    {% endif %}
+                                    <div class="sig-row">
+                                        <div class="sig-box">Signature of Guardian</div>
+                                        <div class="sig-box">Signature of Class Teacher</div>
+                                        <div class="sig-box">
+                                            <img src="https://i.ibb.co/ZpFHtpFx/20250604-163654-removebg-preview.png" class="tic-img">
+                                            Signature of T.I.C
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: MONTHLY TESTS -->
+                    <div id="marksheet-tab-monthly" class="marksheet-tab-content printable-marksheet" style="display: none; position: relative;">
+                        <!-- Print Button -->
+                        <button onclick="window.print()" class="btn btn-primary print-hide" style="position: absolute; top: 20px; right: 20px; z-index: 100;"><i data-lucide="printer"></i> Print</button>
+                        
+                        <div class="annual-page">
+                            <div class="watermark"></div>
+                            <div class="border-container">
+                                <div>
+                                    <div class="header">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-left">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
+                                        <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
+                                        <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
+                                        <div class="title">MONTHLY CLASS TESTS - 2025</div>
+                                    </div>
+                                    <table class="info-tbl">
+                                        <tr>
+                                            <td class="lbl-name">NAME</td>
+                                            <td style="width:40%"><span class="val green">{{ student_info.name or student_info.student_name if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-class">CLASS</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.class or 'N/A' if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-roll">ROLL</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.roll_number or 'N/A' if student_info else 'N/A' }}</span></td>
+                                            <td class="lbl-sec">SEC</td>
+                                            <td style="width:10%"><span class="val">{{ student_info.section or 'A' if student_info else 'N/A' }}</span></td>
+                                        </tr>
+                                    </table>
+                                    
+                                    {% if monthly_grid and monthly_terms %}
+                                    <table class="annual-tbl">
+                                        <thead>
+                                            <tr class="th-main">
+                                                <th rowspan="3" style="width: 16%; color: white !important; background-color: #333; vertical-align: middle;">SUBJECT</th>
+                                                <th colspan="{{ monthly_terms|length }}" style="background-color: #333; color: white !important; vertical-align: middle;">MONTHLY CLASS TESTS</th>
+                                                <th colspan="2" style="background-color: #d39e00; color: white !important; vertical-align: middle;">TOTAL</th>
+                                                <th rowspan="3" style="background-color: #333; color: white !important; width: 6%; vertical-align: middle;">GR</th>
+                                            </tr>
+                                            <tr>
+                                                {% for term in monthly_terms %}
+                                                    <th style="background-color: #eee; color: black !important; font-weight: bold;">{{ monthly_terms_short[term] }}</th>
+                                                {% endfor %}
+                                                <th rowspan="2" style="background-color: #fff3cd; color: black !important; font-weight: bold;">OBT</th>
+                                                <th rowspan="2" style="background-color: #fff3cd; color: black !important; font-weight: bold;">F.M</th>
+                                            </tr>
+                                            <tr>
+                                                {% for term in monthly_terms %}
+                                                    <th style="background-color: #eee; color: black !important; font-size:8pt">{{ monthly_fms.get(term, '-') }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for sub in monthly_grid %}
+                                            <tr>
+                                                <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ sub.name }}</td>
+                                                {% for term in monthly_terms %}
+                                                    <td style="background-color: #f9f9f9;">{{ sub.marks[term].obt }}</td>
+                                                {% endfor %}
+                                                <td class="bg-total">{{ sub.total_obt }}</td>
+                                                <td class="bg-total">{{ sub.total_pos }}</td>
+                                                <td class="bg-grade">{{ sub.grade }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% else %}
+                                    <div style="text-align: center; padding: 40px; font-style: italic; color: #7f8c8d; border: 1px dashed #ddd; margin: 20px;">
+                                        No Monthly Class Test marks recorded for this student.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                                    {% if monthly_grid and monthly_terms %}
+                                    
+                                    <table class="footer-table">
+                                        <tr>
+                                            <td class="col-left">
+                                                <table class="sub-table summary-box">
+                                                    <tr><th colspan="2" class="sub-header" style="background-color:#000;">RESULT ABSTRACT</th></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">GRAND TOTAL ({{ monthly_grand_pos }})</td><td style="width: 30%; font-weight:bold;">{{ monthly_grand_obt }}</td></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">PERCENTAGE</td><td style="width: 30%; font-weight:bold;">{{ monthly_overall_pct }}%</td></tr>
+                                                    <tr style="background:#ffffcc"><td style="text-align:left; font-weight:bold; width: 70%;">OVERALL GRADE / STATUS</td><td style="color:{% if monthly_overall_pass %}green{% else %}red{% endif %}; font-size:12pt; font-weight:900; width: 30%;">{{ monthly_overall_grade }} ({% if monthly_overall_pass %}PASSED{% else %}FAILED{% endif %})</td></tr>
+                                                </table>
+                                            </td>
+                                            <td class="col-right">
+                                                <table class="sub-table">
+                                                    <tr class="sub-header"><th>PERCENT RANGE</th><th>GRADE</th></tr>
+                                                    <tr><td>90% - 100%</td><td>AA</td></tr>
+                                                    <tr><td>80% - 89%</td><td>A+</td></tr>
+                                                    <tr><td>60% - 79%</td><td>A</td></tr>
+                                                    <tr><td>45% - 59%</td><td>B+</td></tr>
+                                                    <tr><td>35% - 44%</td><td>B</td></tr>
+                                                    <tr><td>25% - 34%</td><td>C</td></tr>
+                                                    <tr><td>BELOW 25%</td><td>D</td></tr>
+                                                </table>
+                                                <div class="stamp-container">
+                                                    <img src="https://i.ibb.co/LhYbFJR0/20250604-163002-removebg-preview.png" style="width:110px; opacity:0.9;">
+                                                    <div class="passed">{% if monthly_overall_pass %}PASSED{% else %}FAILED{% endif %}</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    {% endif %}
+                                    <div class="sig-row">
+                                        <div class="sig-box">Signature of Guardian</div>
+                                        <div class="sig-box">Signature of Class Teacher</div>
+                                        <div class="sig-box">
+                                            <img src="https://i.ibb.co/ZpFHtpFx/20250604-163654-removebg-preview.png" class="tic-img">
+                                            Signature of T.I.C
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: ANNUAL PROGRESS REPORT -->
+                    <div id="marksheet-tab-annual" class="marksheet-tab-content printable-marksheet" style="display: none; position: relative;">
+                        <!-- Print Button -->
+                        <button onclick="window.print()" class="btn btn-primary print-hide" style="position: absolute; top: 20px; right: 20px;"><i data-lucide="printer"></i> Print</button>
+                        
+                        {% if annual_composite %}
+                        {% for s in annual_composite %}
+                        <div class="annual-page">
+                            <div class="watermark"></div>
+                            <div class="border-container">
+                                <div>
+                                    <div class="header">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-left">
+                                        <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
+                                        <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
+                                        <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
+                                        <div class="title">ANNUAL RESULT - 2025</div>
+                                    </div>
+                                    <table class="info-tbl">
+                                        <tr>
+                                            <td class="lbl-name">NAME</td>
+                                            <td style="width:40%"><span class="val green">{{ s.name }}</span></td>
+                                            <td class="lbl-class">CLASS</td>
+                                            <td style="width:10%"><span class="val">{{ s.class_name }}</span></td>
+                                            <td class="lbl-roll">ROLL</td>
+                                            <td style="width:10%"><span class="val">{{ s.roll }}</span></td>
+                                            <td class="lbl-sec">SEC</td>
+                                            <td style="width:10%"><span class="val">{{ s.section }}</span></td>
+                                        </tr>
+                                    </table>
+                                    <table class="annual-tbl">
+                                        <thead>
+                                            <tr class="th-main">
+                                                <th rowspan="3" style="width: 15%; color: white !important;">SUBJECT</th>
+                                                <th colspan="3" style="background:#0056b3; color: white !important;">1ST UNIT</th>
+                                                <th colspan="3" style="background:#1e7e34; color: white !important;">2ND UNIT</th>
+                                                <th colspan="4" style="background:#bd2130; color: white !important;">FINAL EXAM</th>
+                                                <th rowspan="3" style="background:#d39e00; color: white !important;">TOTAL</th>
+                                                <th rowspan="3" style="background:#333; color: white !important;">GR</th>
+                                            </tr>
+                                            <tr>
+                                                <th class="th-u1">OR</th><th class="th-u1">WR</th><th class="th-u1">TOT</th>
+                                                <th class="th-u2">OR</th><th class="th-u2">WR</th><th class="th-u2">TOT</th>
+                                                <th class="th-final">OR</th><th class="th-final">WR</th><th class="th-final">CT</th><th class="th-final">TOT</th>
+                                            </tr>
+                                            <tr>
+                                                <th class="th-u1" style="font-size:8pt">LIMIT</th><th class="th-u1" style="font-size:8pt">LIMIT</th><th class="th-u1 sub-tot" style="font-size:8pt">LIMIT</th>
+                                                <th class="th-u2" style="font-size:8pt">LIMIT</th><th class="th-u2" style="font-size:8pt">LIMIT</th><th class="th-u2 sub-tot" style="font-size:8pt">LIMIT</th>
+                                                <th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final sub-tot" style="font-size:8pt">LIMIT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for sub in s.subjects %}
+                                            <tr>
+                                                <td style="text-align:left; font-weight:bold; padding-left:5px;">{{ sub.name }}</td>
+                                                <td class="bg-unit1">{{ sub.u1_o }}{% if sub.u1_o != '-' %}/{{ sub.u1_o_limit }}{% endif %}</td>
+                                                <td class="bg-unit1">{{ sub.u1_w }}{% if sub.u1_w != '-' %}/{{ sub.u1_w_limit }}{% endif %}</td>
+                                                <td class="bg-unit1 sub-tot">{{ sub.u1_tot }}{% if sub.u1_tot != '-' %}/{{ sub.u1_tot_limit }}{% endif %}</td>
+                                                
+                                                <td class="bg-unit2">{{ sub.u2_o }}{% if sub.u2_o != '-' %}/{{ sub.u2_o_limit }}{% endif %}</td>
+                                                <td class="bg-unit2">{{ sub.u2_w }}{% if sub.u2_w != '-' %}/{{ sub.u2_w_limit }}{% endif %}</td>
+                                                <td class="bg-unit2 sub-tot">{{ sub.u2_tot }}{% if sub.u2_tot != '-' %}/{{ sub.u2_tot_limit }}{% endif %}</td>
+                                                
+                                                <td class="bg-final">{{ sub.f_o }}{% if sub.f_o != '-' %}/{{ sub.f_o_limit }}{% endif %}</td>
+                                                <td class="bg-final">{{ sub.f_w }}{% if sub.f_w != '-' %}/{{ sub.f_w_limit }}{% endif %}</td>
+                                                <td class="bg-final">{{ sub.f_ct }}{% if sub.f_ct != '-' %}/{{ sub.f_ct_limit }}{% endif %}</td>
+                                                <td class="bg-final sub-tot">{{ sub.f_tot }}{% if sub.f_tot != '-' %}/{{ sub.f_tot_limit }}{% endif %}</td>
+                                                
+                                                <td class="bg-total">{{ sub.grand }}{% if sub.grand != '-' %}/{{ sub.possible }}{% endif %}</td>
+                                                <td class="bg-grade">{{ sub.grade }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            <tr style="border-top: 2px solid black;">
+                                                <td style="text-align:left; font-weight:bold; padding-left:5px;">ART</td>
+                                                <td colspan="3" class="bg-unit1">{{ s.art_u1 }}{% if s.art_u1 != '-' %}/{{ s.art_u1_limit }}{% endif %}</td>
+                                                <td colspan="3" class="bg-unit2">{{ s.art_u2 }}{% if s.art_u2 != '-' %}/{{ s.art_u2_limit }}{% endif %}</td>
+                                                <td colspan="4" class="bg-final">{{ s.art_f }}{% if s.art_f != '-' %}/{{ s.art_f_limit }}{% endif %}</td>
+                                                <td class="bg-total">{{ s.art_grand }}{% if s.art_grand != '-' %}/{{ s.art_possible }}{% endif %}</td>
+                                                <td class="bg-grade">{{ s.art_grade }}</td>
+                                            </tr>
+                                            <tr style="border-top: 2px solid black; font-weight: bold;">
+                                                <td style="text-align:left; font-weight:bold; padding-left:5px;">TOTAL</td>
+                                                <td class="bg-unit1">{{ s.u1_o_sum }}</td>
+                                                <td class="bg-unit1">{{ s.u1_w_sum }}</td>
+                                                <td class="bg-unit1 sub-tot">{{ s.u1_tot_sum }}</td>
+                                                <td class="bg-unit2">{{ s.u2_o_sum }}</td>
+                                                <td class="bg-unit2">{{ s.u2_w_sum }}</td>
+                                                <td class="bg-unit2 sub-tot">{{ s.u2_tot_sum }}</td>
+                                                <td class="bg-final">{{ s.f_o_sum }}</td>
+                                                <td class="bg-final">{{ s.f_w_sum }}</td>
+                                                <td class="bg-final">{{ s.f_ct_sum }}</td>
+                                                <td class="bg-final sub-tot">{{ s.f_tot_sum }}</td>
+                                                <td class="bg-total">{{ s.grand_tot_sum }}</td>
+                                                <td class="bg-grade">{{ s.grand_tot_grade }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                                    <table class="footer-table">
+                                        <tr>
+                                            <td class="col-left">
+                                                <table class="sub-table">
+                                                    <tr><th colspan="3" class="sub-header">ADDITIONAL SUBJECTS</th></tr>
+                                                    <tr style="background:#eee"><th style="text-align:left; width: 70%;">SUBJECT</th><th style="width: 15%;">F.M</th><th style="width: 15%;">OBT</th></tr>
+                                                    <tr><td style="text-align:left; width: 70%;">PHYSICAL EDUCATION</td><td style="width: 15%;">{{ s.add_fm.ped }}</td><td style="width: 15%;">{{ s.add.ped }}</td></tr>
+                                                    <tr><td style="text-align:left; width: 70%;">WORK EDUCATION</td><td style="width: 15%;">{{ s.add_fm.wed }}</td><td style="width: 15%;">{{ s.add.wed }}</td></tr>
+                                                    <tr><td style="text-align:left; width: 70%;">HAND WRITING</td><td style="width: 15%;">{{ s.add_fm.hw }}</td><td style="width: 15%;">{{ s.add.hw }}</td></tr>
+                                                    <tr><td style="text-align:left; width: 70%;">BEHAVIOUR</td><td style="width: 15%;">{{ s.add_fm.behav }}</td><td style="width: 15%;">{{ s.add.behav }}</td></tr>
+                                                    <tr><td style="text-align:left; width: 70%;">ATTENDANCE</td><td style="width: 15%;">{{ s.add_fm.attend }}</td><td style="width: 15%;">{{ s.add.attend }}</td></tr>
+                                                    <tr class="bg-total"><td style="text-align:left; width: 70%; font-weight:bold;">TOTAL</td><td style="width: 15%; font-weight:bold;">{{ s.add_fm.total }}</td><td style="width: 15%; font-weight:bold;">{{ s.add_tot }}</td></tr>
+                                                </table>
+                                                <table class="sub-table summary-box">
+                                                    <tr><th colspan="2" class="sub-header" style="background-color:#000;">RESULT ABSTRACT</th></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">GRAND TOTAL ({{ s.max_marks }})</td><td style="width: 30%; font-weight:bold;">{{ s.total_obtained }}</td></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">PERCENTAGE</td><td style="width: 30%; font-weight:bold;">{{ s.percentage }}%</td></tr>
+                                                    <tr><td style="text-align:left; font-weight:bold; width: 70%;">CLASS RANK</td><td style="width: 30%; font-weight:bold;">{{ s.rank }}</td></tr>
+                                                    <tr style="background:#ffffcc"><td style="text-align:left; font-weight:bold; width: 70%;">OVERALL GRADE</td><td style="color:red; font-size:12pt; font-weight:900; width: 30%;">{{ s.overall_grade }}</td></tr>
+                                                </table>
+                                            </td>
+                                            <td class="col-right">
+                                                <table class="sub-table">
+                                                    <tr class="sub-header"><th>PERCENT RANGE</th><th>GRADE</th></tr>
+                                                    <tr><td>90% - 100%</td><td>AA</td></tr>
+                                                    <tr><td>80% - 89%</td><td>A+</td></tr>
+                                                    <tr><td>60% - 79%</td><td>A</td></tr>
+                                                    <tr><td>45% - 59%</td><td>B+</td></tr>
+                                                    <tr><td>35% - 44%</td><td>B</td></tr>
+                                                    <tr><td>25% - 34%</td><td>C</td></tr>
+                                                    <tr><td>BELOW 25%</td><td>D</td></tr>
+                                                </table>
+                                                <div class="stamp-container">
+                                                    <img src="https://i.ibb.co/LhYbFJR0/20250604-163002-removebg-preview.png" style="width:110px; opacity:0.9;">
+                                                    <div class="passed">PASSED</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <div class="sig-row">
+                                        <div class="sig-box">Signature of Guardian</div>
+                                        <div class="sig-box">Signature of Class Teacher</div>
+                                        <div class="sig-box">
+                                            <img src="https://i.ibb.co/ZpFHtpFx/20250604-163654-removebg-preview.png" class="tic-img">
+                                            Signature of T.I.C
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div style="text-align: center; padding: 40px; font-style: italic; color: #7f8c8d; border: 1px dashed #ddd; margin: 20px;">
+                            No academic marks recorded to compute Annual Progress Report.
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% elif students is defined %}
+                    <h2>Select a Student to View Marksheet</h2>
+                    
+                    <!-- Class filter buttons -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0;">
+                        <button class="class-filter-btn active" data-class="all" style="padding: 6px 16px; border-radius: 20px; border: 2px solid var(--primary-color); background: var(--primary-color); color: #fff; cursor: pointer; font-weight: 600; font-size: 13px;">All</button>
+                        {% set ns = namespace(classes=[]) %}
+                        {% for s in students %}
+                            {% if s.class and s.class.strip().lower() not in ns.classes %}
+                                {% set ns.classes = ns.classes + [s.class.strip().lower()] %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                        {% for c in class_order %}
+                            {% if c.strip().lower() in ns.classes %}
+                            <button class="class-filter-btn" data-class="{{ c }}" style="padding: 6px 16px; border-radius: 20px; border: 2px solid #ddd; background: #fff; color: #333; cursor: pointer; font-weight: 500; font-size: 13px;">{{ c }}</button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 500px; flex-wrap: wrap;">
+                        <input type="text" id="marksheetSearch" placeholder="Search by name or ID..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
+                        <select id="sortBySelect" onchange="handleMarksheetSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                            <option value="roll">Sort: Roll No</option>
+                            <option value="name">Sort: Name</option>
+                        </select>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" id="marksheetTable">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee;">
+                                <th style="padding: 12px; text-align: left;">SL</th>
+                                <th style="padding: 12px; text-align: left;">Student Name</th>
+                                <th style="padding: 12px; text-align: left;">Guardian</th>
+                                <th style="padding: 12px; text-align: left;">Class</th>
+                                <th style="padding: 12px; text-align: left;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr style="border-bottom: 1px solid #eee;" data-class="{{ student.class or '' }}" class="student-row" data-roll="{{ student.roll_number or '' }}" data-name="{{ (student.full_name or student.username or '')|lower }}">
+                                <td style="padding: 12px;">{{ loop.index }}</td>
+                                <td style="padding: 12px;">{{ student.full_name or student.username }}</td>
+                                <td style="padding: 12px; color: #888; font-size: 13px;">{{ student.guardian_name or '-' }}</td>
+                                <td style="padding: 12px;">{{ student.class or 'N/A' }}</td>
+                                <td style="padding: 12px;">
+                                    <a href="/admin/marksheet?student_id={{ student.id }}"
+                                        class="badge badge-success">View Marks</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="dashboard-empty-state">
+                        <div class="empty-icon"><i data-lucide="alert-circle"></i></div>
+                        <h2>No Data Found</h2>
+                        <p>Either no marks have been entered for this student or you have not selected a student.</p>
+                        <a href="/admin/student-list" class="btn btn-primary" style="margin-top:20px;">Back to Student
+                            List</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        function changeTerm(termName) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('term', termName);
+            urlParams.set('tab', 'term');
+            window.location.search = urlParams.toString();
+        }
+
+        function switchMarksheetTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.marksheet-tab-content').forEach(el => {
+                el.style.display = 'none';
+                el.classList.remove('active-print');
+            });
+            
+            // Show the selected tab content
+            const activeEl = document.getElementById('marksheet-tab-' + tabId);
+            if (activeEl) {
+                activeEl.style.display = 'block';
+                activeEl.classList.add('active-print');
+            }
+            
+            // Update active states on switcher buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.color = '#7f8c8d';
+                btn.style.borderBottomColor = 'transparent';
+            });
+            
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.color = 'var(--primary-color)';
+                activeBtn.style.borderBottomColor = 'var(--primary-color)';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    }
+                });
+            });
+            
+            // Class filter buttons
+            let activeClass = 'all';
+            let searchText = '';
+            
+            function filterTable() {
+                let rows = document.querySelectorAll('#marksheetTable tbody tr');
+                rows.forEach(row => {
+                    let rowClass = row.getAttribute('data-class') || '';
+                    let text = row.textContent.toLowerCase();
+                    let classMatch = (activeClass === 'all' || rowClass.trim().toLowerCase() === activeClass.trim().toLowerCase());
+                    let textMatch = text.includes(searchText);
+                    row.style.display = (classMatch && textMatch) ? '' : 'none';
+                });
+            }
+            
+            document.querySelectorAll('.class-filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.class-filter-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = '#fff';
+                        b.style.color = '#333';
+                        b.style.borderColor = '#ddd';
+                    });
+                    this.classList.add('active');
+                    this.style.background = 'var(--primary-color)';
+                    this.style.color = '#fff';
+                    this.style.borderColor = 'var(--primary-color)';
+                    activeClass = this.getAttribute('data-class');
+                    filterTable();
+                });
+            });
+            
+            let searchInput = document.getElementById('marksheetSearch');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function() {
+                    searchText = this.value.toLowerCase();
+                    filterTable();
+                });
+            }
+
+            // Handle pre-selected tab from query parameter or default to annual if term marks are empty
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab') || urlParams.get('type');
+            if (tabParam && ['term', 'monthly', 'annual'].includes(tabParam)) {
+                switchMarksheetTab(tabParam);
+                // If there are no term marks but there are monthly marks, pre-select monthly or annual
+                const switcher = document.getElementById('marksheet-tab-switcher');
+                const termMarksExist = switcher && switcher.getAttribute('data-has-term') === 'true';
+                const monthlyMarksExist = switcher && switcher.getAttribute('data-has-monthly') === 'true';
+                if (!termMarksExist && monthlyMarksExist) {
+                    switchMarksheetTab('monthly');
+                }
+            }
+        });
+
+        function handleMarksheetSort() {
+            const criteria = document.getElementById('sortBySelect').value;
+            const tbody = document.querySelector('#marksheetTable tbody');
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr.student-row'));
+            
+            rows.sort((a, b) => {
+                if (criteria === 'name') {
+                    const nameA = (a.getAttribute('data-name') || '').trim();
+                    const nameB = (b.getAttribute('data-name') || '').trim();
+                    return nameA.localeCompare(nameB);
+                } else {
+                    const rollA = a.getAttribute('data-roll') || '';
+                    const rollB = b.getAttribute('data-roll') || '';
+                    const numA = parseInt((rollA.match(/\d+/) || [999999])[0], 10);
+                    const numB = parseInt((rollB.match(/\d+/) || [999999])[0], 10);
+                    if (numA !== numB) return numA - numB;
+                    return rollA.localeCompare(rollB);
+                }
+            });
+            
+            rows.forEach((row, index) => {
+                tbody.appendChild(row);
+                const slTd = row.cells[0];
+                if (slTd) {
+                    slTd.textContent = index + 1;
+                }
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

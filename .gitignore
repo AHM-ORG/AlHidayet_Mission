@@ -1,0 +1,14 @@
+.env
+*.db
+*.db.bak
+*.bak
+instance/
+*.db.migrated
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+static/uploads/
+records/

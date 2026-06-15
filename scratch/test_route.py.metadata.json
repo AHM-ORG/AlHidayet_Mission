@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "Update test_route.py script to include the newly implemented /student/edit-info endpoint.",
+  "updatedAt": "2026-06-02T07:44:58.061321600Z"
+}

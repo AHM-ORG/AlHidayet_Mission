@@ -1,0 +1,11 @@
+Created At: 2026-06-02T05:04:37Z
+Completed At: 2026-06-02T05:04:41Z
+
+				The command completed successfully.
+				Output:
+				1414: def dashboard():
+4011: def admin_attendance():
+4093: def admin_attendance_upload_csv():
+4319: def teacher_attendance_leaves():
+4383: def student_attendance_leaves():
+

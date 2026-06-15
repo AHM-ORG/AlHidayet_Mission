@@ -1,0 +1,13 @@
+Created At: 2026-06-02T05:04:32Z
+Completed At: 2026-06-02T05:04:36Z
+
+				The command completed successfully.
+				Output:
+				def login_required(view):
+def login(user_type):
+def dashboard():
+def admin_attendance():
+def admin_attendance_upload_csv():
+def teacher_attendance_leaves():
+def student_attendance_leaves():
+
