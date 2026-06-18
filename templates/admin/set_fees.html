@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Fees - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Set Fees</div>
+            </header>
+            <div class="content-wrapper">
+                
+                <!-- ALERTS -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                    <!-- Class-wise form -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
+                        <h3 style="color: #0984e3; display: flex; align-items: center; gap: 8px;"><i data-lucide="users"></i> Class-wise Fees</h3>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Set fees configuration for an entire class.</p>
+                        <form action="/admin/set-fees" method="post">
+                            <input type="hidden" name="update_type" value="class">
+                            <input type="hidden" name="branch" value="bhogram">
+                            
+                            <div class="input-group" style="margin-bottom: 20px;">
+                                <label style="font-weight: 600;">Class:</label>
+                                <select name="class" id="classSelect_classwise" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                                    {% for c in classes %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                                <!-- Column 1: School -->
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0984e3;">
+                                    <h4 style="margin-top:0; color: #0984e3; border-bottom: 1px solid #eee; padding-bottom: 6px; font-size: 14px; font-weight: 600;">School Program</h4>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Monthly Fee</label>
+                                            <input type="number" name="monthly_fee" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Admission Fee</label>
+                                            <input type="number" name="admission_fee" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Re-admission</label>
+                                            <input type="number" name="readmission_fee_school" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Column 2: Coaching -->
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #00b894;">
+                                    <h4 style="margin-top:0; color: #00b894; border-bottom: 1px solid #eee; padding-bottom: 6px; font-size: 14px; font-weight: 600;">Coaching Program</h4>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Monthly Fee</label>
+                                            <input type="number" name="monthly_fee_coaching" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Admission Fee</label>
+                                            <input type="number" name="admission_fee_coaching" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Re-admission</label>
+                                            <input type="number" name="readmission_fee_coaching" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Column 3: Day Hostel -->
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #e17055;">
+                                    <h4 style="margin-top:0; color: #e17055; border-bottom: 1px solid #eee; padding-bottom: 6px; font-size: 14px; font-weight: 600;">Day Hostel Program</h4>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Monthly Fee</label>
+                                            <input type="number" name="hostel_fee" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Admission Fee</label>
+                                            <input type="number" name="admission_fee_hostel" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                        <div class="input-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 11px;">Re-admission</label>
+                                            <input type="number" name="readmission_fee_hostel" required min="0" style="padding: 8px; font-size: 13px;" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="auth-btn" style="background: #00b894; font-weight: 600;">Set Class Fee</button>
+                        </form>
+                    </div>
+
+                    <!-- Student-wise form -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
+                        <h3 style="color: #6c5ce7; display: flex; align-items: center; gap: 8px;"><i data-lucide="user"></i> Student-wise Fees</h3>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Assign benefits and custom fees for a specific student.</p>
+                        <form action="/admin/set-fees" method="post">
+                            <input type="hidden" name="update_type" value="student">
+                            {% set filter_id = 'setfee' %}
+                            {% include 'partials/class_student_filter.html' %}
+                            
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6c5ce7;">
+                                <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 10px; color: #2d3436;">Ticked Benefits:</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #2d3436;">
+                                        <input type="checkbox" name="take_school" id="take_school" value="1"> School
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #00b894;">
+                                        <input type="checkbox" name="take_coaching" id="take_coaching" value="1"> Coaching
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #e17055;">
+                                        <input type="checkbox" name="take_day_hostel" id="take_day_hostel" value="1"> Day Hostel
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #0984e3;">
+                                        <input type="checkbox" name="take_car" id="take_car" value="1"> Car / Vehicle
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Monthly Fee (INR):</label>
+                                    <input type="number" name="amount" id="student_monthly_fee" required step="1" min="0" placeholder="e.g. 1200" style="padding: 10px;">
+                                </div>
+                                <input type="hidden" name="admission_fee" id="student_admission_fee" value="0">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Re-admission Fee (INR):</label>
+                                    <input type="number" name="readmission_fee" id="student_readmission_fee" required step="1" min="0" placeholder="e.g. 1500" style="padding: 10px;">
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Remaining Fee / Dues (INR):</label>
+                                    <input type="number" name="remaining_fee" id="student_remaining_fee" required step="0.01" placeholder="e.g. 1500" style="padding: 10px;">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="auth-btn" style="background: #6c5ce7; font-weight: 600;">Set Student Fee & Benefits</button>
+                        </form>
+                    </div>
+                </div>
+                </div>
+
+                <!-- CLASS DIRECTORY MANAGER SECTION -->
+                <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="graduation-cap"></i> Class Directory Manager
+                    </h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px;">
+                        <!-- Add Class Form -->
+                        <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa; padding: 15px;">
+                            <h4 style="color: #0984e3; margin-bottom: 12px; font-size: 15px;">Add New Class</h4>
+                            <form method="POST">
+                                <input type="hidden" name="create_class" value="1">
+                                <div class="input-group" style="margin-bottom: 10px;">
+                                    <label style="font-size: 12px; font-weight: 600;">Class Name</label>
+                                    <select name="class_name" required style="padding: 6px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-size: 13px;" class="search-select">
+                                        <option value="" disabled selected>Select a Class</option>
+                                        {% for c in classes %}
+                                        <option value="{{ c }}">{{ c }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <input type="hidden" name="branch" id="class-branch-select" value="bhogram">
+                                
+                                <!-- New Admission Fees -->
+                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
+                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">New Admission Fees</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
+                                            <input type="number" step="0.01" min="0" name="admission_fee" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
+                                            <input type="number" step="0.01" min="0" name="admission_fee_coaching" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
+                                            <input type="number" step="0.01" min="0" name="admission_fee_hostel" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Re-Admission Fees -->
+                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
+                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">Re-Admission Fees</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_school" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_coaching" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_hostel" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Monthly Fees -->
+                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px; margin-bottom: 15px;">
+                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">Monthly Fees</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
+                                            <input type="number" step="0.01" min="0" name="monthly_fee" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
+                                            <input type="number" step="0.01" min="0" name="monthly_fee_coaching" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                        <div class="input-group">
+                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
+                                            <input type="number" step="0.01" min="0" name="hostel_fee" placeholder="0.00" value="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="auth-btn">Save Class</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Classes Table View -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Active Classes</h4>
+                                <input type="text" id="classesSearch" placeholder="Search classes..." onkeyup="filterTable('classesSearch', 'classesTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
+                            </div>
+                            <div style="max-height: 480px; overflow: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
+                                <table id="classesTable" style="width: 100%; border-collapse: collapse; min-width: 900px; font-size: 13px;">
+                                    <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 1; border-bottom: 2px solid #ddd;">
+                                        <tr style="border-bottom: 1px solid #eee;">
+                                            <th rowspan="2" style="padding: 8px; text-align: left; width: 40px; vertical-align: middle;">ID</th>
+                                            <th rowspan="2" style="padding: 8px; text-align: left; min-width: 80px; vertical-align: middle;">Class Name</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #eef2f7; border-right: 1px solid #eee; border-left: 1px solid #eee;">New Admission Fee</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #fbf1f1; border-right: 1px solid #eee;">Re-Admission Fee</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #f1fbf2; border-right: 1px solid #eee;">Monthly Fee</th>
+                                            <th rowspan="2" style="padding: 8px; text-align: center; width: 130px; vertical-align: middle;">Action</th>
+                                        </tr>
+                                        <tr style="background: #fdfdfd; font-size: 11px;">
+                                            <!-- New Admission Columns -->
+                                            <th style="padding: 6px 4px; text-align: center; border-left: 1px solid #eee;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
+                                            <!-- Re-Admission Columns -->
+                                            <th style="padding: 6px 4px; text-align: center;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
+                                            <!-- Monthly Columns -->
+                                            <th style="padding: 6px 4px; text-align: center;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for c in db_classes %}
+                                        <tr style="border-bottom: 1px solid #eee;">
+                                            <td style="padding: 8px;">{{ c.id }}</td>
+                                            <td style="padding: 8px;"><strong>{{ c.name }}</strong></td>
+                                            
+                                            <!-- New Admission Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center; border-left: 1px solid #eee;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-{{ c.id }}" value="{{ c.admission_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-coaching-{{ c.id }}" value="{{ c.admission_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-hostel-{{ c.id }}" value="{{ c.admission_fee_hostel or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Re-Admission Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-school-{{ c.id }}" value="{{ c.readmission_fee_school or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-coaching-{{ c.id }}" value="{{ c.readmission_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-hostel-{{ c.id }}" value="{{ c.readmission_fee_hostel or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Monthly Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="mon-fee-{{ c.id }}" value="{{ c.monthly_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="mon-fee-coaching-{{ c.id }}" value="{{ c.monthly_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
+                                                <input type="number" step="0.01" min="0" id="hostel-fee-{{ c.id }}" value="{{ c.hostel_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Action Buttons -->
+                                            <td style="padding: 8px; text-align: center; white-space: nowrap;">
+                                                <button type="button" class="badge" onclick="saveClassFees({{ c.id }})" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 6px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                                                    <i data-lucide="save" style="width: 10px; height: 10px;"></i> Save
+                                                </button>
+                                                <form method="POST" onsubmit="return confirm('Delete class {{ c.name }}? This will also delete associated subjects and config slots.')" style="display: inline;">
+                                                    <input type="hidden" name="delete_class" value="1">
+                                                    <input type="hidden" name="class_id" value="{{ c.id }}">
+                                                    <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 6px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                                                        <i data-lucide="trash-2" style="width: 10px; height: 10px;"></i> Del
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="12" style="padding: 20px; text-align: center; color: #999;">No classes registered yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script id="db-classes-json" type="application/json">
+        {{ db_classes | tojson | safe }}
+    </script>
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="{{ url_for('static', filename='js/class_filter.js') }}"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Embed classes data from backend
+            const dbClasses = JSON.parse(document.getElementById('db-classes-json').textContent || '[]');
+
+            // Initialize TomSelect on search selects
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+
+            // Handle class-wise fee inputs pre-population
+            const classSelect = document.getElementById('classSelect_classwise');
+            function populateClassWiseFields() {
+                if (!classSelect) return;
+                const val = classSelect.value;
+                const match = dbClasses.find(c => c.name.toLowerCase() === val.toLowerCase());
+                if (match) {
+                    document.querySelector('input[name="monthly_fee"]').value = match.monthly_fee || 0;
+                    document.querySelector('input[name="admission_fee"]').value = match.admission_fee || 0;
+                    document.querySelector('input[name="readmission_fee_school"]').value = match.readmission_fee_school || 0;
+                    
+                    document.querySelector('input[name="monthly_fee_coaching"]').value = match.monthly_fee_coaching || 0;
+                    document.querySelector('input[name="admission_fee_coaching"]').value = match.admission_fee_coaching || 0;
+                    document.querySelector('input[name="readmission_fee_coaching"]').value = match.readmission_fee_coaching || 0;
+                    
+                    document.querySelector('input[name="hostel_fee"]').value = match.hostel_fee || 0;
+                    document.querySelector('input[name="admission_fee_hostel"]').value = match.admission_fee_hostel || 0;
+                    document.querySelector('input[name="readmission_fee_hostel"]').value = match.readmission_fee_hostel || 0;
+                }
+            }
+
+            if (classSelect) {
+                classSelect.addEventListener('change', populateClassWiseFields);
+                populateClassWiseFields(); // run initially
+            }
+
+            // Student-wise Benefits and Fees handling
+            const studentSelectEl = document.getElementById('studentSelect_setfee');
+            const chkSchool = document.getElementById('take_school');
+            const chkCoaching = document.getElementById('take_coaching');
+            const chkDayHostel = document.getElementById('take_day_hostel');
+            const chkCar = document.getElementById('take_car');
+            const inputAmount = document.getElementById('student_monthly_fee');
+            const inputAdmission = document.getElementById('student_admission_fee');
+            const inputReadmission = document.getElementById('student_readmission_fee');
+            const inputRemaining = document.getElementById('student_remaining_fee');
+
+            function getSelectedStudentClass() {
+                if (!studentSelectEl) return null;
+                const opt = studentSelectEl.options[studentSelectEl.selectedIndex];
+                if (!opt) return null;
+                const optgroup = opt.parentNode;
+                if (optgroup && optgroup.tagName === 'OPTGROUP') {
+                    return optgroup.label.replace('Class ', '').trim();
+                }
+                return null;
+            }
+
+            function handleStudentSelectChange() {
+                if (!studentSelectEl) return;
+                const selectedOpt = studentSelectEl.options[studentSelectEl.selectedIndex];
+                if (selectedOpt) {
+                    chkSchool.checked = selectedOpt.getAttribute('data-take-school') === '1';
+                    chkCoaching.checked = selectedOpt.getAttribute('data-take-coaching') === '1';
+                    chkDayHostel.checked = selectedOpt.getAttribute('data-take-day-hostel') === '1';
+                    chkCar.checked = selectedOpt.getAttribute('data-take-car') === '1';
+                    
+                    inputAmount.value = parseFloat(selectedOpt.getAttribute('data-monthly-fee')) || 0;
+                    inputAdmission.value = parseFloat(selectedOpt.getAttribute('data-admission-fee')) || 0;
+                    inputReadmission.value = parseFloat(selectedOpt.getAttribute('data-readmission-fee')) || 0;
+                    inputRemaining.value = parseFloat(selectedOpt.getAttribute('data-remaining-fee')) || 0;
+                }
+            }
+
+            function handleBenefitCheckboxChange() {
+                const className = getSelectedStudentClass();
+                if (!className) return;
+                
+                const clsData = dbClasses.find(c => c.name.toLowerCase() === className.toLowerCase());
+                if (!clsData) return;
+                
+                let baseMonthly = 0;
+                let baseAdmission = 0;
+                let baseReadmission = 0;
+                
+                if (chkDayHostel.checked) {
+                    baseMonthly = clsData.hostel_fee || 0;
+                    baseAdmission = clsData.admission_fee_hostel || 0;
+                    baseReadmission = clsData.readmission_fee_hostel || 0;
+                } else if (chkCoaching.checked) {
+                    baseMonthly = clsData.monthly_fee_coaching || 0;
+                    baseAdmission = clsData.admission_fee_coaching || 0;
+                    baseReadmission = clsData.readmission_fee_coaching || 0;
+                } else if (chkSchool.checked) {
+                    baseMonthly = clsData.monthly_fee || 0;
+                    baseAdmission = clsData.admission_fee || 0;
+                    baseReadmission = clsData.readmission_fee_school || 0;
+                }
+                
+                if (chkCar.checked) {
+                    baseMonthly += 400; // Car charge extra ₹400
+                }
+                
+                inputAmount.value = baseMonthly;
+                inputAdmission.value = baseAdmission;
+                inputReadmission.value = baseReadmission;
+            }
+
+            if (studentSelectEl) {
+                studentSelectEl.addEventListener('change', handleStudentSelectChange);
+                // Wait for TomSelect to build and trigger change event
+                setTimeout(handleStudentSelectChange, 300);
+            }
+
+            [chkSchool, chkCoaching, chkDayHostel, chkCar].forEach(chk => {
+                if (chk) {
+                    chk.addEventListener('change', handleBenefitCheckboxChange);
+                }
+            });
+
+            initClassFilter('setfee');
+
+            const classFilterEl = document.getElementById('classFilter_setfee');
+            if (classFilterEl) {
+                classFilterEl.addEventListener('change', function() {
+                    setTimeout(handleStudentSelectChange, 100);
+                });
+            }
+        });
+
+        function filterTable(inputId, tableId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const rows = table.querySelector("tbody").getElementsByTagName("tr");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                if (cells.length > 0) {
+                    let text = "";
+                    for (let j = 0; j < cells.length; j++) {
+                        text += " " + (cells[j].innerText || cells[j].textContent);
+                    }
+                    if (text.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function saveClassFees(classId) {
+            const admFee = parseFloat(document.getElementById('adm-fee-' + classId).value) || 0.0;
+            const admFeeCoaching = parseFloat(document.getElementById('adm-fee-coaching-' + classId).value) || 0.0;
+            const admFeeHostel = parseFloat(document.getElementById('adm-fee-hostel-' + classId).value) || 0.0;
+            
+            const readmFeeSchool = parseFloat(document.getElementById('readm-fee-school-' + classId).value) || 0.0;
+            const readmFeeCoaching = parseFloat(document.getElementById('readm-fee-coaching-' + classId).value) || 0.0;
+            const readmFeeHostel = parseFloat(document.getElementById('readm-fee-hostel-' + classId).value) || 0.0;
+            
+            const monFee = parseFloat(document.getElementById('mon-fee-' + classId).value) || 0.0;
+            const monFeeCoaching = parseFloat(document.getElementById('mon-fee-coaching-' + classId).value) || 0.0;
+            const hostelFee = parseFloat(document.getElementById('hostel-fee-' + classId).value) || 0.0;
+            
+            const formData = new FormData();
+            formData.append('class_id', classId);
+            formData.append('admission_fee', admFee);
+            formData.append('admission_fee_coaching', admFeeCoaching);
+            formData.append('admission_fee_hostel', admFeeHostel);
+            formData.append('readmission_fee_school', readmFeeSchool);
+            formData.append('readmission_fee_coaching', readmFeeCoaching);
+            formData.append('readmission_fee_hostel', readmFeeHostel);
+            formData.append('monthly_fee', monFee);
+            formData.append('monthly_fee_coaching', monFeeCoaching);
+            formData.append('hostel_fee', hostelFee);
+            
+            fetch('/admin/update-class-fees', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.showToast(data.message, 'success');
+                } else {
+                    window.showToast(data.message || 'Error updating fees.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Save Class Fees Error:', err);
+                window.showToast('Network error, please check connection.', 'error');
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

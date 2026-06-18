@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Certificate - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .split-container {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 30px;
+            align-items: start;
+        }
+        @media (max-width: 1024px) {
+            .split-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Form Card */
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        /* Live Preview Styles */
+        .preview-sticky {
+            position: sticky;
+            top: 30px;
+        }
+        .preview-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* The Actual Certificate Mockup */
+        .cert-mock {
+            background: #fff;
+            aspect-ratio: 1.414; /* A4 landscape */
+            width: 100%;
+            border-radius: 4px;
+            box-shadow: var(--shadow-md);
+            padding: 5%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            text-align: center;
+            overflow: hidden;
+        }
+        
+        /* Theme: Classic (Gold/Navy) */
+        .theme-classic {
+            border: 15px double #c5a880;
+            background-color: #faf8f5;
+        }
+        .theme-classic .cert-mock-title {
+            color: #1a2e40;
+            font-family: 'Outfit', sans-serif;
+            text-transform: uppercase;
+            font-size: 18px;
+            font-weight: 800;
+        }
+        
+        /* Theme: Modern (Blue) */
+        .theme-modern {
+            border: 10px solid #1e3a8a;
+            border-left: 20px solid #1e3a8a;
+            background-color: #fff;
+        }
+        .theme-modern .cert-mock-title {
+            color: #1e3a8a;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        /* Theme: Sports (Red/Grey) */
+        .theme-sports {
+            border: 12px double #dc2626;
+            background-color: #fffafb;
+        }
+        .theme-sports .cert-mock-title {
+            color: #dc2626;
+            font-family: 'Impact', 'Fredoka', sans-serif;
+            font-size: 22px;
+        }
+        
+        /* Theme: Elegant (Black/Silver) */
+        .theme-elegant {
+            border: 8px solid #000;
+            outline: 2px solid #ccc;
+            outline-offset: -6px;
+            background-color: #fff;
+        }
+        .theme-elegant .cert-mock-title {
+            color: #000;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        
+        /* Internal elements inside mockup */
+        .cert-mock-school {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin: 0;
+            text-transform: uppercase;
+            color: #333;
+        }
+        .cert-mock-sub {
+            color: #dc2626;
+            font-style: italic;
+            font-weight: 700;
+            margin-top: 2px;
+            font-size: 11px;
+        }
+        .cert-mock-heading {
+            font-weight: bold;
+            font-style: italic;
+            text-decoration: underline;
+            color: #b45309;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        .cert-mock-certify {
+            font-style: italic;
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
+        }
+        .cert-mock-name {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 4px 0;
+            color: #111;
+            text-transform: uppercase;
+            border-bottom: 1px dotted #ccc;
+            display: inline-block;
+            padding: 0 10px;
+        }
+        .cert-mock-relation {
+            font-size: 9px;
+            color: #555;
+        }
+        .cert-mock-body {
+            font-size: 9.5px;
+            color: #333;
+            line-height: 1.4;
+            margin: 8px auto 0 auto;
+            max-width: 90%;
+        }
+        .cert-mock-congrats {
+            font-size: 8px;
+            color: #555;
+            font-style: italic;
+            margin: 5px auto 0 auto;
+            max-width: 90%;
+        }
+        .cert-mock-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 15px;
+            font-size: 8px;
+            padding: 0 10px;
+        }
+        .cert-mock-sig-box {
+            border-top: 1px solid #777;
+            padding-top: 2px;
+            min-width: 80px;
+        }
+        
+        .toggle-section {
+            transition: all 0.3s ease;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item active"><i data-lucide="award"></i> Certificates</a>
+                
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/student-list" class="sidebar-item"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/academics-setting" class="sidebar-item"><i data-lucide="settings"></i> Academic Setting</a>
+                
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <div class="top-bar-title">Create Certificate</div>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                <div style="margin-bottom: 25px;">
+                    <a href="/admin/manage-certificates" style="display: inline-flex; align-items: center; gap: 5px; color: var(--primary-color); text-decoration: none; font-weight: 600;">
+                        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Back to Certificates
+                    </a>
+                </div>
+
+                <div class="split-container">
+                    <!-- Form Card -->
+                    <div class="form-card">
+                        <h3 style="margin: 0 0 20px 0; font-size: 18px; color: var(--text-dark);">Configure Certificate Details</h3>
+                        
+                        <form action="/admin/create-certificate" method="POST" id="certForm">
+                            <!-- Recipient Type -->
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Recipient Category *</label>
+                                <select name="recipient_type" id="recipient_type" required onchange="handleRecipientTypeChange()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="student">Student</option>
+                                    <option value="teacher">Teacher / Faculty</option>
+                                    <option value="other">Other / Guest</option>
+                                </select>
+                            </div>
+
+                            <!-- Student Dropdown Section -->
+                            <div class="input-group toggle-section" id="student_selection_group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Select Student *</label>
+                                <select name="recipient_id" id="student_id_select" onchange="autoFillStudentDetails()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="">-- Choose a Student --</option>
+                                    {% for s in students %}
+                                        <option value="{{ s.id }}" data-name="{{ s.full_name or s.username }}" data-class="{{ s.class or '' }}" data-section="{{ s.section or '' }}" data-roll="{{ s.roll_number or '' }}">
+                                            {{ s.full_name or s.username }} (Class: {{ s.class or '-' }}, Roll: {{ s.roll_number or '-' }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Teacher Dropdown Section -->
+                            <div class="input-group toggle-section hidden" id="teacher_selection_group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Select Teacher *</label>
+                                <select name="recipient_id" id="teacher_id_select" onchange="autoFillTeacherDetails()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="">-- Choose a Teacher --</option>
+                                    {% for t in teachers %}
+                                        <option value="{{ t.id }}" data-name="{{ t.full_name or t.username }}">
+                                            {{ t.full_name or t.username }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Custom Details (Overriding or Custom Recipient) -->
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;" id="recipient_name_label">Recipient Name *</label>
+                                <input type="text" name="recipient_name" id="recipient_name" required placeholder="Enter recipient's full name" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                            </div>
+
+                            <div class="input-group toggle-section" id="father_name_group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Father / Guardian Name (Optional)</label>
+                                <input type="text" name="father_name" id="father_name" placeholder="Enter father's or mother's name" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                            </div>
+
+                            <!-- Student Info Specifics -->
+                            <div class="form-row toggle-section" id="student_specifics_group">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Class</label>
+                                    <input type="text" name="class_name" id="class_name" placeholder="e.g. NURSERY" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Section & Roll No</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                        <input type="text" name="section" id="section" placeholder="Sec" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                                        <input type="text" name="roll_number" id="roll_number" placeholder="Roll" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;">
+
+                            <!-- Styling & Design -->
+                            <div class="form-row">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Design Theme</label>
+                                    <select name="theme_style" id="theme_style" onchange="updateThemeStyle()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="classic">Classic (Cream/Gold)</option>
+                                        <option value="modern">Modern (Navy/Silver)</option>
+                                        <option value="sports">Sports (Double Red)</option>
+                                        <option value="elegant">Elegant (Black/Gold)</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Rank / Position</label>
+                                    <select name="position_text" id="position_text" onchange="updatePreview()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="None">None (Participation / Appreciation)</option>
+                                        <option value="1st">1st Place</option>
+                                        <option value="2nd">2nd Place</option>
+                                        <option value="3rd">3rd Place</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Main Content Customization -->
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Certificate Title / Heading</label>
+                                <input type="text" name="title" id="title" value="CERTIFICATE OF ACHIEVEMENT" required style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Event / Category Subtitle</label>
+                                <input type="text" name="subtitle" id="subtitle" value="ANNUAL SPORTS - 2026" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Activity / Event Name</label>
+                                <input type="text" name="event_name" id="event_name" placeholder="e.g. 100m Sprint" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Reason / Achievement Description Text</label>
+                                <textarea name="reason_text" id="reason_text" rows="3" required style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical;" oninput="updatePreview()">has successfully participated in the Annual Sports Competition 2026.</textarea>
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600; margin-bottom: 6px; display: block;">Congratulations Text</label>
+                                <textarea name="congrats_text" id="congrats_text" rows="3" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical;" oninput="updatePreview()">We congratulate him/her on this outstanding achievement and wish him/her continued success in all future athletic and academic pursuits.</textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Certificate Date</label>
+                                    <input type="text" name="date_text" id="date_text" value="31-01-2026" required style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Signature Authority Title</label>
+                                    <input type="text" name="signature_text" id="signature_text" value="T.I.C Signature" required style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;" oninput="updatePreview()">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="auth-btn" style="background-color: var(--primary-color); width: 100%; padding: 12px; font-size: 16px; margin-top: 20px;">
+                                Save and Generate Certificate
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Live Preview Card -->
+                    <div class="preview-sticky">
+                        <div class="preview-header">
+                            <i data-lucide="eye" style="width: 18px; height: 18px; color: var(--primary-color);"></i>
+                            Live Dynamic Preview
+                        </div>
+                        
+                        <div class="cert-mock theme-classic" id="certPreviewMock">
+                            <div>
+                                <h1 class="cert-mock-school">BHOGRAM AL-HIDAYET MISSION</h1>
+                                <div class="cert-mock-sub" id="prev_subtitle">ANNUAL SPORTS - 2026</div>
+                                <div class="cert-mock-heading" id="prev_title">CERTIFICATE OF ACHIEVEMENT</div>
+                            </div>
+                            
+                            <div>
+                                <div class="cert-mock-certify">This is to certify that</div>
+                                <div class="cert-mock-name" id="prev_recipient_name">ROUSHAN JAMIL SARKAR</div>
+                                <div class="cert-mock-relation" id="prev_relation_text">son/daughter of JAYED ALI SARKAR</div>
+                            </div>
+                            
+                            <div class="cert-mock-body" id="prev_body_text">
+                                of Class NURSERY, Section: A Roll: 12, has successfully participated in the Annual Sports Competition 2026.
+                            </div>
+                            
+                            <div class="cert-mock-congrats" id="prev_congrats_text">
+                                We congratulate him/her on this outstanding achievement and wish him/her continued success in all future athletic and academic pursuits.
+                            </div>
+                            
+                            <div class="cert-mock-footer">
+                                <div id="prev_date_text">DATE: 31-01-2026</div>
+                                <div class="cert-mock-sig-box" id="prev_signature_text">T.I.C Signature</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        lucide.createIcons();
+        
+        function handleRecipientTypeChange() {
+            var type = document.getElementById('recipient_type').value;
+            
+            // Toggle groups
+            var studentGroup = document.getElementById('student_selection_group');
+            var teacherGroup = document.getElementById('teacher_selection_group');
+            var fatherGroup = document.getElementById('father_name_group');
+            var studentSpecifics = document.getElementById('student_specifics_group');
+            var nameLabel = document.getElementById('recipient_name_label');
+            
+            // Reset dropdown selects
+            document.getElementById('student_id_select').value = '';
+            document.getElementById('teacher_id_select').value = '';
+            
+            if (type === 'student') {
+                studentGroup.classList.remove('hidden');
+                teacherGroup.classList.add('hidden');
+                fatherGroup.classList.remove('hidden');
+                studentSpecifics.classList.remove('hidden');
+                nameLabel.innerText = "Recipient Name (Auto-filled or Custom)";
+                document.getElementById('recipient_name').placeholder = "Student's name";
+                document.getElementById('title').value = "CERTIFICATE OF ACHIEVEMENT";
+            } else if (type === 'teacher') {
+                studentGroup.classList.add('hidden');
+                teacherGroup.classList.remove('hidden');
+                fatherGroup.classList.add('hidden');
+                studentSpecifics.classList.add('hidden');
+                nameLabel.innerText = "Recipient Name (Auto-filled or Custom)";
+                document.getElementById('recipient_name').placeholder = "Teacher's name";
+                document.getElementById('title').value = "CERTIFICATE OF APPRECIATION";
+            } else {
+                studentGroup.classList.add('hidden');
+                teacherGroup.classList.add('hidden');
+                fatherGroup.classList.remove('hidden');
+                studentSpecifics.classList.add('hidden');
+                nameLabel.innerText = "Recipient Name *";
+                document.getElementById('recipient_name').placeholder = "Recipient's full name";
+                document.getElementById('title').value = "CERTIFICATE OF ACHIEVEMENT";
+            }
+            updatePreview();
+        }
+        
+        function autoFillStudentDetails() {
+            var select = document.getElementById('student_id_select');
+            var selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption.value !== "") {
+                var name = selectedOption.getAttribute('data-name');
+                var cls = selectedOption.getAttribute('data-class');
+                var sec = selectedOption.getAttribute('data-section');
+                var roll = selectedOption.getAttribute('data-roll');
+                
+                document.getElementById('recipient_name').value = name;
+                document.getElementById('class_name').value = cls;
+                document.getElementById('section').value = sec;
+                document.getElementById('roll_number').value = roll;
+            }
+            updatePreview();
+        }
+        
+        function autoFillTeacherDetails() {
+            var select = document.getElementById('teacher_id_select');
+            var selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption.value !== "") {
+                var name = selectedOption.getAttribute('data-name');
+                document.getElementById('recipient_name').value = name;
+            }
+            updatePreview();
+        }
+        
+        function updateThemeStyle() {
+            var theme = document.getElementById('theme_style').value;
+            var mock = document.getElementById('certPreviewMock');
+            
+            mock.className = "cert-mock theme-" + theme;
+        }
+        
+        function updatePreview() {
+            // Recipient Details
+            var name = document.getElementById('recipient_name').value || "ROUSHAN JAMIL SARKAR";
+            var father = document.getElementById('father_name').value;
+            var type = document.getElementById('recipient_type').value;
+            
+            document.getElementById('prev_recipient_name').innerText = name;
+            
+            // Father text
+            var relationEl = document.getElementById('prev_relation_text');
+            if (type === 'student' || type === 'other') {
+                if (father) {
+                    relationEl.innerText = "son/daughter of " + father;
+                    relationEl.classList.remove('hidden');
+                } else {
+                    relationEl.innerText = "";
+                    relationEl.classList.add('hidden');
+                }
+            } else {
+                relationEl.innerText = "";
+                relationEl.classList.add('hidden');
+            }
+            
+            // Text values
+            var title = document.getElementById('title').value || "CERTIFICATE OF ACHIEVEMENT";
+            var subtitle = document.getElementById('subtitle').value || "ANNUAL SPORTS - 2026";
+            var reason = document.getElementById('reason_text').value || "";
+            var congrats = document.getElementById('congrats_text').value || "";
+            var date = document.getElementById('date_text').value || "";
+            var sig = document.getElementById('signature_text').value || "";
+            
+            document.getElementById('prev_title').innerText = title;
+            document.getElementById('prev_subtitle').innerText = subtitle;
+            document.getElementById('prev_congrats_text').innerText = congrats;
+            document.getElementById('prev_date_text').innerText = "DATE: " + date;
+            document.getElementById('prev_signature_text').innerText = sig;
+            
+            // Construct main body text
+            var bodyText = "";
+            if (type === 'student') {
+                var cls = document.getElementById('class_name').value || "NURSERY";
+                var sec = document.getElementById('section').value;
+                var roll = document.getElementById('roll_number').value;
+                
+                bodyText = "of Class " + cls;
+                if (sec) bodyText += ", Section: " + sec;
+                if (roll) bodyText += " Roll: " + roll;
+                bodyText += ", " + reason;
+            } else {
+                bodyText = reason;
+            }
+            
+            // Rank and Event
+            var rank = document.getElementById('position_text').value;
+            var event = document.getElementById('event_name').value;
+            if (rank && rank !== 'None') {
+                var pronoun = "He/She"; // generic
+                bodyText += " " + pronoun + " has secured " + rank + " place";
+                if (event) {
+                    bodyText += " in the " + event + ".";
+                } else {
+                    bodyText += ".";
+                }
+            }
+            
+            document.getElementById('prev_body_text').innerText = bodyText;
+        }
+        
+        // Initial call
+        updatePreview();
+    </script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Attendance & Leaves - Bhogram Al-Hidayet Mission</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .summary-card {
+            background: linear-gradient(135deg, #0984e3 0%, #74b9ff 100%);
+            color: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            .summary-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+        }
+
+        .pct-circle {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            border: 4px solid #fff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .leaves-split-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .leaves-split-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .roster-card {
+            background: #fff;
+            padding: 25px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .btn-submit {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Outfit', sans-serif;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .badge-pending {
+            background: #ffeaa7;
+            color: #d35400;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-approved {
+            background: #d4edda;
+            color: #155724;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-rejected {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .att-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .att-feed-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9f9f9;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #eee;
+        }
+
+        .feed-present { border-left-color: #2ecc71; }
+        .feed-absent { border-left-color: #e74c3c; }
+        .feed-late { border-left-color: #f39c12; }
+        .feed-halfday { border-left-color: #9b59b6; }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Bhogram Al-Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">My Attendance & Leaves</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- ATTENDANCE PERCENTAGE CARD -->
+                <div class="summary-card">
+                    <div>
+                        <h2 style="margin:0; font-family:'Fredoka', sans-serif; font-weight:600; font-size:24px;">Attendance Summary</h2>
+                        <p style="margin:5px 0 0 0; opacity:0.9; font-size:14px;">Your cumulative daily roster attendance percentage.</p>
+                    </div>
+                    
+                    <div class="pct-circle">
+                        {{ att_percentage }}%
+                    </div>
+                </div>
+
+                <!-- SPLIT GRID -->
+                <div class="leaves-split-grid">
+                    
+                    <!-- Left: Leave request history list -->
+                    <div class="roster-card">
+                        <h3 style="margin-top:0; margin-bottom:20px; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500;">
+                            <i class="fas fa-history" style="color:var(--primary-color); margin-right:5px;"></i> My Leave History
+                        </h3>
+
+                        {% if leave_history %}
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid #eee; text-align: left; font-size: 13px; color:#636e72;">
+                                            <th style="padding: 10px;">Type</th>
+                                            <th style="padding: 10px;">Date Range</th>
+                                            <th style="padding: 10px;">Reason</th>
+                                            <th style="padding: 10px; text-align: center;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for l in leave_history %}
+                                        <tr style="border-bottom: 1px solid #eee; font-size: 14px;">
+                                            <td style="padding: 12px 10px;"><code>{{ l.leave_type }}</code></td>
+                                            <td style="padding: 12px 10px;">
+                                                <strong>{{ l.start_date }}</strong>
+                                                <div style="font-size: 11px; color:#7f8c8d; margin-top:2px;">to {{ l.end_date }}</div>
+                                            </td>
+                                            <td style="padding: 12px 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                {{ l.reason or 'N/A' }}
+                                            </td>
+                                            <td style="padding: 12px 10px; text-align: center;">
+                                                <span class="badge {% if l.status == 'Approved' %}badge-approved{% elif l.status == 'Rejected' %}badge-rejected{% else %}badge-pending{% endif %}">
+                                                    {{ l.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div style="text-align: center; padding: 40px; color:#7f8c8d;">
+                                <i class="fas fa-file-signature" style="font-size: 32px; color:#dfe6e9; margin-bottom: 10px;"></i>
+                                <p style="margin:0; font-size: 14px;">You haven't submitted any leave applications.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Right: Apply for Leave Form & Recent Logs -->
+                    <div style="display:flex; flex-direction:column; gap:25px;">
+                        
+                        <!-- Apply Form -->
+                        <div class="roster-card" style="border-top: 4px solid var(--primary-color);">
+                            <h3 style="margin-top:0; margin-bottom:20px; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500;">
+                                <i class="fas fa-file-signature" style="color:var(--primary-color); margin-right:5px;"></i> Request Leave
+                            </h3>
+                            
+                            <form action="/student/attendance-leaves" method="POST">
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <label>Leave Type:</label>
+                                    <select name="leave_type">
+                                        <option value="Sick Leave">Sick Leave</option>
+                                        <option value="Medical Leave">Medical Leave</option>
+                                        <option value="Emergency Leave">Emergency Leave</option>
+                                        <option value="Casual Leave">Casual Leave</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <label>Start Date:</label>
+                                    <input type="date" name="start_date" required>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <label>End Date:</label>
+                                    <input type="date" name="end_date" required>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 20px;">
+                                    <label>Reason for Leave:</label>
+                                    <textarea name="reason" rows="3" required placeholder="Describe the reason for leave..."></textarea>
+                                </div>
+                                <button type="submit" class="btn-submit">Submit Request</button>
+                            </form>
+                        </div>
+
+                        <!-- Recent Logs -->
+                        <div class="roster-card">
+                            <h3 style="margin-top:0; margin-bottom:15px; font-family:'Fredoka', sans-serif; font-size:16px; color:var(--text-dark); font-weight:500;">
+                                <i class="fas fa-calendar-alt" style="color:#7f8c8d; margin-right:5px;"></i> Daily Attendance Log
+                            </h3>
+                            
+                            {% if attendance_log %}
+                                <div class="att-feed">
+                                    {% for a in attendance_log %}
+                                        <div class="att-feed-item {% if a.status == 'Present' %}feed-present{% elif a.status == 'Absent' %}feed-absent{% elif a.status == 'Late' %}feed-late{% else %}feed-halfday{% endif %}">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 14px; color:#2d3436;">{{ a.date }}</div>
+                                                {% if a.remarks %}
+                                                    <div style="font-size: 11px; color:#7f8c8d; margin-top:2px;">{{ a.remarks }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <span style="font-size: 12px; font-weight:700; color:{% if a.status == 'Present' %}#2ecc71{% elif a.status == 'Absent' %}#e74c3c{% elif a.status == 'Late' %}#f39c12{% else %}#9b59b6{% endif %};">
+                                                    {{ a.status }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p style="text-align:center; color:#7f8c8d; font-size:13px; margin: 20px 0 0 0;">No attendance records found for this academic session.</p>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

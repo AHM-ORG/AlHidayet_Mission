@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Manager - Al Hidayet Mission</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    
+    <style>
+        .dashboard-grid-leaves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .roster-card {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .leaves-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .leaves-table th, .leaves-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+        }
+
+        .leaves-table th {
+            background: #fdf2f8;
+            color: #2d3436;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .leaves-table tr:hover {
+            background-color: #fafafa;
+        }
+
+        .badge-pending {
+            background: #ffeaa7;
+            color: #d35400;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-approved {
+            background: #d4edda;
+            color: #155724;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-rejected {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-approve {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .btn-reject {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: #f1f2f6;
+            border: none;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            border-radius: 8px 8px 0 0;
+            color: #636e72;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-color);
+            border-top: 3px solid var(--primary-color);
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+        }
+
+        .tab-content {
+            display: none;
+            background: #fff;
+            border-radius: 0 8px 8px 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: #eee;
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(135deg, #10ac84 0%, #2ed573 100%);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+
+        .progress-bar-warning {
+            background: linear-gradient(135deg, #f59f00 0%, #ff9f43 100%);
+        }
+
+        .progress-bar-danger {
+            background: linear-gradient(135deg, #ee5253 0%, #ff7675 100%);
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+            background: #fff;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">Leave Management</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- TABS CONTAINER -->
+                <div style="margin-bottom: 0;">
+                    <button class="tab-btn active" onclick="switchTab('pending-tab', this)">Pending Applications</button>
+                    <button class="tab-btn" onclick="switchTab('cl-tab', this)">CL Quotas (Teachers)</button>
+                    <button class="tab-btn" onclick="switchTab('direct-tab', this)">Log Direct Leave</button>
+                </div>
+
+                <!-- TAB 1: PENDING LEAVES -->
+                <div id="pending-tab" class="tab-content active" style="padding: 30px; border-radius: 0 8px 8px 8px;">
+                    <h3 style="margin-top:0; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500; margin-bottom:15px;">
+                        <i class="fas fa-clock" style="color:var(--primary-color); margin-right:5px;"></i> Pending Leave Requests
+                    </h3>
+
+                    <!-- Interactive Search Input -->
+                    <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                        <div style="position: relative; flex: 1; max-width: 350px;">
+                            <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #a4b0be; pointer-events: none;"></i>
+                            <input type="text" id="leavesSearch" placeholder="Search leave records by name or type..." onkeyup="filterLeaves()" style="width: 100%; padding: 10px 12px 10px 38px; border: 2px solid #eee; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 14px; box-sizing: border-box; transition: 0.3s; background: #fff;" onfocus="this.style.borderColor='var(--primary-color)'" onblur="this.style.borderColor='#eee'">
+                        </div>
+                    </div>
+
+                    {% if pending_leaves %}
+                    <div style="overflow-x: auto;">
+                        <table class="leaves-table">
+                            <thead>
+                                <tr>
+                                    <th>Applicant Name</th>
+                                    <th>Role</th>
+                                    <th>Leave Type</th>
+                                    <th>Date Range</th>
+                                    <th>Reason / Explanation</th>
+                                    <th style="width: 200px; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for l in pending_leaves %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ l.applicant_name }}</strong>
+                                            {% if l.role == 'student' %}
+                                                Class {{ l.class_name }}
+                                            {% else %}
+                                                Teacher
+                                            {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if l.role == 'student' %}badge-success{% else %}badge-info{% endif %}" style="font-size:11px; padding:3px 6px;">
+                                            {{ l.role|upper }}
+                                        </span>
+                                    </td>
+                                    <td><code>{{ l.leave_type }}</code></td>
+                                    <td>
+                                        <div style="font-weight:600; font-size:14px; color:#2d3436;">{{ l.start_date }}</div>
+                                        <div style="font-size:12px; color:#7f8c8d;">to {{ l.end_date }}</div>
+                                    </td>
+                                    <td><span style="font-style: italic; font-size: 14px; color:#555;">"{{ l.reason or 'No reason provided' }}"</span></td>
+                                    <td style="text-align: center;">
+                                        <div style="display:flex; gap:10px; justify-content:center;">
+                                            <form action="/admin/leaves/action/{{ l.id }}/approve" method="POST" style="margin:0;">
+                                                <button type="submit" class="btn-action btn-approve" onclick="return confirm('Approve this leave request?');">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                            </form>
+                                            <form action="/admin/leaves/action/{{ l.id }}/reject" method="POST" style="margin:0;">
+                                                <button type="submit" class="btn-action btn-reject" onclick="return confirm('Reject this leave request?');">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <div style="text-align:center; padding:50px 30px; color:#7f8c8d;">
+                            <i class="fas fa-check-circle" style="font-size:40px; color:#dfe6e9; margin-bottom:10px;"></i>
+                            <p style="font-size:15px; font-weight:500; margin:0;">All leave applications have been processed!</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- PAST LEAVES LOG -->
+                    <h3 style="margin-top:40px; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500; margin-bottom:15px; border-top:1px solid #eee; padding-top:30px;">
+                        <i class="fas fa-history" style="color:#7f8c8d; margin-right:5px;"></i> Past Applications History Log
+                    </h3>
+                    {% if past_leaves %}
+                    <div style="overflow-x: auto;">
+                        <table class="leaves-table">
+                            <thead>
+                                <tr>
+                                    <th>Applicant Name</th>
+                                    <th>Role</th>
+                                    <th>Leave Type</th>
+                                    <th>Date Range</th>
+                                    <th>Reason</th>
+                                    <th style="width: 120px; text-align: center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for l in past_leaves %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ l.applicant_name }}</strong>
+                                        <div style="font-size: 11px; color:#7f8c8d; margin-top: 3px;">
+                                            Class {{ l.class_name }}
+                                        </div>
+                                    </td>
+                                    <td>{{ l.role|upper }}</td>
+                                    <td>{{ l.leave_type }}</td>
+                                    <td>{{ l.start_date }} to {{ l.end_date }}</td>
+                                    <td><span style="font-size: 14px; color:#636e72;">{{ l.reason or 'N/A' }}</span></td>
+                                    <td style="text-align: center;">
+                                        <span class="badge {% if l.status == 'Approved' %}badge-approved{% else %}badge-rejected{% endif %}">
+                                            {{ l.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p style="text-align:center; padding:30px; color:#7f8c8d; font-size:14px;">No processed leaves in historical archives.</p>
+                    {% endif %}
+                </div>
+
+                <!-- TAB 2: TEACHER CL BALANCE -->
+                <div id="cl-tab" class="tab-content" style="padding: 30px; border-radius: 0 8px 8px 8px;">
+                    <h3 style="margin-top:0; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500; margin-bottom:15px;">
+                        <i class="fas fa-calculator" style="color:var(--primary-color); margin-right:5px;"></i> Teacher Casual Leave (CL) Balances
+                    </h3>
+                    
+                    {% if teachers_list %}
+                    <div style="overflow-x: auto;">
+                        <table class="leaves-table">
+                            <thead>
+                                <tr>
+                                    <th>Teacher Name</th>
+                                    <th>Username</th>
+                                    <th>Total CL Quota</th>
+                                    <th>Leaves Taken</th>
+                                    <th>Remaining Balance</th>
+                                    <th style="width: 250px;">Quota Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in teachers_list %}
+                                    {% set quota = t.cl_quota|default(12)|int %}
+                                    {% set taken = t.leaves_taken|int %}
+                                    {% set balance = quota - taken %}
+                                    {% set pct = (taken / quota * 100)|int if quota > 0 else 100 %}
+                                    <tr>
+                                        <td><strong>{{ t.full_name }}</strong></td>
+                                        <td><code>{{ t.username }}</code></td>
+                                        <td>{{ quota }} Days</td>
+                                        <td><span style="color:#d35400; font-weight:600;">{{ taken }} Days</span></td>
+                                        <td><span style="color:#27ae60; font-weight:600;">{{ balance }} Days</span></td>
+                                        <td>
+                                            <div style="font-size:11px; color:#7f8c8d; display:flex; justify-content:space-between; margin-bottom:3px;">
+                                                <span>{{ pct }}% Quota Used</span>
+                                                <span>{{ taken }}/{{ quota }}</span>
+                                            </div>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar-fill {% if pct >= 80 %}progress-bar-danger{% elif pct >= 50 %}progress-bar-warning{% endif %}" style="width: {{ pct }}%;"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p style="text-align:center; padding:30px; color:#7f8c8d;">No teachers registered in the roster directory.</p>
+                    {% endif %}
+                </div>
+
+                <!-- TAB 3: DIRECT LEAVE LOGGER -->
+                <div id="direct-tab" class="tab-content" style="padding: 30px; border-radius: 0 8px 8px 8px;">
+                    <div style="max-width: 600px; margin: 0 auto; text-align: left;">
+                        <h3 style="font-family: 'Fredoka', sans-serif; font-size: 22px; color: var(--text-dark); margin-top: 0; margin-bottom: 10px;">Direct Leave Logging</h3>
+                        <p style="color: #636e72; font-size: 15px; margin-bottom: 30px;">
+                            Record a leave entry directly. Approved dates are automatically marked as <code>On Leave</code> / <code>Absent</code> on attendance sheets.
+                        </p>
+
+                        <form action="/admin/leaves/record-direct" method="POST">
+                            
+                            <!-- Cascading Recipient Type Selector -->
+                            <div class="input-group" style="margin-bottom: 20px;">
+                                <label>Recipient Type:</label>
+                                <select id="direct_recipient_type" class="search-select" onchange="onRecipientTypeChange()" style="width: 100%;">
+                                    <option value="student">Student</option>
+                                    <option value="teacher">Teacher</option>
+                                </select>
+                            </div>
+
+                            <!-- Cascading Student Campus and Class Selectors (Hidden for Teacher) -->
+                            <input type="hidden" id="direct_branch" value="bhogram">
+                            <div id="student_filters" style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div class="input-group">
+                                    <label>Class:</label>
+                                    <select id="direct_class" class="search-select" onchange="onStudentFilterChange()">
+                                        <option value="">Choose Class</option>
+                                        {% for c in ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                                            <option value="{{ c }}">{{ c }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Recipient Dynamic Selector -->
+                            <div class="input-group" style="margin-bottom: 20px;">
+                                <label>Select Target Recipient:</label>
+                                <select id="direct_user_id" name="user_id" required style="width: 100%;">
+                                    <option value="">Choose Recipient</option>
+                                </select>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px;">
+                                <div class="input-group">
+                                    <label>Start Date:</label>
+                                    <input type="date" name="start_date" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>End Date:</label>
+                                    <input type="date" name="end_date" required>
+                                </div>
+                            </div>
+
+                            <div class="input-group" style="margin-bottom: 20px;">
+                                <label>Leave Type:</label>
+                                <select name="leave_type" class="search-select">
+                                    <option value="Casual Leave">Casual Leave (CL)</option>
+                                    <option value="Medical Leave">Medical Leave</option>
+                                    <option value="Sick Leave">Sick Leave</option>
+                                    <option value="Emergency Leave">Emergency Leave</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group" style="margin-bottom: 25px;">
+                                <label>Reason / Explanation:</label>
+                                <textarea name="reason" rows="3" placeholder="Enter reason (optional)"></textarea>
+                            </div>
+
+                            <button type="submit" class="btn-filter" style="width: 100%; background: linear-gradient(135deg, #10ac84 0%, #2ed573 100%);">
+                                <i class="fas fa-file-invoice"></i> Save Approved Leave & Attendance
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        const allStudents = [
+            {% for s in students_dropdown %}
+            {
+                id: "{{ s.id }}",
+                name: "{{ s.full_name|escape }}",
+                roll: "{{ s.roll_number or 'N/A' }}",
+                class_name: "{{ s.class }}",
+                branch: "{{ s.branch }}"
+            },
+            {% endfor %}
+        ];
+
+        const allTeachers = [
+            {% for t in teachers_list %}
+            {
+                id: "{{ t.id }}",
+                name: "{{ t.full_name|escape }}"
+            },
+            {% endfor %}
+        ];
+
+        let recipientSelect;
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+
+            // Manual TomSelect initialization for Recipient
+            recipientSelect = new TomSelect("#direct_user_id", {
+                create: false,
+                sortField: {field: "text", direction: "asc"}
+            });
+
+            // Initialize correct options
+            onRecipientTypeChange();
+        });
+
+        function onRecipientTypeChange() {
+            const type = document.getElementById("direct_recipient_type").value;
+            const filterSection = document.getElementById("student_filters");
+            
+            if (type === "teacher") {
+                filterSection.style.display = "none";
+                populateTeachers();
+            } else {
+                filterSection.style.display = "grid";
+                onStudentFilterChange();
+            }
+        }
+
+        function populateTeachers() {
+            if (!recipientSelect) return;
+            recipientSelect.clear();
+            recipientSelect.clearOptions();
+            
+            allTeachers.forEach(t => {
+                recipientSelect.addOption({
+                    value: t.id,
+                    text: t.name
+                });
+            });
+            
+            recipientSelect.refreshOptions(false);
+        }
+
+        function onStudentFilterChange() {
+            if (!recipientSelect) return;
+            const branchEl = document.getElementById("direct_branch");
+            const classEl = document.getElementById("direct_class");
+            if (!branchEl || !classEl) return;
+            
+            const branch = branchEl.value;
+            const classVal = classEl.value;
+            
+            recipientSelect.clear();
+            recipientSelect.clearOptions();
+            
+            if (!classVal) {
+                recipientSelect.refreshOptions(false);
+                return;
+            }
+            
+            const filtered = allStudents.filter(s => s.class_name && s.class_name.trim().toLowerCase() === classVal.trim().toLowerCase());
+            
+            filtered.forEach(s => {
+                recipientSelect.addOption({
+                    value: s.id,
+                    text: `${s.name} (Roll: ${s.roll})`
+                });
+            });
+            
+            recipientSelect.refreshOptions(false);
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function filterLeaves() {
+            const input = document.getElementById("leavesSearch");
+            const filter = input.value.toLowerCase();
+            
+            document.querySelectorAll("#pending-tab .leaves-table").forEach((table) => {
+                const tbody = table.querySelector("tbody");
+                if (!tbody) return;
+                const rows = tbody.getElementsByTagName("tr");
+                let visibleCount = 0;
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName("td");
+                    if (cells.length > 0) {
+                        let text = "";
+                        // Concatenate cell texts to search within
+                        for (let j = 0; j < cells.length; j++) {
+                            text += " " + (cells[j].innerText || cells[j].textContent);
+                        }
+                        if (text.toLowerCase().indexOf(filter) > -1) {
+                            rows[i].style.display = "";
+                            visibleCount++;
+                        } else {
+                            rows[i].style.display = "none";
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

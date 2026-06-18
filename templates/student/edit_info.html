@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .form-section {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 30px;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .form-section h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+        }
+
+        .readonly-field {
+            background-color: #f1f2f6 !important;
+            border-color: #eee !important;
+            color: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #FF9F43 0%, #ee5253 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(238, 82, 83, 0.3);
+        }
+
+        .banner-pending {
+            background: #fff9db;
+            border-left: 5px solid #f59f00;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: var(--shadow-sm);
+        }
+    </style>
+</head>
+
+<body class="bg-pattern" style="background-color: #F7F9FC; font-family: 'Outfit', sans-serif;">
+
+    <!-- Header -->
+    <header class="main-header" style="background: #fff;">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #333; text-decoration: none;">
+                    <i data-lucide="arrow-left"></i>
+                    <span class="logo-text">Back to <span class="highlight">Dashboard</span></span>
+                </a>
+            </div>
+            <div class="header-cta">
+                <a href="/logout" class="btn btn-outline" style="border-color: #e17055; color: #e17055;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container section" style="max-width: 900px; margin-top: 40px; margin-bottom: 40px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color); font-family: 'Fredoka', sans-serif;">Edit Profile Details</h1>
+            <p style="color: var(--text-light);">Submit corrections for Admin approval</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div style="background: #ff7675; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Pending Request Active Alert -->
+        {% if pending_edit %}
+        <div class="banner-pending">
+            <i data-lucide="alert-circle" style="color: #f59f00; width: 28px; height: 28px; flex-shrink: 0;"></i>
+            <div>
+                <h4 style="margin: 0; color: #f59f00; font-size: 16px; font-weight: 600;">Request Pending Approval</h4>
+                <p style="margin: 3px 0 0 0; color: #666; font-size: 14px;">
+                    You already submitted a profile update request on <strong>{{ pending_edit.submitted_at }}</strong>. 
+                    Re-submitting this form will overwrite your previous pending edits.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <form action="/student/edit-info" method="POST">
+            <!-- 1. Administrative Details (Read-only) -->
+            <div class="form-section" style="border-top-color: #636e72;">
+                <h3><i class="fas fa-lock"></i> Administrative Details (Read-Only)</h3>
+                <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 20px;">
+                    These official details are locked and can only be modified directly by the school administration.
+                </p>
+                <div style="display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex: 0 0 120px; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 15px;">
+                        <span style="font-weight: 500; font-size: 13px; color: #666;">ID Card Photo</span>
+                        {% if student_info.photo_path %}
+                            <img src="{{ url_for('static', filename='uploads/student_photos/' + student_info.photo_path) }}" alt="Photo" style="width:120px; height:140px; object-fit:cover; border:1px solid #ccc; border-radius:8px;">
+                        {% else %}
+                            <div style="width:120px; height:140px; border-radius:8px; background:#f8f9fa; border:2px dashed #ccc; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#999; font-size:12px; gap:5px;">
+                                <i data-lucide="user" style="width:24px; height:24px; color:#ccc;"></i>
+                                No Photo
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div style="flex: 1; min-width: 250px;" class="form-grid">
+                        <div class="input-group">
+                            <label>Class</label>
+                            <input type="text" class="readonly-field" readonly value="{{ student_info.class if student_info else 'N/A' }}">
+                        </div>
+                        <div class="input-group">
+                            <label>Roll Number</label>
+                            <input type="text" class="readonly-field" readonly value="{{ student_info.roll_number if student_info else 'N/A' }}">
+                        </div>
+                        <div class="input-group">
+                            <label>Unique Code</label>
+                            <input type="text" class="readonly-field" readonly value="{{ student_info.unique_code if student_info else 'N/A' }}">
+                        </div>
+                        <div class="input-group">
+                            <label>Date of Admission</label>
+                            <input type="text" class="readonly-field" readonly value="{{ student_info.date_of_admission if student_info else 'N/A' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Personal Student Details -->
+            <div class="form-section" style="border-top-color: #0984e3;">
+                <h3><i class="fas fa-user-graduate"></i> Student Profile Information</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Full Name*</label>
+                        {% set current_name = pending_data.get('full_name') if pending_edit else student_info.full_name %}
+                        <input type="text" name="full_name" required placeholder="Enter student's full name" value="{{ current_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Date of Birth*</label>
+                        {% set current_dob = pending_data.get('dob') if pending_edit else student_info.dob %}
+                        <input type="date" name="dob" required value="{{ current_dob or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Section</label>
+                        {% set current_sec = pending_data.get('section') if pending_edit else student_info.section %}
+                        <input type="text" name="section" placeholder="e.g. A" value="{{ current_sec or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Gender</label>
+                        {% set current_gender = pending_data.get('gender') if pending_edit else student_info.gender %}
+                        <select name="gender" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
+                            <option value="Male" {% if current_gender == 'Male' %}selected{% endif %}>Male</option>
+                            <option value="Female" {% if current_gender == 'Female' %}selected{% endif %}>Female</option>
+                            <option value="Other" {% if current_gender == 'Other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Caste</label>
+                        {% set current_caste = pending_data.get('caste') if pending_edit else student_info.caste %}
+                        <select name="caste" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
+                            <option value="General" {% if current_caste == 'General' %}selected{% endif %}>General</option>
+                            <option value="OBC" {% if current_caste == 'OBC' %}selected{% endif %}>OBC</option>
+                            <option value="SC" {% if current_caste == 'SC' %}selected{% endif %}>SC</option>
+                            <option value="ST" {% if current_caste == 'ST' %}selected{% endif %}>ST</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Religion</label>
+                        {% set current_religion = pending_data.get('religion') if pending_edit else student_info.religion %}
+                        <input type="text" name="religion" placeholder="e.g. Islam" value="{{ current_religion or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Nationality</label>
+                        {% set current_nat = pending_data.get('nationality') if pending_edit else student_info.nationality %}
+                        <input type="text" name="nationality" value="{{ current_nat or 'Indian' }}">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Identification Mark</label>
+                        {% set current_idmark = pending_data.get('identification_mark') if pending_edit else student_info.identification_mark %}
+                        <input type="text" name="identification_mark" placeholder="e.g. mole on right cheek" value="{{ current_idmark or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Previous Class</label>
+                        {% set current_prevcls = pending_data.get('previous_class') if pending_edit else student_info.previous_class %}
+                        <input type="text" name="previous_class" placeholder="Previous class name" value="{{ current_prevcls or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>% in Last Annual Exam</label>
+                        {% set current_prevmarks = pending_data.get('prev_marks_percentage') if pending_edit else student_info.prev_marks_percentage %}
+                        <input type="text" name="prev_marks_percentage" placeholder="e.g. 85%" value="{{ current_prevmarks or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Academic Session</label>
+                        {% set current_session = pending_data.get('session') if pending_edit else student_info.session %}
+                        <input type="text" name="session" value="{{ current_session or '2026' }}">
+                    </div>
+                    <div class="input-group" style="grid-column: span 2; margin-bottom: 20px;">
+                        <label style="font-weight: 500; margin-bottom: 8px; display: block;">Student Benefits / Options</label>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 0;">
+                            {% set cur_school = pending_data.get('take_school') if pending_edit else student_info.take_school %}
+                            {% set cur_coaching = pending_data.get('take_coaching') if pending_edit else student_info.take_coaching %}
+                            {% set cur_hostel = pending_data.get('take_day_hostel') if pending_edit else student_info.take_day_hostel %}
+                            {% set cur_car = pending_data.get('take_car') if pending_edit else student_info.take_car %}
+
+                            <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="take_school" value="1" {% if cur_school is not defined or cur_school == 1 or cur_school is none %}checked{% endif %}> School
+                            </label>
+                            <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="take_coaching" value="1" {% if cur_coaching == 1 %}checked{% endif %}> Coaching
+                            </label>
+                            <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="take_day_hostel" value="1" {% if cur_hostel == 1 %}checked{% endif %}> Day Hostel
+                            </label>
+                            <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="take_car" value="1" {% if cur_car == 1 %}checked{% endif %}> Car
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Guardian Details -->
+            <div class="form-section" style="border-top-color: #2ecc71;">
+                <h3><i class="fas fa-users"></i> Guardian Information</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Father's / Guardian's Name*</label>
+                        {% set current_guardian = pending_data.get('guardian_name') if pending_edit else student_info.guardian_name %}
+                        <input type="text" name="guardian_name" required placeholder="Guardian's name" value="{{ current_guardian or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Name*</label>
+                        {% set current_mother = pending_data.get('mothers_name') if pending_edit else student_info.mothers_name %}
+                        <input type="text" name="mothers_name" required placeholder="Mother's name" value="{{ current_mother or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Qualification</label>
+                        {% set current_fq = pending_data.get('father_qualification') if pending_edit else student_info.father_qualification %}
+                        <input type="text" name="father_qualification" placeholder="Father's Qualification" value="{{ current_fq or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Occupation</label>
+                        {% set current_fo = pending_data.get('father_occupation') if pending_edit else student_info.father_occupation %}
+                        <input type="text" name="father_occupation" placeholder="Father's Occupation" value="{{ current_fo or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Monthly Income</label>
+                        {% set current_fi = pending_data.get('father_monthly_income') if pending_edit else student_info.father_monthly_income %}
+                        <input type="text" name="father_monthly_income" placeholder="Father's Monthly Income" value="{{ current_fi or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Qualification</label>
+                        {% set current_mq = pending_data.get('mother_qualification') if pending_edit else student_info.mother_qualification %}
+                        <input type="text" name="mother_qualification" placeholder="Mother's Qualification" value="{{ current_mq or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Occupation</label>
+                        {% set current_mo = pending_data.get('mother_occupation') if pending_edit else student_info.mother_occupation %}
+                        <input type="text" name="mother_occupation" placeholder="Mother's Occupation" value="{{ current_mo or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Monthly Income</label>
+                        {% set current_mi = pending_data.get('mother_monthly_income') if pending_edit else student_info.mother_monthly_income %}
+                        <input type="text" name="mother_monthly_income" placeholder="Mother's Monthly Income" value="{{ current_mi or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Guardian's Whatsapp No</label>
+                        {% set current_wa = pending_data.get('whatsapp_no') if pending_edit else student_info.whatsapp_no %}
+                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp No" pattern="\d{10}" minlength="10" maxlength="10" value="{{ current_wa or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Permanent Address -->
+            <div class="form-section" style="border-top-color: #e17055;">
+                <h3><i class="fas fa-map-marker-alt"></i> Permanent Address</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Village*</label>
+                        {% set current_village = pending_data.get('village') if pending_edit else student_info.village %}
+                        <input type="text" name="village" required placeholder="Village" value="{{ current_village or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Post Office (P.O)*</label>
+                        {% set current_po = pending_data.get('post_office') if pending_edit else student_info.post_office %}
+                        <input type="text" name="post_office" required placeholder="Post office" value="{{ current_po or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Police Station (P.S)*</label>
+                        {% set current_ps = pending_data.get('police_station') if pending_edit else student_info.police_station %}
+                        <input type="text" name="police_station" required placeholder="Police station" value="{{ current_ps or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>District*</label>
+                        {% set current_dist = pending_data.get('district') if pending_edit else student_info.district %}
+                        <input type="text" name="district" required placeholder="District" value="{{ current_dist or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Bank Account Details -->
+            {% set bank = parse_bank_details(pending_data.get('bank_details') if pending_edit else student_info.bank_details) %}
+            <div class="form-section" style="border-top-color: #a29bfe;">
+                <h3><i class="fas fa-university"></i> Bank Account Details</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Bank Name</label>
+                        <input type="text" name="bank_name" placeholder="Bank Name" value="{{ bank.bank_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Branch Name</label>
+                        <input type="text" name="branch_name" placeholder="Branch Name" value="{{ bank.branch_name or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Account Number</label>
+                        <input type="text" name="account_no" placeholder="Account Number" value="{{ bank.account_no or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>IFSC Code</label>
+                        <input type="text" name="ifsc_code" placeholder="IFSC Code" value="{{ bank.ifsc_code or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Attached Copy (Xerox) -->
+            <div class="form-section" style="border-top-color: #ffeaa7;">
+                <h3><i class="fas fa-file-alt"></i> Attached Documents (Xerox Copies)</h3>
+                <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 20px;">
+                    Select the documents that you have attached copies of.
+                </p>
+                {% set docs = pending_data.get('attached_documents') if pending_edit else student_info.attached_documents %}
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 0;">
+                    <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="attached_documents" value="Birth Certificate" {% if docs and 'Birth Certificate' in docs %}checked{% endif %}> Birth Certificate
+                    </label>
+                    <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="attached_documents" value="Aadhaar Card" {% if docs and 'Aadhaar Card' in docs %}checked{% endif %}> Aadhaar Card
+                    </label>
+                    <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="attached_documents" value="Profile Photo" {% if docs and ('Profile Photo' in docs or 'One (1) Photo' in docs or 'Three (3) Photos' in docs) %}checked{% endif %}> Profile Photo
+                    </label>
+                    <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="attached_documents" value="Bank Passbook" {% if docs and 'Bank Passbook' in docs %}checked{% endif %}> Bank Passbook
+                    </label>
+                    <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="attached_documents" value="T.C Certificate" {% if docs and 'T.C Certificate' in docs %}checked{% endif %}> T.C Certificate
+                    </label>
+                </div>
+            </div>
+
+
+            <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Edit Request</button>
+        </form>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+
+        function setupValidation(inputId, errorId, length) {
+            const input = document.getElementById(inputId);
+            const errorMsg = document.getElementById(errorId);
+
+            if (!input) return;
+
+            input.addEventListener('input', function () {
+                const value = this.value;
+                if (value.length > 0 && (value.length !== length || !/^\d+$/.test(value))) {
+                    errorMsg.style.display = 'block';
+                    this.style.borderColor = '#e74c3c';
+                } else {
+                    errorMsg.style.display = 'none';
+                    this.style.borderColor = '#ddd';
+                    if (value.length === length) this.style.borderColor = '#2ecc71';
+                }
+            });
+        }
+
+        setupValidation('aadhar_input', 'error-aadhar', 12);
+        setupValidation('phone_input', 'error-phone', 10);
+    </script>
+</body>
+
+</html>

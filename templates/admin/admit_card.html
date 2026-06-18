@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admit Card - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .admit-card-container {
+            width: 100%;
+            max-width: 750px;
+            margin: 30px auto;
+            border: 3px solid #111;
+            padding: 3px;
+            background: #fff;
+            position: relative;
+            box-sizing: border-box;
+            color: #000;
+        }
+        
+        .admit-card-inner {
+            border: 1px solid #666;
+            background: linear-gradient(to bottom, #ffece0 0%, #e8edf9 100%);
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            min-height: 400px;
+        }
+
+        .ac-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 350px;
+            height: 350px;
+            opacity: 0.08;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .ac-header-title {
+            font-family: 'Times New Roman', serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: #4a0066;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            text-align: center;
+            margin: 10px 0 15px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .ac-top-logos {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .ac-logo-box {
+            text-align: center;
+            width: 70px;
+        }
+        .ac-logo-box img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        .ac-logo-box .estd {
+            font-size: 10px;
+            font-weight: bold;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            padding: 2px 0;
+            margin-top: 5px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .ac-address-box {
+            margin: 0 auto 15px auto;
+            width: 60%;
+            border: 1px solid #6b82b8;
+            border-radius: 8px;
+            padding: 6px 15px;
+            text-align: center;
+        }
+
+        .ac-address-box p {
+            margin: 0;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 15px;
+            color: #111;
+            line-height: 1.4;
+        }
+
+        .ac-badge-container {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .ac-admit-badge {
+            background: #ffff00;
+            color: #cc0000;
+            font-family: 'Times New Roman', serif;
+            font-weight: 900;
+            font-size: 22px;
+            display: inline-block;
+            padding: 4px 40px;
+            border: 1px solid #b3b300;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            position: relative;
+        }
+        
+        /* Double underline effect */
+        .ac-admit-badge span {
+            border-bottom: 3px double #cc0000;
+            padding-bottom: 2px;
+        }
+
+        /* Folded corners simulation */
+        .ac-admit-badge::before, .ac-admit-badge::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border: 1px solid #333;
+            border-radius: 50%;
+            background: #fff;
+            top: -4px;
+        }
+        .ac-admit-badge::before { left: -4px; }
+        .ac-admit-badge::after { right: -4px; }
+
+        .ac-exam-name {
+            font-family: 'Times New Roman', serif;
+            font-size: 22px;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .ac-student-details {
+            text-align: left;
+            font-family: 'Times New Roman', serif;
+            font-size: 15px;
+            font-weight: bold;
+            color: #000;
+            padding: 0 30px;
+            line-height: 2.2;
+            margin-bottom: 10px;
+        }
+
+        .ac-subjects-box {
+            margin: 15px 30px;
+            border: 3px solid #6b93d6;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 12px 15px;
+            text-align: left;
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(107, 147, 214, 0.4);
+            position: relative;
+        }
+        
+        .ac-subjects-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .ac-checkbox {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #000;
+            background: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            margin-right: 12px;
+            position: relative;
+            top: -1px;
+        }
+
+        .ac-schedule-box {
+            margin: 15px 30px;
+            font-family: 'Times New Roman', serif;
+        }
+        .ac-schedule-title {
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            text-decoration: underline;
+            margin-bottom: 5px;
+            color: #000;
+        }
+        .ac-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            color: #000;
+        }
+        .ac-schedule-table th, .ac-schedule-table td {
+            border: 1px solid #5a8bd4;
+            padding: 4px 8px;
+            text-align: left;
+        }
+        .ac-schedule-table th {
+            background: rgba(107, 147, 214, 0.2);
+            font-weight: bold;
+        }
+
+        .ac-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 50px;
+            padding: 0 30px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .ac-note {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .ac-sig {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .print-btn {
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+
+            body {
+                background: white;
+            }
+
+            .sidebar,
+            .top-bar,
+            .print-btn,
+            .term-selector-container {
+                display: none !important;
+            }
+
+            .content-wrapper {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white;
+            }
+
+            .dashboard-container {
+                display: block;
+                height: auto;
+                background: white;
+            }
+
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100%;
+                overflow: visible;
+                background: white;
+            }
+
+            .admit-card-container {
+                width: 100%;
+                max-width: 100%;
+                margin: 0 auto;
+                box-shadow: none;
+                border: 2px solid #000;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Examination Admit Card</div>
+            </header>
+            <div class="content-wrapper text-center">
+                {% if student %}
+                <!-- Term Selector (Screen Only) -->
+                <div class="term-selector-container" style="margin-bottom: 25px; display: flex; justify-content: center; align-items: center; gap: 10px; font-family: 'Outfit', sans-serif;">
+                    <label style="font-weight: 600; color: var(--text-dark); font-size: 14px;">Select Exam Term:</label>
+                    <select id="term_selector" onchange="changeTerm(this.value)" style="padding: 8px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; background: #fff; cursor: pointer; font-weight: 500;">
+                        <option value="1st Unit" {% if term_name == '1st Unit' %}selected{% endif %}>1st Unit</option>
+                        <option value="2nd Unit" {% if term_name == '2nd Unit' %}selected{% endif %}>2nd Unit</option>
+                        <option value="3rd Unit" {% if term_name == '3rd Unit' %}selected{% endif %}>3rd Unit</option>
+                        <option value="Annual Exam" {% if term_name == 'Annual Exam' %}selected{% endif %}>Annual Exam</option>
+                    </select>
+                </div>
+
+                <div class="admit-card-container">
+                    <div class="admit-card-inner">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" class="ac-watermark">
+                        
+                        <div class="ac-top-logos">
+                            <div class="ac-logo-box">
+                                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                                <div class="estd">ESTD: 2010</div>
+                            </div>
+                            <div class="ac-logo-box">
+                                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                                <div class="estd">ESTD: 2010</div>
+                            </div>
+                        </div>
+
+                        <div class="ac-header-title">AL-HIDAYET MISSION (BHOGRAM BRANCH)</div>
+                        
+                        <div class="ac-address-box">
+                            <p>A Renowned Day Residential, Non-Residential Campus<br>
+                            Bhogram, Hemtabad, Uttar Dinajpur - 733134</p>
+                        </div>
+
+                        <div class="ac-badge-container">
+                            <div class="ac-admit-badge"><span>ADMIT CARD</span></div>
+                        </div>
+                        
+                        <div class="ac-exam-name">
+                            {{ term_name|upper }} - {{ current_year }}
+                        </div>
+
+                        <div class="ac-student-details">
+                            <div style="margin-bottom: 5px;">STUDENT NAME : {{ (student.full_name or student.username)|upper }}</div>
+                            <div style="margin-bottom: 5px;">GUARDIAN'S NAME : {{ (student.guardian_name or '')|upper }}</div>
+                            <div style="display: flex; justify-content: space-between; padding-right: 20px;">
+                                <div>CLASS : {{ student.class or 'N/A' }}</div>
+                                <div>ROLL : {{ student.roll_number or 'N/A' }}</div>
+                                <div>SECTION : A</div>
+                            </div>
+                        </div>
+
+                        <div class="ac-subjects-box">
+                            <div style="margin-bottom: 8px; line-height: 2;">
+                                SUBJECTS : 
+                                {% if schedule_list %}
+                                    {% for day in schedule_list %}
+                                        <span style="display:inline-block; margin-right: 8px; white-space: nowrap;">
+                                            {{ day.subject|upper }}{% if not loop.last %},{% endif %}
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span style="font-style: italic; font-weight: normal; font-size: 13px; color: #555;">No subjects configured in the routine for this term yet.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="ac-schedule-box">
+                            <div class="ac-schedule-title">EXAM ROUTINE</div>
+                            {% if schedule_image %}
+                            <img src="/static/uploads/exam_schedules/{{ schedule_image }}" class="schedule-img" alt="Exam Routine" style="max-width: 100%; max-height: 120px; object-fit: contain; display: block; margin: 0 auto; border-radius: 4px;">
+                            {% elif schedule_list %}
+                            <table class="ac-schedule-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Subject</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day in schedule_list %}
+                                    <tr>
+                                        <td>{{ day.date }}</td>
+                                        <td>{{ day.time }}</td>
+                                        <td><strong>{{ day.subject }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <span style="font-size: 12px; color: #555; font-style: italic; display: block; text-align: center; padding: 5px 0;">Exam routine is not configured for this class/term yet.</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="ac-footer">
+                            <div class="ac-note">
+                                N: B: - THIS ADMIT CARD SHOULD BE CAREFULLY
+                            </div>
+                            <div class="ac-sig">
+                                SIGNATURE OF T.I.C.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="print-btn" onclick="window.print()" style="font-family: 'Outfit', sans-serif; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; background: var(--primary-color); border: none; padding: 10px 20px; border-radius: 6px; color: white; cursor: pointer;"><i data-lucide="printer"></i> Print Admit Card</button>
+                {% else %}
+                <div class="dashboard-empty-state">
+                    <div class="empty-icon"><i data-lucide="alert-circle"></i></div>
+                    <h2>No Student Data</h2>
+                    <p>Unable to load student information. Please select a student from the list.</p>
+                    <a href="/admin/admit-card" class="btn btn-primary" style="margin-top:20px;">Back to Selection</a>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+        function changeTerm(termVal) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('term', termVal);
+            window.location.search = params.toString();
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

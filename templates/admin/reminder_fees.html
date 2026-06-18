@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Reminders - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Pending Fees: {{ month }}</div>
+            </header>
+            <div class="content-wrapper">
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">Students with Unpaid Fees</h3>
+                        <div style="display: flex; gap: 10px; width: 100%; max-width: 500px; flex-wrap: wrap;">
+                            <input type="text" id="tableSearch" placeholder="Search by name, ID, or phone..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
+                            <select id="sortBySelect" onchange="handleReminderFeesSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                                <option value="roll">Sort: Roll No</option>
+                                <option value="name">Sort: Name</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Class filter buttons -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <button class="class-filter-btn active" data-class="all" style="padding: 6px 16px; border-radius: 20px; border: 2px solid var(--primary-color); background: var(--primary-color); color: #fff; cursor: pointer; font-weight: 600; font-size: 13px;">All</button>
+                        {% set ns = namespace(classes=[]) %}
+                        {% for s in students %}
+                            {% if s.class and s.class.strip().lower() not in ns.classes %}
+                                {% set ns.classes = ns.classes + [s.class.strip().lower()] %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                        {% for c in class_order %}
+                            {% if c.strip().lower() in ns.classes %}
+                            <button class="class-filter-btn" data-class="{{ c }}" style="padding: 6px 16px; border-radius: 20px; border: 2px solid #ddd; background: #fff; color: #333; cursor: pointer; font-weight: 500; font-size: 13px;">{{ c }}</button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse;" id="reminderTable">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee;">
+                                <th style="padding: 12px; text-align: left;">SL</th>
+                                <th style="padding: 12px; text-align: left;">Student Name</th>
+                                <th style="padding: 12px; text-align: left;">Guardian</th>
+                                <th style="padding: 12px; text-align: left;">Class</th>
+                                <th style="padding: 12px; text-align: left;">WhatsApp No</th>
+                                <th style="padding: 12px; text-align: left;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr style="border-bottom: 1px solid #eee;" data-class="{{ s.class or '' }}" class="student-row" data-roll="{{ s.roll_number or '' }}" data-name="{{ (s.full_name or s.username or '')|lower }}">
+                                <td style="padding: 12px;">{{ loop.index }}</td>
+                                <td style="padding: 12px;">{{ s.full_name or s.username }}</td>
+                                <td style="padding: 12px; color: #888; font-size: 13px;">{{ s.guardian_name or '-' }}</td>
+                                <td style="padding: 12px;">{{ s.class or 'N/A' }}</td>
+                                 <td style="padding: 12px;">{{ s.whatsapp_no or s.phone_number or 'No Number' }}</td>
+                                 <td style="padding: 12px;">
+                                    {% set ns = namespace(num='') %}
+                                    {% for char in (s.whatsapp_no or s.phone_number or '')|string %}
+                                        {% if char in '0123456789' %}
+                                            {% set ns.num = ns.num + char %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if ns.num|length == 10 %}
+                                        {% set wa_num = '91' + ns.num %}
+                                    {% else %}
+                                        {% set wa_num = ns.num %}
+                                    {% endif %}
+                                    {% if wa_num %}
+                                     {% set prev_due = (s.remaining_fee or 0)|float %}
+                                     {% set current_due = (s.monthly_fee or 0)|float + (s.hostel_fee or 0)|float %}
+                                     {% set total_due = prev_due + current_due %}
+                                     {% set msg_text %}প্রিয় অভিভাবক, আল হিদায়েত মিশনের পক্ষ থেকে জানানো যাচ্ছে যে, এই মাসের বেতন পরিশোধের সময় হয়েছে। অনুগ্রহ করে নির্ধারিত সময়ের মধ্যে বেতন পরিশোধ করার জন্য অনুরোধ করা হলো। ধন্যবাদ।
+
+আগের বাকি:- {{ prev_due|int }}
+মাসের বাকি :- {{ current_due|int }}
+*মোট* :- {{ total_due|int }}
+
+প্রত্যেক মাসের 10 তারিখের মধ্যে বেতন পরিশোধ করতে হবে।{% endset %}
+                                     <a href="https://wa.me/{{ wa_num }}?text={{ msg_text|urlencode }}"
+                                         target="_blank" class="badge badge-warning">Send WhatsApp</a>
+                                    {% else %}
+                                     <span style="color: #ccc; font-size: 12px;">No Number</span>
+                                    {% endif %}
+                                 </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let activeClass = 'all';
+            let searchText = '';
+            
+            function filterTable() {
+                let rows = document.querySelectorAll('#reminderTable tbody tr');
+                rows.forEach(row => {
+                    let rowClass = row.getAttribute('data-class') || '';
+                    let text = row.textContent.toLowerCase();
+                    let classMatch = (activeClass === 'all' || rowClass.trim().toLowerCase() === activeClass.trim().toLowerCase());
+                    let textMatch = text.includes(searchText);
+                    row.style.display = (classMatch && textMatch) ? '' : 'none';
+                });
+            }
+            
+            document.querySelectorAll('.class-filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.class-filter-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = '#fff';
+                        b.style.color = '#333';
+                        b.style.borderColor = '#ddd';
+                    });
+                    this.classList.add('active');
+                    this.style.background = 'var(--primary-color)';
+                    this.style.color = '#fff';
+                    this.style.borderColor = 'var(--primary-color)';
+                    activeClass = this.getAttribute('data-class');
+                    filterTable();
+                });
+            });
+            
+            document.getElementById('tableSearch').addEventListener('keyup', function() {
+                searchText = this.value.toLowerCase();
+                filterTable();
+            });
+        });
+        function handleReminderFeesSort() {
+            const criteria = document.getElementById('sortBySelect').value;
+            const tbody = document.querySelector('#reminderTable tbody');
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr.student-row'));
+            
+            rows.sort((a, b) => {
+                if (criteria === 'name') {
+                    const nameA = (a.getAttribute('data-name') || '').trim();
+                    const nameB = (b.getAttribute('data-name') || '').trim();
+                    return nameA.localeCompare(nameB);
+                } else {
+                    const rollA = a.getAttribute('data-roll') || '';
+                    const rollB = b.getAttribute('data-roll') || '';
+                    const numA = parseInt((rollA.match(/\d+/) || [999999])[0], 10);
+                    const numB = parseInt((rollB.match(/\d+/) || [999999])[0], 10);
+                    if (numA !== numB) return numA - numB;
+                    return rollA.localeCompare(rollB);
+                }
+            });
+            
+            rows.forEach((row, index) => {
+                tbody.appendChild(row);
+                const slTd = row.cells[0];
+                if (slTd) {
+                    slTd.textContent = index + 1;
+                }
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

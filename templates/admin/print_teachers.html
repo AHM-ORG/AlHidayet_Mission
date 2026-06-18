@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print Teachers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 6px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            @page {
+                size: landscape;
+            }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Print</button>
+        <button onclick="exportTableToCSV('teachers_list.csv')" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px;">Export to CSV</button>
+    </div>
+
+    <div class="header">
+        <h1>Al Hidayet Mission</h1>
+        <p>Teacher Data</p>
+    </div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>SL No</th>
+                <th>Name</th>
+                <th>Login ID</th>
+                <th>Temp Password</th>
+                <th>Email</th>
+                <th>Phone Number</th>
+                <th>Address</th>
+                <th>Qualification / Subjects</th>
+                <th>Assigned Classes</th>
+                <th>Joining Date</th>
+                <th>Aadhaar Number</th>
+                <th>Bank Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for teacher in teachers %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ teacher.full_name or teacher.username }}</td>
+                <td>{{ teacher.username }}</td>
+                <td>{{ teacher.temp_password or '' }}</td>
+                <td>{{ teacher.email or '' }}</td>
+                <td>{{ teacher.phone_number or '' }}</td>
+                <td>{{ teacher.address or '' }}</td>
+                <td>{{ teacher.qualification or '' }}</td>
+                <td>{{ teacher.assigned_classes or '' }}</td>
+                <td>{{ teacher.joining_date or '' }}</td>
+                <td>{{ teacher.aadhaar_number or '' }}</td>
+                <td>
+                    {% set bank = parse_bank_details(teacher.bank_details) %}
+                    {% if bank.bank_name %}
+                        {{ bank.bank_name }} (A/C: {{ bank.account_no or '' }} | IFSC: {{ bank.ifsc_code or '' }})
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function downloadCSV(csv, filename) {
+            var csvFile;
+            var downloadLink;
+
+            csvFile = new Blob([csv], {type: "text/csv"});
+            downloadLink = document.createElement("a");
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        function exportTableToCSV(filename) {
+            var csv = [];
+            var rows = document.querySelectorAll("table tr");
+            
+            for (var i = 0; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll("td, th");
+                
+                for (var j = 0; j < cols.length; j++) {
+                    var data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/(\s\s)/gm, " ");
+                    data = data.replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(","));
+            }
+
+            downloadCSV(csv.join("\n"), filename);
+        }
+    </script>
+</body>
+</html>

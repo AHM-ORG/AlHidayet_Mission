@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admission Form - Bhogram Al-Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .form-section {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 30px;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .form-section h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #FF9F43 0%, #ee5253 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern">
+
+    <!-- Header -->
+    <header class="main-header" style="background: #fff;">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <img src="{{ logo_url }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#faq" class="nav-link">FAQ</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container section">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color);">Online Admission Form</h1>
+            <p style="color: var(--text-light);">Application for Academic Session 2026</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div style="background: #ff7675; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form action="/submit-application" method="POST">
+            <input type="hidden" name="form_type" value="Admission Form">
+
+            <!-- 1. Student Information -->
+            <div class="form-section">
+                <h3><i class="fas fa-user-graduate"></i> Student Information</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Full Name*</label>
+                        <input type="text" name="full_name" required placeholder="Enter student's full name">
+                    </div>
+                    <div class="input-group">
+                        <label>Date of Birth*</label>
+                        <input type="date" name="dob" required
+                            value="{{ form_data.get('dob', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Gender*</label>
+                        <select name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="Male" {% if form_data and form_data.get('gender')=='Male' %}selected{% endif
+                                %}>Male</option>
+                            <option value="Female" {% if form_data and form_data.get('gender')=='Female' %}selected{%
+                                endif %}>Female</option>
+                            <option value="Other" {% if form_data and form_data.get('gender')=='Other' %}selected{%
+                                endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Blood Group</label>
+                        <input type="text" name="blood_group" placeholder="e.g. O+"
+                            value="{{ form_data.get('blood_group', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Religion*</label>
+                        <select name="religion" required>
+                            <option value="">Select Religion</option>
+                            <option value="Islam" {% if form_data and form_data.get('religion')=='Islam' %}selected{%
+                                endif %}>Islam</option>
+                            <option value="Hinduism" {% if form_data and form_data.get('religion')=='Hinduism'
+                                %}selected{% endif %}>Hinduism</option>
+                            <option value="Christianity" {% if form_data and form_data.get('religion')=='Christianity'
+                                %}selected{% endif %}>Christianity</option>
+                            <option value="Other" {% if form_data and form_data.get('religion')=='Other' %}selected{%
+                                endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Nationality</label>
+                        <input type="text" name="nationality" value="Indian" readonly>
+                    </div>
+                    <div class="input-group">
+                        <label>Caste*</label>
+                        <select name="caste" required>
+                            <option value="">Select Caste</option>
+                            <option value="General" {% if form_data and form_data.get('caste')=='General' %}selected{% endif %}>General</option>
+                            <option value="OBC" {% if form_data and form_data.get('caste')=='OBC' %}selected{% endif %}>OBC</option>
+                            <option value="SC" {% if form_data and form_data.get('caste')=='SC' %}selected{% endif %}>SC</option>
+                            <option value="ST" {% if form_data and form_data.get('caste')=='ST' %}selected{% endif %}>ST</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Aadhar Number</label>
+                        <input type="text" name="aadhar_no" placeholder="12-digit Aadhar Number" pattern="\d{12}"
+                            minlength="12" maxlength="12" title="Must be 12 digits" id="aadhar_input"
+                            value="{{ form_data.get('aadhar_no', '') if form_data else '' }}">
+                        <small class="error-msg" id="error-aadhar"
+                            style="color: #e74c3c; display: none; margin-top: 5px; font-size: 13px;">
+                            <i class="fas fa-exclamation-circle"></i> Please enter exactly 12 digits for Aadhar Number
+                        </small>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Identification Mark</label>
+                        <input type="text" name="identification_mark" placeholder="e.g. mole on right cheek"
+                            value="{{ form_data.get('identification_mark', '') if form_data else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Admission Details -->
+            <div class="form-section" style="border-top-color: var(--secondary-color);">
+                <h3><i class="fas fa-school"></i> Admission Details</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Unique Code</label>
+                        <input type="text" readonly value="Auto-generated on registration" style="background: #f1f5f9; cursor: not-allowed; border: 2px solid #eee; border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif; color: #94a3b8;">
+                    </div>
+                    <div class="input-group">
+                        <label>Academic Session*</label>
+                        <input type="text" name="session" value="2026" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Branch*</label>
+                        <input type="text" value="Bhogram Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 2px solid #eee; border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
+                        <input type="hidden" name="branch" value="Bhogram">
+                    </div>
+                    <div class="input-group">
+                        <label>Class Applying For*</label>
+                        <select name="class_applied" required>
+                            <option value="">Select Class</option>
+                            <option value="Nursery" {% if form_data and form_data.get('class_applied')=='Nursery' %}selected{% endif %}>Nursery</option>
+                            <option value="Upper Nursery" {% if form_data and form_data.get('class_applied')=='Upper Nursery' %}selected{% endif %}>Upper Nursery</option>
+                            <option value="I" {% if form_data and form_data.get('class_applied')=='I' %}selected{% endif %}>I</option>
+                            <option value="II" {% if form_data and form_data.get('class_applied')=='II' %}selected{% endif %}>II</option>
+                            <option value="III" {% if form_data and form_data.get('class_applied')=='III' %}selected{% endif %}>III</option>
+                            <option value="IV" {% if form_data and form_data.get('class_applied')=='IV' %}selected{% endif %}>IV</option>
+                            <option value="V" {% if form_data and form_data.get('class_applied')=='V' %}selected{% endif %}>V</option>
+                            <option value="VI" {% if form_data and form_data.get('class_applied')=='VI' %}selected{% endif %}>VI</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Mode of Admission*</label>
+                        <select name="mode_of_admission" required>
+                            <option value="School" {% if form_data and form_data.get('mode_of_admission')=='School' %}selected{% endif %}>School</option>
+                            <option value="School with Coaching" {% if form_data and form_data.get('mode_of_admission')=='School with Coaching' %}selected{% endif %}>School with Coaching</option>
+                            <option value="Day Hostel" {% if form_data and form_data.get('mode_of_admission')=='Day Hostel' %}selected{% endif %}>Day Hostel</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Car Service Opted?*</label>
+                        <select name="car_opted" required>
+                            <option value="No" {% if form_data and form_data.get('car_opted')=='No' %}selected{% endif %}>No</option>
+                            <option value="Yes" {% if form_data and form_data.get('car_opted')=='Yes' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Previous Class</label>
+                        <input type="text" name="previous_class" placeholder="e.g. Nursery"
+                            value="{{ form_data.get('previous_class', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>% in Last Annual Exam</label>
+                        <input type="text" name="prev_marks_percentage" placeholder="e.g. 85%"
+                            value="{{ form_data.get('prev_marks_percentage', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Previous School Name</label>
+                        <input type="text" name="prev_school" placeholder="Name of last school attended"
+                            value="{{ form_data.get('prev_school', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Bank Name</label>
+                        <input type="text" name="bank_name" placeholder="e.g. State Bank of India"
+                            value="{{ form_data.get('bank_name', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Branch Name</label>
+                        <input type="text" name="branch_name" placeholder="e.g. Bhogram Branch"
+                            value="{{ form_data.get('branch_name', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Account Number</label>
+                        <input type="text" name="account_no" placeholder="e.g. 1234567890"
+                            value="{{ form_data.get('account_no', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>IFSC Code</label>
+                        <input type="text" name="ifsc_code" placeholder="e.g. SBIN0001234"
+                            value="{{ form_data.get('ifsc_code', '') if form_data else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Guardian Information -->
+            <div class="form-section" style="border-top-color: #00B894;">
+                <h3><i class="fas fa-users"></i> Guardian Information</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Father's Name*</label>
+                        <input type="text" name="father_name" required
+                            value="{{ form_data.get('father_name', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Qualification</label>
+                        <input type="text" name="father_qualification" placeholder="e.g. Graduate"
+                            value="{{ form_data.get('father_qualification', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Occupation</label>
+                        <input type="text" name="father_occupation" placeholder="e.g. Business"
+                            value="{{ form_data.get('father_occupation', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Father's Monthly Income</label>
+                        <input type="text" name="father_monthly_income" placeholder="e.g. 15000"
+                            value="{{ form_data.get('father_monthly_income', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Name*</label>
+                        <input type="text" name="mother_name" required
+                            value="{{ form_data.get('mother_name', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Qualification</label>
+                        <input type="text" name="mother_qualification" placeholder="e.g. Secondary"
+                            value="{{ form_data.get('mother_qualification', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Occupation</label>
+                        <input type="text" name="mother_occupation" placeholder="e.g. Homemaker"
+                            value="{{ form_data.get('mother_occupation', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Mother's Monthly Income</label>
+                        <input type="text" name="mother_monthly_income" placeholder="e.g. 5000"
+                            value="{{ form_data.get('mother_monthly_income', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Guardian's Phone No*</label>
+                        <input type="tel" name="guardian_phone" required placeholder="10-digit Mobile No"
+                            pattern="\d{10}" minlength="10" maxlength="10" title="Must be 10 digits"
+                            id="guardian_phone_input"
+                            value="{{ form_data.get('guardian_phone', '') if form_data else '' }}">
+                        <small class="error-msg" id="error-guardian-phone"
+                            style="color: #e74c3c; display: none; margin-top: 5px; font-size: 13px;">
+                            <i class="fas fa-exclamation-circle"></i> Please enter exactly 10 digits
+                        </small>
+                    </div>
+                    <div class="input-group">
+                        <label>Alternative Phone No</label>
+                        <input type="tel" name="alt_phone" placeholder="10-digit Mobile No" pattern="\d{10}"
+                            minlength="10" maxlength="10" title="Must be 10 digits" id="alt_phone_input"
+                            value="{{ form_data.get('alt_phone', '') if form_data else '' }}">
+                        <small class="error-msg" id="error-alt-phone"
+                            style="color: #e74c3c; display: none; margin-top: 5px; font-size: 13px;">
+                            <i class="fas fa-exclamation-circle"></i> Please enter exactly 10 digits
+                        </small>
+                    </div>
+                    <div class="input-group">
+                        <label>Guardian's Whatsapp No</label>
+                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}"
+                            minlength="10" maxlength="10" title="Must be 10 digits" id="whatsapp_input"
+                            value="{{ form_data.get('whatsapp_no', '') if form_data else '' }}">
+                        <small class="error-msg" id="error-whatsapp-phone"
+                            style="color: #e74c3c; display: none; margin-top: 5px; font-size: 13px;">
+                            <i class="fas fa-exclamation-circle"></i> Please enter exactly 10 digits
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Address -->
+            <div class="form-section" style="border-top-color: #e17055;">
+                <h3><i class="fas fa-map-marker-alt"></i> Permanent Address</h3>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Village*</label>
+                        <input type="text" name="village" required
+                            value="{{ form_data.get('village', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Post Office (P.O)*</label>
+                        <input type="text" name="po" required
+                            value="{{ form_data.get('po', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Police Station (P.S)*</label>
+                        <input type="text" name="ps" required
+                            value="{{ form_data.get('ps', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>District*</label>
+                        <input type="text" name="dist" required
+                            value="{{ form_data.get('dist', '') if form_data else '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>State*</label>
+                        <input type="text" name="state" value="West Bengal" required
+                            value="{{ form_data.get('state', 'West Bengal') if form_data else 'West Bengal' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Pin Code*</label>
+                        <input type="text" name="pin" required pattern="\d{6}" maxlength="6"
+                            value="{{ form_data.get('pin', '') if form_data else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Attached Documents -->
+            <div class="form-section" style="border-top-color: #9b59b6;">
+                <h3><i class="fas fa-paperclip"></i> Attached Copy (Xerox)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="attached_documents" value="Birth Certificate"> Birth Certificate
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="attached_documents" value="Aadhaar Card"> Aadhaar Card
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="attached_documents" value="Profile Photo"> Profile Photo
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="attached_documents" value="Bank Passbook"> Bank Passbook
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="attached_documents" value="T.C Certificate"> T.C Certificate
+                    </label>
+                </div>
+            </div>
+
+            <!-- Declaration -->
+            <div
+                style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 25px;">
+                <label style="display:flex; align-items:flex-start; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" required
+                        style="width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary-color);">
+                    <span style="font-size: 15px; color: #555; line-height: 1.5;">
+                        <strong>Declaration:</strong> I hereby declare that the information provided above is true and
+                        correct to the best of my knowledge and belief. I understand that any false information may lead
+                        to the rejection of this application.
+                    </span>
+                </label>
+            </div>
+
+            <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Application</button>
+        </form>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+
+        // Real-time Inline Validation
+        function setupValidation(inputId, errorId, pattern, length) {
+            const input = document.getElementById(inputId);
+            const errorMsg = document.getElementById(errorId);
+
+            if (!input) return;
+
+            input.addEventListener('input', function () {
+                const value = this.value;
+                // Check if value is digits and correct length
+                if (value.length > 0 && (value.length !== length || !/^\d+$/.test(value))) {
+                    errorMsg.style.display = 'block';
+                    this.style.borderColor = '#e74c3c';
+                } else {
+                    errorMsg.style.display = 'none';
+                    this.style.borderColor = '#ddd';
+                    // If valid, green border?
+                    if (value.length === length) this.style.borderColor = '#2ecc71';
+                }
+            });
+        }
+
+        setupValidation('aadhar_input', 'error-aadhar', null, 12);
+        setupValidation('guardian_phone_input', 'error-guardian-phone', null, 10);
+        setupValidation('alt_phone_input', 'error-alt-phone', null, 10);
+        setupValidation('whatsapp_input', 'error-whatsapp-phone', null, 10);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select').forEach((el)=>{
+                if (!el.classList.contains('search-select')) {
+                    el.classList.add('search-select');
+                }
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

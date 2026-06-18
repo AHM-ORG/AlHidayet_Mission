@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Mark Entry - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <style>
+        .bg-pattern {
+            background-color: var(--bg-light);
+            min-height: 100vh;
+            font-family: var(--font-body);
+        }
+        .bulk-card {
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1200px;
+        }
+        .table-responsive {
+            width: 100%;
+            max-height: 75vh;
+            overflow: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            margin-top: 20px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+        .responsive-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .responsive-table th,
+        .responsive-table td {
+            padding: 12px 16px;
+            white-space: nowrap;
+        }
+        /* Sticky Headers system */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 15;
+            background-color: var(--primary-color) !important;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        /* Sticky Column System */
+        .sticky-col-roll {
+            position: sticky;
+            left: 0;
+            z-index: 10 !important;
+            background-color: var(--surface);
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.05);
+        }
+        .sticky-col-name {
+            position: sticky;
+            left: 80px;
+            z-index: 10 !important;
+            background-color: var(--surface);
+            border-right: 2px solid var(--border-color) !important;
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.05);
+        }
+        thead th.sticky-col-roll {
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 30 !important;
+            background-color: var(--primary-color) !important;
+            color: white;
+        }
+        thead th.sticky-col-name {
+            position: sticky;
+            left: 80px;
+            top: 0;
+            z-index: 30 !important;
+            background-color: var(--primary-color) !important;
+            color: white;
+            border-right: 2px solid var(--border-color) !important;
+        }
+        .student-row:hover td {
+            background-color: var(--surface-soft) !important;
+        }
+        .student-row:hover .sticky-col-roll,
+        .student-row:hover .sticky-col-name {
+            background-color: var(--surface-soft) !important;
+        }
+        .marks-input {
+            width: 50px !important;
+            min-height: 32px !important;
+            height: 32px !important;
+            padding: 4px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            text-align: center !important;
+            font-weight: 600 !important;
+            color: var(--text-dark) !important;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .marks-input:focus {
+            border-color: var(--primary-color) !important;
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(31, 111, 120, 0.15) !important;
+        }
+        .marks-input[readonly] {
+            background: #f1f5f9 !important;
+            color: #94a3b8 !important;
+            border-color: #e2e8f0 !important;
+            cursor: not-allowed !important;
+        }
+        .header-inline-input {
+            width: 40px !important;
+            min-height: 24px !important;
+            height: 24px !important;
+            padding: 0 2px !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(255,255,255,0.6) !important;
+            border-radius: 0 !important;
+            color: white !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-family: inherit !important;
+            margin: 0 2px !important;
+        }
+        .header-inline-input:focus {
+            outline: none !important;
+            border-bottom: 1px solid white !important;
+            box-shadow: none !important;
+        }
+        .header-fm-input {
+            width: 50px !important;
+            min-height: 26px !important;
+            height: 26px !important;
+            padding: 2px 4px !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            border-radius: 4px !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            text-align: center !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+        }
+        .header-fm-input[readonly] {
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            cursor: not-allowed !important;
+        }
+            box-shadow: none;
+        }
+        .ditto-cell {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--text-muted);
+            text-align: center;
+            letter-spacing: 2px;
+            background-color: #fafbfc;
+        }
+        .filter-panel {
+            background: #f8fafc;
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 99;
+        }
+        .input-group label {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            display: block;
+            font-size: 0.9em;
+        }
+        /* Prevent mobile auto-zoom on input focus */
+        input, select, textarea, .ts-control input {
+            font-size: 16px !important;
+        }
+    </style>
+</head>
+<body class="bg-pattern">
+    <div class="dashboard-container">
+                                <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Bulk Mark Entry</div>
+            </header>
+            <div class="content-wrapper" style="padding: 20px;">
+                <div class="bulk-card" style="margin: 0; max-width: 100%;">
+                    <!-- Header Section -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid var(--surface-soft); padding-bottom: 15px;">
+                        <div>
+                            <span style="font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">
+                                {% if role == 'teacher' %}Teacher's Panel{% else %}Admin Panel{% endif %}
+                            </span>
+                            <h2 style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px;">
+                                <i data-lucide="edit-3"></i> Bulk Mark Entry Grid
+                            </h2>
+                        </div>
+                    </div>
+
+                    {% if is_locked %}
+                    <div class="alert alert-danger" style="padding: 16px 20px; border-radius: var(--radius); margin-bottom: 25px; font-weight: 600; display: flex; align-items: center; gap: 12px; background: #fff5f5; color: #ef4444; border: 1px solid #fca5a5; box-shadow: var(--shadow-sm);">
+                        <i data-lucide="lock" style="width: 24px; height: 24px; flex-shrink: 0; color: #ef4444;"></i>
+                        <div>
+                            <div style="font-size: 1.05em; font-weight: 700; margin-bottom: 2px;">Exam Mark Entry Locked</div>
+                            <div style="font-size: 0.9em; font-weight: 500; opacity: 0.9;">The exam term '{{ selected_term }}' for class '{{ selected_class }}' is locked. Edits are blocked.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="flash-messages" style="margin-bottom: 20px;">
+                  {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }}" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: {% if category == 'error' %}#fdf2f2{% else %}#f0fdf4{% endif %}; color: {% if category == 'error' %}var(--danger-color){% else %}var(--success-color){% endif %}; border: 1px solid {% if category == 'error' %}#fca5a5{% else %}#bbf7d0{% endif %};">
+                      <i data-lucide="{% if category == 'error' %}alert-circle{% else %}check-circle{% endif %}" style="width: 20px; height: 20px;"></i>
+                      <span>{{ message }}</span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <!-- Filter Panel -->
+            <form method="GET" action="/admin/bulk-marks" class="filter-panel">
+                {% if role == 'teacher' %}
+                <!-- Teacher Filters -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; align-items: end;">
+                    <div class="input-group">
+                        <label>Assigned Class & Subject</label>
+                        <select name="assigned_class" required onchange="this.form.submit()">
+                            <option value="">-- Select Class / Subject --</option>
+                            {% for sub in allowed_subjects %}
+                            <option value="{{ sub.branch }}|{{ sub.class }}|{{ sub.name }}" {% if assigned_class == sub.branch ~ '|' ~ sub.class ~ '|' ~ sub.name %}selected{% endif %}>
+                                Class {{ sub.class }} - {{ sub.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Active Subject</label>
+                        <input type="text" value="{{ selected_subject or 'None Selected' }}" readonly style="background: #e2e8f0; cursor: not-allowed; border: 2px solid var(--border-color); border-radius: var(--radius); padding: 10px; width: 100%; height: 42px; font-weight: 600;">
+                    </div>
+                    <div class="input-group">
+                        <label>Term / Exam</label>
+                        <select name="term" onchange="this.form.submit()">
+                            <option value="1st Unit" {% if selected_term == "1st Unit" %}selected{% endif %}>1st Unit</option>
+                            <option value="2nd Unit" {% if selected_term == "2nd Unit" %}selected{% endif %}>2nd Unit</option>
+                            <option value="Final Exam" {% if selected_term == "Final Exam" %}selected{% endif %}>Final Exam</option>
+                            {% if class_tests %}
+                                <optgroup label="Monthly Class Tests">
+                                    {% for ct in class_tests %}
+                                        <option value="{{ ct }}" {% if selected_term == ct %}selected{% endif %}>{{ ct }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                </div>
+                {% if not allowed_subjects %}
+                <div style="color: var(--danger-color); display: flex; align-items: center; gap: 8px; margin-top: 15px; font-weight: 500; font-size: 0.9em;">
+                    <i data-lucide="alert-triangle" style="width:16px; height:16px;"></i> You are not assigned to any subjects in the class routine yet.
+                </div>
+                {% endif %}
+
+                {% else %}
+                <!-- Admin Filters -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; align-items: end;">
+                    <input type="hidden" name="branch" value="bhogram">
+                    <div class="input-group">
+                        <label>Class</label>
+                        <select name="class" required onchange="this.form.submit()">
+                            <option value="">Select Class</option>
+                            {% for c in classes %}
+                            <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Term / Exam</label>
+                        <select name="term" onchange="this.form.submit()">
+                            <option value="1st Unit" {% if selected_term == "1st Unit" %}selected{% endif %}>1st Unit</option>
+                            <option value="2nd Unit" {% if selected_term == "2nd Unit" %}selected{% endif %}>2nd Unit</option>
+                            <option value="Final Exam" {% if selected_term == "Final Exam" %}selected{% endif %}>Final Exam</option>
+                            {% if class_tests %}
+                                <optgroup label="Monthly Class Tests">
+                                    {% for ct in class_tests %}
+                                        <option value="{{ ct }}" {% if selected_term == ct %}selected{% endif %}>{{ ct }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                </div>
+                {% endif %}
+            </form>
+
+            {% if role == 'admin' and selected_class %}
+            <!-- Manage Subjects & Full Marks Panel -->
+            <div style="margin-bottom: 25px;">
+                <button type="button" onclick="document.getElementById('manage-subjects-panel').style.display = document.getElementById('manage-subjects-panel').style.display === 'none' ? 'block' : 'none'" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: var(--radius); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="settings" style="width: 18px; height: 18px;"></i> Manage Subjects & Full Marks
+                </button>
+                <div id="manage-subjects-panel" style="display: none; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; margin-top: 15px; box-shadow: var(--shadow-sm);">
+                    <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Add New Subjects</h3>
+                    <form method="POST" action="/admin/bulk-marks" style="display: flex; gap: 15px; align-items: end; margin-bottom: 25px;">
+                        <input type="hidden" name="action_type" value="add_subject">
+                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                        <div class="input-group" style="flex: 1;">
+                            <label>Subject Name(s) (comma-separated)</label>
+                            <input type="text" name="new_subject" required placeholder="e.g. Computer Science, Geography" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; height: 42px;">
+                        </div>
+                        <button type="submit" style="background: var(--success-color); color: white; border: none; padding: 10px 20px; border-radius: var(--radius); height: 42px; cursor: pointer; font-weight: 600;">Add Subject(s)</button>
+                    </form>
+
+                    <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Manage Existing Subjects</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="responsive-table" style="width: 100%; border: 1px solid var(--border-color);">
+                            <thead style="background: var(--surface-soft);">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>FM 1st</th>
+                                    <th>OR 1st</th>
+                                    <th>WR 1st</th>
+                                    <th>FM 2nd</th>
+                                    <th>OR 2nd</th>
+                                    <th>WR 2nd</th>
+                                    <th>FM Ann</th>
+                                    <th>OR Ann</th>
+                                    <th>WR Ann</th>
+                                    <th>CT Ann</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub_row in db_subjects %}
+                                {% set is_special = (sub_row.name.lower() == 'art' or sub_row.name.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
+                                
+                                {% set fm_1 = sub_row.full_marks_1st if sub_row.full_marks_1st is not none and sub_row.full_marks_1st > -1 else 0 %}
+                                {% set or_1 = sub_row.oral_marks_1st if sub_row.oral_marks_1st is not none else (fm_1 * 0.2 if not is_special else '') %}
+                                {% set wr_1 = sub_row.written_marks_1st if sub_row.written_marks_1st is not none else (fm_1 - (fm_1 * 0.2) if not is_special else '') %}
+                                
+                                {% set fm_2 = sub_row.full_marks_2nd if sub_row.full_marks_2nd is not none and sub_row.full_marks_2nd > -1 else 0 %}
+                                {% set or_2 = sub_row.oral_marks_2nd if sub_row.oral_marks_2nd is not none else (fm_2 * 0.2 if not is_special else '') %}
+                                {% set wr_2 = sub_row.written_marks_2nd if sub_row.written_marks_2nd is not none else (fm_2 - (fm_2 * 0.2) if not is_special else '') %}
+                                
+                                {% set fm_a = sub_row.full_marks_annual if sub_row.full_marks_annual is not none and sub_row.full_marks_annual > -1 else 0 %}
+                                {% set or_a = sub_row.oral_marks_annual if sub_row.oral_marks_annual is not none else (fm_a * 0.2 if not is_special else '') %}
+                                {% set ct_a = sub_row.ct_marks_annual if sub_row.ct_marks_annual is not none else (fm_a * 0.1 if not is_special else '') %}
+                                {% set wr_a = sub_row.written_marks_annual if sub_row.written_marks_annual is not none else (fm_a - (fm_a * 0.2) - (fm_a * 0.1) if not is_special else '') %}
+
+                                {% set fm_1_calc = ((or_1 or 0)|float + (wr_1 or 0)|float) if not is_special else fm_1 %}
+                                {% set fm_1_str = fm_1_calc|round(1)|string|replace('.0', '') if fm_1_calc > 0 else '' %}
+                                {% set or_1_str = or_1|round(1)|string|replace('.0', '') if or_1 != '' else '' %}
+                                {% set wr_1_str = wr_1|round(1)|string|replace('.0', '') if wr_1 != '' else '' %}
+
+                                {% set fm_2_calc = ((or_2 or 0)|float + (wr_2 or 0)|float) if not is_special else fm_2 %}
+                                {% set fm_2_str = fm_2_calc|round(1)|string|replace('.0', '') if fm_2_calc > 0 else '' %}
+                                {% set or_2_str = or_2|round(1)|string|replace('.0', '') if or_2 != '' else '' %}
+                                {% set wr_2_str = wr_2|round(1)|string|replace('.0', '') if wr_2 != '' else '' %}
+
+                                {% set fm_a_calc = ((or_a or 0)|float + (wr_a or 0)|float + (ct_a or 0)|float) if not is_special else fm_a %}
+                                {% set fm_a_str = fm_a_calc|round(1)|string|replace('.0', '') if fm_a_calc > 0 else '' %}
+                                {% set or_a_str = or_a|round(1)|string|replace('.0', '') if or_a != '' else '' %}
+                                {% set wr_a_str = wr_a|round(1)|string|replace('.0', '') if wr_a != '' else '' %}
+                                {% set ct_a_str = ct_a|round(1)|string|replace('.0', '') if ct_a != '' else '' %}
+
+                                <tr>
+                                    <form method="POST" action="/admin/bulk-marks">
+                                        <input type="hidden" name="action_type" value="update_fm">
+                                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                                        <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
+                                        
+                                        <td style="font-weight: 600;">{{ sub_row.name }}</td>
+                                        <td><input type="number" name="full_marks_1st" value="{{ fm_1_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_1st" value="{{ or_1_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_1st.value = (parseFloat(this.form.oral_marks_1st.value) || 0) + (parseFloat(this.form.written_marks_1st.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_1st" value="{{ wr_1_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_1st.value = (parseFloat(this.form.oral_marks_1st.value) || 0) + (parseFloat(this.form.written_marks_1st.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td><input type="number" name="full_marks_2nd" value="{{ fm_2_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_2nd" value="{{ or_2_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_2nd.value = (parseFloat(this.form.oral_marks_2nd.value) || 0) + (parseFloat(this.form.written_marks_2nd.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_2nd" value="{{ wr_2_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_2nd.value = (parseFloat(this.form.oral_marks_2nd.value) || 0) + (parseFloat(this.form.written_marks_2nd.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td><input type="number" name="full_marks_annual" value="{{ fm_a_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_annual" value="{{ or_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_annual" value="{{ wr_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="ct_marks_annual" value="{{ ct_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td style="display: flex; gap: 5px;">
+                                            <button type="submit" title="Save" style="background: var(--primary-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i data-lucide="save" style="width: 16px; height: 16px;"></i></button>
+                                    </form>
+                                    <form method="POST" action="/admin/bulk-marks" onsubmit="return confirm('Delete {{ sub_row.name }}?');" style="margin: 0;">
+                                        <input type="hidden" name="action_type" value="delete_subject">
+                                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                                        <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
+                                        <button type="submit" title="Delete" style="background: var(--danger-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
+                                    </form>
+                                        </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if students %}
+            <!-- Bulk Marks Entry Table Form -->
+            <form method="POST" action="/admin/save-bulk-marks">
+                <!-- Keep filter parameters preserved for the POST handler redirect -->
+                <input type="hidden" name="class" value="{{ selected_class }}">
+                <input type="hidden" name="branch" value="bhogram">
+                <input type="hidden" name="term" value="{{ selected_term }}">
+
+                {% if role == 'teacher' %}
+                    <input type="hidden" name="assigned_class" value="{{ assigned_class }}">
+                {% else %}
+                    <input type="hidden" name="subject" value="{{ selected_subject }}">
+                {% endif %}
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="info" style="color: var(--primary-color); width: 18px; height: 18px;"></i>
+                        <span style="font-size: 0.9em; color: var(--text-muted);">
+                            {% if role == 'teacher' %}
+                                Editing assigned subject: <strong>{{ selected_subject }}</strong>. Other columns are read-only.
+                            {% else %}
+                                Admin Mode: Full authorization to edit all subject columns simultaneously.
+                            {% endif %}
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="table-responsive">
+                    <table class="responsive-table">
+                        <thead>
+                            <tr style="background: var(--primary-color); color: white;">
+                                <th rowspan="2" class="sticky-col-roll" style="vertical-align: middle;">Roll No</th>
+                                <th rowspan="2" class="sticky-col-name" style="vertical-align: middle;">Student Name</th>
+                                {% for sub in subjects %}
+                                    {% set is_art = (sub.lower() == 'art') %}
+                                    {% set is_additional = (sub.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
+                                    {% set is_sub_disabled = (is_class_test and sub not in configured_class_test_subjects) %}
+                                    {% set sub_max_fm = subject_full_marks.get(sub, full_marks) %}
+                                    
+                                    {% if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] and not is_art and not is_additional %}
+                                        <th colspan="2" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px;">
+                                            <div style="font-weight: 700;">{{ sub }}</div>
+                                        </th>
+                                    {% elif selected_term in ['Final Exam', 'Annual Exam', 'Annual'] and not is_art and not is_additional %}
+                                        <th colspan="3" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px;">
+                                            <div style="font-weight: 700;">{{ sub }}</div>
+                                        </th>
+                                    {% else %}
+                                        <th rowspan="2" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px; vertical-align: middle;">
+                                            <div style="font-weight: 700; margin-bottom: 5px;">{{ sub }}</div>
+                                            <div style="font-weight: normal; font-size: 0.85em; display: flex; align-items: center; justify-content: center; gap: 4px; color: #ffeaa7;">
+                                                <span>FM:</span>
+                                                <input type="number" 
+                                                       name="fm_{{ sub }}" 
+                                                       value="{% if is_art %}{% if selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}100{% else %}50{% endif %}{% elif is_additional %}{% if sub.lower() == 'physical education' %}20{% elif sub.lower() == 'work education' %}30{% elif sub.lower() == 'hand writing' %}20{% elif sub.lower() == 'behaviour' %}20{% elif sub.lower() == 'attendance' %}10{% endif %}{% else %}{{ sub_max_fm }}{% endif %}" 
+                                                       min="1" 
+                                                       max="500" 
+                                                       required
+                                                       class="header-fm-input"
+                                                       {% if role == 'admin' %}
+                                                       onchange="updateSubjectFMInline('{{ sub }}', 'full', this.value, '{{ selected_term }}')"
+                                                       {% else %}
+                                                       readonly
+                                                       tabindex="-1"
+                                                       {% endif %}>
+                                            </div>
+                                        </th>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% if selected_term in ['1st Unit', '2nd Unit', 'Final Exam', '1st Term', '2nd Term', 'Annual Exam', 'Annual'] %}
+                            <tr style="background: var(--primary-dark); color: white; font-size: 0.85em;">
+                                {% for sub in subjects %}
+                                    {% set is_art = (sub.lower() == 'art') %}
+                                    {% set is_additional = (sub.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
+                                    {% set sub_max_fm = subject_full_marks.get(sub, full_marks) %}
+                                    {% if not is_art and not is_additional %}
+                                        {% if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] %}
+                                            {% set sub_u_fm = sub_max_fm %}
+                                            {% set oral_val = subject_oral_limit.get(sub) %}
+                                            {% set oral_limit = oral_val if (oral_val is not none and oral_val != '') else (sub_u_fm * 0.2) %}
+                                            {% set oral_limit_str = oral_limit|round(1)|string|replace('.0', '') %}
+                                            {% set written_val = subject_written_limit.get(sub) %}
+                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_u_fm - (sub_u_fm * 0.2)) %}
+                                            {% set written_limit_str = written_limit|round(1)|string|replace('.0', '') %}
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                OR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ oral_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'oral', this.value, '{{ selected_term }}')">{% else %}{{ oral_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark); min-width: 80px; white-space: nowrap;">
+                                                WR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ written_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'written', this.value, '{{ selected_term }}')">{% else %}{{ written_limit_str }}{% endif %})
+                                            </th>
+                                        {% elif selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}
+                                            {% set oral_val = subject_oral_limit.get(sub) %}
+                                            {% set oral_limit = oral_val if (oral_val is not none and oral_val != '') else (sub_max_fm * 0.2) %}
+                                            {% set oral_limit_str = oral_limit|round(1)|string|replace('.0', '') %}
+                                            {% set ct_val = subject_ct_limit.get(sub) %}
+                                            {% set ct_limit = ct_val if (ct_val is not none and ct_val != '') else (sub_max_fm * 0.1) %}
+                                            {% set ct_limit_str = ct_limit|round(1)|string|replace('.0', '') %}
+                                            {% set written_val = subject_written_limit.get(sub) %}
+                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_max_fm - (sub_max_fm * 0.2) - (sub_max_fm * 0.1)) %}
+                                            {% set written_limit_str = written_limit|round(1)|string|replace('.0', '') %}
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                OR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ oral_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'oral', this.value, '{{ selected_term }}')">{% else %}{{ oral_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                WR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ written_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'written', this.value, '{{ selected_term }}')">{% else %}{{ written_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark); min-width: 80px; white-space: nowrap;">
+                                                CT ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ ct_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'ct', this.value, '{{ selected_term }}')">{% else %}{{ ct_limit_str }}{% endif %})
+                                            </th>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endif %}
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr class="student-row" style="border-bottom: 1px solid var(--border-color);">
+                                <td class="sticky-col-roll" style="font-weight: 700; color: var(--text-dark);">
+                                    {{ student.roll_number }}
+                                </td>
+                                <td class="sticky-col-name" style="font-weight: 500; color: var(--text-dark);">
+                                    <div>{{ student.full_name or student.username }}</div>
+                                    {% if student.whatsapp_no %}
+                                    <div style="font-size: 0.8em; margin-top: 4px;">
+                                        <a href="https://wa.me/91{{ student.whatsapp_no }}" target="_blank" style="color: #25D366; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Message Guardian on WhatsApp">
+                                            <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i> {{ student.whatsapp_no }}
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                {% for sub in subjects %}
+                                    {% set is_art = (sub.lower() == 'art') %}
+                                    {% set is_additional = (sub.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
+                                    {% set is_disabled = (role == 'teacher' and sub != selected_subject) or (is_class_test and sub not in configured_class_test_subjects) %}
+                                    {% set student_marks = marks_dict.get(student.id, {}).get(sub, {}) %}
+                                    {% set sub_max_fm = subject_full_marks.get(sub, full_marks) %}
+                                    
+                                    {% if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] and not is_art and not is_additional %}
+                                        {% set sub_u_fm = sub_max_fm %}
+                                        {% set oral_val = subject_oral_limit.get(sub) %}
+                                        {% set max_oral = oral_val if (oral_val is not none and oral_val != '') else (sub_u_fm * 0.2) %}
+                                        {% set max_oral_str = max_oral|round(1)|string|replace('.0', '') %}
+                                        {% set written_val = subject_written_limit.get(sub) %}
+                                        {% set max_written = written_val if (written_val is not none and written_val != '') else (sub_u_fm - max_oral) %}
+                                        {% set max_written_str = max_written|round(1)|string|replace('.0', '') %}
+                                        <td style="text-align: center; border-right: 1px solid var(--border-color); padding: 8px;">
+                                            <input type="number" 
+                                                   name="oral_marks_{{ student.id }}_{{ sub }}" 
+                                                   value="{{ student_marks.get('oral', '') }}" 
+                                                   placeholder="OR" 
+                                                   min="0" 
+                                                   max="{{ max_oral_str }}" 
+                                                   class="marks-input component-input"
+                                                   data-subject="{{ sub }}"
+                                                   data-type="oral"
+                                                   style="width: 60px; padding: 6px;"
+                                                   {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                        </td>
+                                        <td style="text-align: center; border-right: 2px solid var(--border-color); padding: 8px;">
+                                            <input type="number" 
+                                                   name="written_marks_{{ student.id }}_{{ sub }}" 
+                                                   value="{{ student_marks.get('written', '') }}" 
+                                                   placeholder="WR" 
+                                                   min="0" 
+                                                   max="{{ max_written_str }}" 
+                                                   class="marks-input component-input"
+                                                   data-subject="{{ sub }}"
+                                                   data-type="written"
+                                                   style="width: 60px; padding: 6px;"
+                                                   {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                        </td>
+                                    {% elif selected_term in ['Final Exam', 'Annual Exam', 'Annual'] and not is_art and not is_additional %}
+                                        {% set oral_val = subject_oral_limit.get(sub) %}
+                                        {% set max_oral = oral_val if (oral_val is not none and oral_val != '') else (sub_max_fm * 0.2) %}
+                                        {% set max_oral_str = max_oral|round(1)|string|replace('.0', '') %}
+                                        {% set ct_val = subject_ct_limit.get(sub) %}
+                                        {% set max_ct = ct_val if (ct_val is not none and ct_val != '') else (sub_max_fm * 0.1) %}
+                                        {% set max_ct_str = max_ct|round(1)|string|replace('.0', '') %}
+                                        {% set written_val = subject_written_limit.get(sub) %}
+                                        {% set max_written = written_val if (written_val is not none and written_val != '') else (sub_max_fm - max_oral - max_ct) %}
+                                        {% set max_written_str = max_written|round(1)|string|replace('.0', '') %}
+                                        <td style="text-align: center; border-right: 1px solid var(--border-color); padding: 8px;">
+                                            <input type="number" 
+                                                   name="oral_marks_{{ student.id }}_{{ sub }}" 
+                                                   value="{{ student_marks.get('oral', '') }}" 
+                                                   placeholder="OR" 
+                                                   min="0" 
+                                                   max="{{ max_oral_str }}" 
+                                                   class="marks-input component-input"
+                                                   data-subject="{{ sub }}"
+                                                   data-type="oral"
+                                                   style="width: 60px; padding: 6px;"
+                                                   {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                        </td>
+                                        <td style="text-align: center; border-right: 1px solid var(--border-color); padding: 8px;">
+                                            <input type="number" 
+                                                   name="written_marks_{{ student.id }}_{{ sub }}" 
+                                                   value="{{ student_marks.get('written', '') }}" 
+                                                   placeholder="WR" 
+                                                   min="0" 
+                                                   max="{{ max_written_str }}" 
+                                                   class="marks-input component-input"
+                                                   data-subject="{{ sub }}"
+                                                   data-type="written"
+                                                   style="width: 60px; padding: 6px;"
+                                                   {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                        </td>
+                                        <td style="text-align: center; border-right: 2px solid var(--border-color); padding: 8px;">
+                                            <input type="number" 
+                                                   name="ct_marks_{{ student.id }}_{{ sub }}" 
+                                                   value="{{ student_marks.get('ct', '') }}" 
+                                                   placeholder="CT" 
+                                                   min="0" 
+                                                   max="{{ max_ct_str }}" 
+                                                   class="marks-input component-input"
+                                                   data-subject="{{ sub }}"
+                                                   data-type="ct"
+                                                   style="width: 60px; padding: 6px;"
+                                                   {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                        </td>
+                                    {% else %}
+                                        <td style="text-align: center; border-right: 2px solid var(--border-color); padding: 8px;">
+                                            {% set mark_value = student_marks.get('obt', '') %}
+                                            {% set max_fm_val = sub_max_fm %}
+                                            {% if is_art %}
+                                                {% if selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}{% set max_fm_val = 100 %}{% else %}{% set max_fm_val = 50 %}{% endif %}
+                                            {% elif is_additional %}
+                                                {% if sub.lower() == 'physical education' %}{% set max_fm_val = 20 %}
+                                                {% elif sub.lower() == 'work education' %}{% set max_fm_val = 30 %}
+                                                {% elif sub.lower() == 'hand writing' %}{% set max_fm_val = 20 %}
+                                                {% elif sub.lower() == 'behaviour' %}{% set max_fm_val = 20 %}
+                                                {% elif sub.lower() == 'attendance' %}{% set max_fm_val = 10 %}
+                                                {% endif %}
+                                            {% endif %}
+                                            <div style="position: relative; display: inline-block;">
+                                                <input type="number" 
+                                                       name="marks_{{ student.id }}_{{ sub }}" 
+                                                       value="{{ mark_value }}" 
+                                                       placeholder="-" 
+                                                       min="0" 
+                                                       max="{{ max_fm_val }}" 
+                                                       class="marks-input"
+                                                       data-subject="{{ sub }}"
+                                                       style="width: 100px; padding: 10px; font-size: 1.1em; border-radius: 4px !important;"
+                                                       {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                                {% if is_disabled or is_locked %}
+                                                    <i data-lucide="lock" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; color: #cbd5e1;"></i>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 30px; text-align: right;">
+                    {% if is_locked %}
+                    <button type="button" class="auth-btn" disabled style="width: auto; padding: 14px 40px; font-size: 16px; font-weight: 600; border-radius: var(--radius); cursor: not-allowed; opacity: 0.6; display: inline-flex; align-items: center; gap: 8px; background-color: #94a3b8; border-color: #cbd5e1;">
+                        <i data-lucide="lock" style="width: 20px; height: 20px;"></i> Marks Entry Locked
+                    </button>
+                    {% else %}
+                    <button type="submit" class="auth-btn" style="width: auto; padding: 14px 40px; font-size: 16px; font-weight: 600; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow-md); display: inline-flex; align-items: center; gap: 8px;">
+                        <i data-lucide="save" style="width: 20px; height: 20px;"></i> Save All Marks
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% elif selected_class %}
+            <!-- No Students Found View -->
+            <div style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
+                <i data-lucide="users" style="font-size: 48px; margin-bottom: 15px; opacity: 0.4; color: var(--primary-color);"></i>
+                <p style="font-size: 1.1em; font-weight: 500;">No students found in <strong>Class {{ selected_class }}</strong></p>
+                <p style="font-size: 0.9em; margin-top: 5px;">Make sure students are registered and assigned to this class.</p>
+            </div>
+            {% else %}
+            <!-- Empty Filter State -->
+            <div style="text-align: center; padding: 60px 40px; color: var(--text-muted); border: 2px dashed var(--border-color); border-radius: var(--radius); background: #fdfdfd;">
+                <i data-lucide="filter" style="width: 48px; height: 48px; margin-bottom: 15px; opacity: 0.4; color: var(--primary-color); display: inline-block;"></i>
+                <p style="font-size: 1.1em; font-weight: 600; color: var(--text-dark);">Please select filters above</p>
+                <p style="font-size: 0.9em; margin-top: 5px;">Select Class to fetch students and display the bulk mark grid.</p>
+            </div>
+            {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select').forEach((el)=>{
+                if (!el.classList.contains('search-select')) {
+                    el.classList.add('search-select');
+                }
+                new TomSelect(el, {
+                    create: false,
+                    sortField: null
+                });
+            });
+
+            // Client-side marks validation
+            const marksInputs = document.querySelectorAll('.marks-input');
+            const saveBtn = document.querySelector('button[type="submit"]');
+            const form = document.querySelector('form[action="/admin/save-bulk-marks"]');
+            
+            // Create a global error banner container at the top of the card if it doesn't exist
+            let errorBanner = document.getElementById('marks-validation-error-banner');
+            if (!errorBanner && form) {
+                errorBanner = document.createElement('div');
+                errorBanner.id = 'marks-validation-error-banner';
+                errorBanner.className = 'alert alert-danger';
+                errorBanner.style.display = 'none';
+                errorBanner.style.padding = '12px 20px';
+                errorBanner.style.borderRadius = 'var(--radius)';
+                errorBanner.style.marginBottom = '20px';
+                errorBanner.style.fontWeight = '500';
+                errorBanner.style.alignItems = 'center';
+                errorBanner.style.gap = '10px';
+                errorBanner.style.background = '#fdf2f2';
+                errorBanner.style.color = '#ef4444';
+                errorBanner.style.border = '1px solid #fca5a5';
+                errorBanner.innerHTML = '<i data-lucide="alert-circle" style="width: 20px; height: 20px; color: #ef4444;"></i> <span id="error-banner-text"></span>';
+                form.insertBefore(errorBanner, form.firstChild);
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            function validateMarks() {
+                let hasError = false;
+                let errorMessages = [];
+                
+                marksInputs.forEach(input => {
+                    if (input.readOnly) return;
+                    
+                    const val = parseFloat(input.value);
+                    const maxVal = parseFloat(input.getAttribute('max'));
+                    
+                    if (!isNaN(val) && !isNaN(maxVal) && val > maxVal) {
+                        hasError = true;
+                        input.style.borderColor = '#ef4444';
+                        input.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.15)';
+                        
+                        // Get student name and subject name for explanation
+                        const row = input.closest('tr');
+                        const studentName = row ? row.querySelector('.sticky-col-name').textContent.trim() : 'Student';
+                        const subjectName = input.getAttribute('data-subject') || 'Subject';
+                        errorMessages.push(`Student "<strong>${studentName}</strong>" obtained <strong>${val}</strong> marks in <strong>${subjectName}</strong>, which exceeds the Full Marks limit of <strong>${maxVal}</strong>.`);
+                    } else {
+                        input.style.borderColor = '';
+                        input.style.boxShadow = '';
+                    }
+                });
+                
+                if (hasError) {
+                    if (errorBanner) {
+                        errorBanner.style.display = 'flex';
+                        document.getElementById('error-banner-text').innerHTML = `<strong>Logical Error:</strong><br>` + errorMessages.join('<br>');
+                    }
+                    if (saveBtn) {
+                        saveBtn.disabled = true;
+                        saveBtn.style.opacity = '0.6';
+                        saveBtn.style.cursor = 'not-allowed';
+                        saveBtn.innerHTML = '<i data-lucide="x-circle"></i> Fix Mark Errors to Save';
+                    }
+                } else {
+                    if (errorBanner) {
+                        errorBanner.style.display = 'none';
+                    }
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.style.opacity = '';
+                        saveBtn.style.cursor = '';
+                        saveBtn.innerHTML = '<i data-lucide="save"></i> Save All Marks';
+                    }
+                }
+                if (window.lucide) window.lucide.createIcons();
+            }
+            
+            // Validate on input typing
+            marksInputs.forEach(input => {
+                input.addEventListener('input', validateMarks);
+            });
+            
+            // Also validate when Full Marks header inputs are changed
+            const fmInputs = document.querySelectorAll('input[name^="fm_"]');
+            fmInputs.forEach(fmInput => {
+                fmInput.addEventListener('input', function() {
+                    // Update max attributes of marks input elements in that column
+                    const subName = this.name.replace('fm_', '');
+                    const newMax = this.value;
+                    document.querySelectorAll(`input[data-subject="${subName}"]`).forEach(el => {
+                        el.setAttribute('max', newMax);
+                    });
+                    validateMarks();
+                });
+            });
+
+            // Prevent form submit if there's any active error
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    validateMarks();
+                    if (saveBtn && saveBtn.disabled) {
+                        e.preventDefault();
+                        alert('Please correct the validation errors before saving.');
+                    }
+                });
+            }
+
+            // Restore and preserve horizontal scroll of the marks grid table
+            const tableResp = document.querySelector('.table-responsive');
+            if (tableResp) {
+                const savedScrollLeft = sessionStorage.getItem('bulk_marks_scroll_left');
+                if (savedScrollLeft !== null) {
+                    tableResp.scrollLeft = parseFloat(savedScrollLeft);
+                }
+                tableResp.addEventListener('scroll', function() {
+                    sessionStorage.setItem('bulk_marks_scroll_left', tableResp.scrollLeft);
+                });
+            }
+        });
+
+        function updateSubjectFMInline(subject, field, value, term) {
+            const formData = new FormData();
+            formData.append('action_type', 'update_fm_inline');
+            formData.append('subject_name', subject);
+            formData.append('field', field);
+            formData.append('value', value);
+            formData.append('term_name', term);
+            formData.append('class_name', '{{ selected_class }}');
+
+            fetch('/admin/bulk-marks', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status !== 'success') {
+                    alert('Failed to update: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error updating marks.');
+            });
+        }
+    </script>
+</body>
+</html>

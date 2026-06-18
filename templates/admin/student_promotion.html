@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Promotion - Al Hidayet Mission</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    
+    <style>
+        .filter-card {
+            background: #fff;
+            padding: 25px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 25px;
+            border-top: 4px solid var(--primary-color);
+            position: relative;
+            z-index: 99;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            margin-bottom: 0; /* Override */
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .input-group select, .input-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .input-group select:focus, .input-group input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .btn-filter {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Outfit', sans-serif;
+            height: 44px;
+            justify-content: center;
+        }
+
+        .btn-filter:hover {
+            transform: translateY(-2px);
+            opacity: 0.95;
+        }
+
+        .students-card {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            position: relative;
+            z-index: 5;
+        }
+
+        .promotion-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .promotion-table th, .promotion-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+        }
+
+        .promotion-table th {
+            background: #fdf2f8;
+            color: #2d3436;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .promotion-table tr:hover {
+            background-color: #fafafa;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox-custom {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+
+        .promotion-bar {
+            background: #fdf2f8;
+            border-top: 2px solid #f0f0f0;
+            padding: 20px;
+            margin-top: 35px;
+            border-radius: var(--radius);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .promotion-inputs {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge-info {
+            background-color: #e1f5fe;
+            color: #0288d1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">Student Promotion</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- FILTER CARD -->
+                <div class="filter-card">
+                    <h3 style="margin-top:0; margin-bottom:15px; font-family:'Fredoka', sans-serif; font-size:18px; color:var(--text-dark); font-weight:500;">
+                        <i class="fas fa-filter" style="color:var(--primary-color); margin-right:5px;"></i> Filter Class
+                    </h3>
+                    <form action="/admin/student-promotion" method="GET">
+                        <div class="filter-grid">
+                            <input type="hidden" name="branch" value="{{ branch_filter or 'bhogram' }}">
+
+                            <!-- Class Selection -->
+                            <div class="input-group">
+                                <label>Current Class:</label>
+                                <select name="class_filter" class="search-select" required>
+                                    <option value="">Select Class</option>
+                                    {% for c in classes %}
+                                        <option value="{{ c }}" {% if class_filter == c %}selected{% endif %}>Class {{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn-filter">
+                                <i class="fas fa-search"></i> Load Roster
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- STUDENTS ROSTER & PROMOTION CARD -->
+                <div class="students-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                        <h3 style="margin:0; font-family:'Fredoka', sans-serif; font-size:20px; color:var(--text-dark); font-weight:500;">
+                            <i class="fas fa-users" style="color:var(--primary-color); margin-right:5px;"></i> Roster List
+                        </h3>
+                        {% if students %}
+                            <span class="badge-info">Total loaded: {{ students|length }} students</span>
+                        {% endif %}
+                    </div>
+
+                    {% if students %}
+                    <form action="/admin/student-promotion?branch={{ branch_filter or 'bhogram' }}&class_filter={{ class_filter }}" method="POST" id="promoteForm">
+                        <div style="overflow-x: auto;">
+                            <table class="promotion-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px; text-align:center;">
+                                            <div class="checkbox-container">
+                                                <input type="checkbox" id="selectAll" class="checkbox-custom">
+                                            </div>
+                                        </th>
+                                        <th style="width:80px;">Roll No</th>
+                                        <th style="width:180px;">Student Name</th>
+                                        <th style="width:120px;">Unique Code</th>
+                                        <th>Guardian's Name</th>
+                                        <th style="width:150px;">Current Class</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in students %}
+                                    <tr>
+                                        <td style="text-align:center;">
+                                            <div class="checkbox-container">
+                                                <input type="checkbox" name="student_ids" value="{{ s.id }}" class="checkbox-custom student-checkbox">
+                                            </div>
+                                        </td>
+                                        <td><strong>{{ s.roll_number or 'N/A' }}</strong></td>
+                                        <td>{{ s.full_name or s.username }}</td>
+                                        <td><code>{{ s.unique_code or 'N/A' }}</code></td>
+                                        <td>{{ s.guardian_name or 'N/A' }}</td>
+                                        <td>
+                                            <span style="font-weight: 500;">Class {{ s.class }}</span> 
+                                            {% if s.section %}(Sec: {{ s.section }}){% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PROMOTION FOOTER ACTION BAR -->
+                        <div class="promotion-bar">
+                            <div style="font-weight:500; font-size:14px; color:#636e72;">
+                                Selected: <strong id="selectedCount" style="color:var(--primary-color);">0</strong> / {{ students|length }} students
+                            </div>
+                            
+                            <div class="promotion-inputs">
+                                <div class="input-group" style="min-width: 160px;">
+                                    <select name="new_class" class="search-select" required>
+                                        <option value="">Select Target Class</option>
+                                        {% for c in classes %}
+                                            <option value="{{ c }}">Class {{ c }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="input-group" style="width: 120px;">
+                                    <input type="text" name="new_section" placeholder="New Sec (Optional)" style="height:38px; padding:6px 12px; font-size:14px;">
+                                </div>
+                                <button type="submit" class="btn-filter" style="background: linear-gradient(135deg, #10ac84 0%, #2ed573 100%); font-size: 14px;" onclick="return confirmPromotion();">
+                                    <i class="fas fa-graduation-cap"></i> Promote Selected
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    {% else %}
+                        <!-- EMPTY STATE -->
+                        <div style="text-align:center; padding:60px 40px; color:#7f8c8d;">
+                            <i class="fas fa-user-graduate" style="font-size:48px; color:#dfe6e9; margin-bottom:15px;"></i>
+                            {% if class_filter %}
+                                <p style="font-size:16px; font-weight:500; margin:0;">No students found in Class {{ class_filter }}.</p>
+                                <p style="font-size:13px; color:#b2bec3; margin-top:5px;">Please upload student rosters or verify class details.</p>
+                            {% else %}
+                                <p style="font-size:16px; font-weight:500; margin:0;">Please select a Class in the filter above to display students.</p>
+                                <p style="font-size:13px; color:#b2bec3; margin-top:5px;">This roster list operates for efficient class transitions.</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Initialize TomSelect on search selections
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null,
+                    dropdownParent: 'body'
+                });
+            });
+
+            // Master checkbox select-all logic
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+            const selectedCountLabel = document.getElementById('selectedCount');
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    studentCheckboxes.forEach(cb => {
+                        cb.checked = isChecked;
+                    });
+                    updateSelectedCount();
+                });
+            }
+
+            if (studentCheckboxes.length > 0) {
+                studentCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        // If one is unchecked, uncheck the header checkbox
+                        if (!this.checked && selectAllCheckbox) {
+                            selectAllCheckbox.checked = false;
+                        }
+                        // If all are checked, check the header checkbox
+                        if (Array.from(studentCheckboxes).every(c => c.checked) && selectAllCheckbox) {
+                            selectAllCheckbox.checked = true;
+                        }
+                        updateSelectedCount();
+                    });
+                });
+            }
+
+            function updateSelectedCount() {
+                if (selectedCountLabel) {
+                    const checkedCount = document.querySelectorAll('.student-checkbox:checked').length;
+                    selectedCountLabel.innerText = checkedCount;
+                }
+            }
+        });
+
+        function confirmPromotion() {
+            const checkedCount = document.querySelectorAll('.student-checkbox:checked').length;
+            if (checkedCount === 0) {
+                alert("Please select at least one student for promotion.");
+                return false;
+            }
+            return confirm(`Are you sure you want to promote the ${checkedCount} selected students?`);
+        }
+    </script>
+</body>
+
+</html>

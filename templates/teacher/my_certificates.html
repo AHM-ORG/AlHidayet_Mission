@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Certificates - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .cert-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .cert-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .cert-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        .cert-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f0fdf4;
+            color: #16a34a;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .cert-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 5px 0;
+            max-width: 80%;
+        }
+        .cert-recipient {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+        .cert-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .cert-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+        }
+        .cert-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            border: none;
+            flex: 1;
+            justify-content: center;
+            background: var(--primary-color);
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .cert-btn:hover {
+            background: #17545b;
+        }
+    </style>
+</head>
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/routine" class="sidebar-item"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/admin/admit-card" class="sidebar-item"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item active"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <div class="top-bar-title">My Certificates</div>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div style="margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 20px; color: var(--text-dark);">Your Recognitions</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: var(--text-muted);">View and print certificates of appreciation and achievements awarded to you.</p>
+                </div>
+
+                {% if not certs %}
+                <div class="auth-container" style="max-width: 100%; text-align: center; padding: 60px; box-shadow: var(--shadow-sm);">
+                    <i data-lucide="award" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 15px;"></i>
+                    <h3 style="margin: 0; font-size: 18px; color: var(--text-dark);">No certificates yet</h3>
+                    <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">Once certificates of appreciation are issued for you, they will appear here.</p>
+                </div>
+                {% else %}
+                <div class="cert-card-grid">
+                    {% for cert in certs %}
+                    <div class="cert-card">
+                        <span class="cert-badge">Appreciation</span>
+                        <h3 class="cert-title">{{ cert.title }}</h3>
+                        <div class="cert-recipient">{{ cert.recipient_name }}</div>
+                        
+                        <div class="cert-meta">
+                            <strong>Event/Context:</strong> {{ cert.subtitle or 'Academic Recognition' }}
+                        </div>
+                        
+                        <div class="cert-meta" style="font-size: 12.5px; line-height: 1.4; color: #475569; background: #f8fafc; padding: 8px; border-radius: 6px; margin: 10px 0;">
+                            {{ cert.reason_text }}
+                        </div>
+
+                        <div class="cert-meta" style="margin-top: auto;">
+                            <i data-lucide="calendar" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 3px;"></i> 
+                            <span style="vertical-align: middle; font-size: 12px;">Issued on {{ cert.date_text or '-' }}</span>
+                        </div>
+
+                        <div class="cert-actions">
+                            <a href="/admin/print-certificate/{{ cert.id }}" target="_blank" class="cert-btn">
+                                <i data-lucide="printer" style="width: 14px; height: 14px;"></i> View & Print
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

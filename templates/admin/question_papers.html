@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Paper Bank - Bhogram Al-Hidayet Mission</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Bhogram Al-Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/profile-edits" class="sidebar-item {% if request.path == '/admin/profile-edits' %}active{% endif %}"><i data-lucide="user-check"></i> Profile Edit Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/reviews" class="sidebar-item {% if request.path == '/admin/reviews' %}active{% endif %}"><i data-lucide="message-square"></i> Manage Reviews</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item active"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item active"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left" style="display: flex; align-items: center; gap: 10px;">
+                    <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">Question Paper Bank</div>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 30px;">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 30px;">
+                    
+                    {% if role == 'admin' %}
+                    <!-- Upload Question Papers Section -->
+                    <div class="card" style="padding: 25px; border-radius: 12px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #edf2f7; border-top: 4px solid var(--primary-color);">
+                        <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 18px; color: var(--text-dark); font-weight: 600; font-family: 'Fredoka', sans-serif; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">
+                            <i data-lucide="upload" style="vertical-align: middle; margin-right: 5px;"></i> Upload Question Papers
+                        </h3>
+                        
+                        <form action="{{ url_for('question_papers') }}" method="POST" enctype="multipart/form-data" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: end;">
+                            <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; font-size: 14px; color: var(--text-dark);">Select Class</label>
+                                <select name="class_name" required style="width: 100%; height: 42px; border-radius: 8px; border: 2px solid #eee; padding: 0 10px; font-family: 'Outfit', sans-serif; outline: none; background: #fff;">
+                                    <option value="">Choose Class</option>
+                                    {% for c in classes %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; font-size: 14px; color: var(--text-dark);">Select Term / Test</label>
+                                <select name="term_name" required style="width: 100%; height: 42px; border-radius: 8px; border: 2px solid #eee; padding: 0 10px; font-family: 'Outfit', sans-serif; outline: none; background: #fff;">
+                                    <option value="">Choose Term/Test</option>
+                                    {% for t in terms %}
+                                    <option value="{{ t }}">{{ t }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: 600; font-size: 14px; color: var(--text-dark);">Select Subject</label>
+                                <select name="subject_name" required style="width: 100%; height: 42px; border-radius: 8px; border: 2px solid #eee; padding: 0 10px; font-family: 'Outfit', sans-serif; outline: none; background: #fff;">
+                                    <option value="">Choose Subject</option>
+                                    {% for s in subjects %}
+                                    <option value="{{ s }}">{{ s }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 8px; grid-column: span 1;">
+                                <label style="font-weight: 600; font-size: 14px; color: var(--text-dark);">DOCX Question Files</label>
+                                <input type="file" name="question_files" multiple accept=".docx" required style="width: 100%; padding: 8px; border-radius: 8px; border: 2px solid #eee; height: 42px; box-sizing: border-box; background: #f8fafc; font-family: 'Outfit', sans-serif;">
+                            </div>
+                            
+                            <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 10px;">
+                                <button type="submit" class="auth-btn" style="margin: 0; padding: 10px 25px; background: var(--primary-color); height: 42px; border-radius: 8px; border: none; color: white; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer;">
+                                    Upload Question Paper(s)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- List of Question Papers -->
+                    <div class="card" style="padding: 25px; border-radius: 12px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #edf2f7; border-top: 4px solid var(--secondary-color);">
+                        <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 18px; color: var(--text-dark); font-weight: 600; font-family: 'Fredoka', sans-serif; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <span><i data-lucide="database" style="vertical-align: middle; margin-right: 5px;"></i> Paper Repository</span>
+                            
+                            <div style="display: flex; gap: 10px; font-size: 13px; font-weight: normal; font-family: 'Outfit', sans-serif;">
+                                <input type="text" id="repoSearch" placeholder="Search by subject or term..." style="border: 2px solid #eee; padding: 6px 12px; border-radius: 6px; width: 220px; outline: none; font-size: 13px; font-family: 'Outfit', sans-serif;">
+                                <select id="repoClassFilter" style="border: 2px solid #eee; padding: 6px; border-radius: 6px; font-size: 13px; outline: none; font-family: 'Outfit', sans-serif; background: #fff;">
+                                    <option value="">All Classes</option>
+                                    {% for c in classes %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </h3>
+
+                        {% if papers %}
+                        <div style="overflow-x: auto;">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; font-family: 'Outfit', sans-serif;">
+                                <thead>
+                                    <tr style="background: #fdf2f8; border-bottom: 1px solid #e2e8f0;">
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">Class</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">Term / Test</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">Subject</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color); text-align: center;">Written Marks</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">Filename</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">Uploaded By</th>
+                                        <th style="padding: 12px 15px; font-weight: 600; color: var(--primary-color); text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="repoTableBody">
+                                    {% for p in papers %}
+                                    <tr class="repo-row" data-class="{{ p.class_name }}" style="border-bottom: 1px solid #edf2f7; transition: background 0.2s;">
+                                        <td style="padding: 12px 15px; font-weight: 500; color: #1e293b;">{{ p.class_name }}</td>
+                                        <td style="padding: 12px 15px; color: #475569;">{{ p.term_name }}</td>
+                                        <td style="padding: 12px 15px; font-weight: 600; color: var(--primary-color);">{{ p.subject_name }}</td>
+                                        <td style="padding: 12px 15px; color: #0f766e; font-weight: bold; text-align: center;">{{ p.written_limit }}</td>
+                                        <td style="padding: 12px 15px; color: #64748b; font-size: 13px;">
+                                            <i data-lucide="file" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px; color: #3b82f6;"></i>
+                                            {{ p.filename }}
+                                        </td>
+                                        <td style="padding: 12px 15px; color: #64748b; font-size: 13px;">{{ p.uploader_name }}</td>
+                                        <td style="padding: 12px 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+                                            {% if p.drive_file_id %}
+                                            <a href="{{ url_for('drive_view', file_id=p.drive_file_id) }}" download="{{ p.filename }}" class="btn-sm" style="background: #3b82f6; color: white; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+                                            {% else %}
+                                            <a href="{{ url_for('static', filename='uploads/question_papers/' + p.filepath) }}" download="{{ p.filename }}" class="btn-sm" style="background: #3b82f6; color: white; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+                                            {% endif %}
+                                                <i data-lucide="download" style="width: 14px; height: 14px;"></i> Download
+                                            </a>
+                                            
+                                            {% if role == 'admin' %}
+                                            <form action="{{ url_for('delete_question_paper', paper_id=p.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this question paper? This action cannot be undone.');" style="display: inline; margin: 0;">
+                                                <button type="submit" class="btn-sm" style="background: #ef4444; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Delete
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted); font-family: 'Outfit', sans-serif;">
+                            <i data-lucide="folder-open" style="width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 15px;"></i>
+                            <p style="margin: 0; font-size: 16px; font-weight: 500;">No question papers uploaded yet.</p>
+                            <p style="margin: 5px 0 0 0; font-size: 13px;">Upload DOCX files to start populating the paper bank repository.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById("repoSearch");
+            const classFilter = document.getElementById("repoClassFilter");
+            const tableBody = document.getElementById("repoTableBody");
+            
+            if (searchInput && classFilter && tableBody) {
+                function filterTable() {
+                    const searchVal = searchInput.value.toLowerCase().trim();
+                    const classVal = classFilter.value;
+                    const rows = tableBody.querySelectorAll(".repo-row");
+                    
+                    rows.forEach(row => {
+                        const classAttr = row.getAttribute("data-class");
+                        const text = row.textContent.toLowerCase();
+                        
+                        const matchSearch = text.includes(searchVal);
+                        const matchClass = classVal === "" || classAttr === classVal;
+                        
+                        if (matchSearch && matchClass) {
+                            row.style.display = "";
+                        } else {
+                            row.style.display = "none";
+                        }
+                    });
+                }
+                
+                searchInput.addEventListener("input", filterTable);
+                classFilter.addEventListener("change", filterTable);
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

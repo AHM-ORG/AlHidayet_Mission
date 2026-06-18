@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: alhidayet-mission
+    env: python
+    plan: starter # Starter plan is required for Persistent Disks on Render
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    disk:
+      name: database-disk
+      mountPath: /opt/render/project/src/instance
+      sizeGB: 1
+    envVars:
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # You must add the rest of the environment variables (like MAIL_USERNAME, GEMINI_API_KEY, etc.) 
+      # in the Render Dashboard under Environment Variables.

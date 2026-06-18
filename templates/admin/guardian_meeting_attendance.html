@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Attendance: {{ meeting.meeting_name }} - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .meeting-header-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #10ac84 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+        .tab-btn.active {
+            border-bottom-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .tab-container {
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .attendance-tab {
+            display: none;
+        }
+        .attendance-tab.active {
+            display: block;
+        }
+        .status-radio-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .status-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid #ddd;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        /* Custom radio input styles */
+        .status-radio {
+            display: none;
+        }
+        
+        .status-radio:checked + .label-present {
+            background: #e3faf2;
+            color: #07c160;
+            border-color: #07c160;
+        }
+        .status-radio:checked + .label-absent {
+            background: #ffebe9;
+            color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+        .status-radio:checked + .label-late {
+            background: #fffbe6;
+            color: #faad14;
+            border-color: #faad14;
+        }
+        .status-radio:checked + .label-leave {
+            background: #e6f7ff;
+            color: #1890ff;
+            border-color: #1890ff;
+        }
+        .roster-table th, .roster-table td {
+            padding: 14px 12px;
+            vertical-align: middle;
+        }
+        .roster-table tbody tr {
+            border-bottom: 1px solid #f1f2f6;
+            transition: background 0.2s ease;
+        }
+        .roster-table tbody tr:hover {
+            background: rgba(241, 242, 246, 0.4);
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'teacher' %}
+                <div class="sidebar-label">Academic Tools</div>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> My Students</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> ID Cards</a>
+                <a href="/teacher/my-certificates" class="sidebar-item {% if request.path == '/teacher/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit Cards</a>
+                <a href="/teacher/attendance-leaves" class="sidebar-item {% if request.path == '/teacher/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                <a href="/teacher/complaints" class="sidebar-item {% if request.path == '/teacher/complaints' %}active{% endif %}"><i data-lucide="message-square"></i> Complaints Box</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> My Marksheet</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> My Fee Status</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> My ID Card</a>
+                <a href="/student/my-certificates" class="sidebar-item {% if request.path == '/student/my-certificates' %}active{% endif %}"><i data-lucide="award"></i> My Certificates</a>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> My Admit Card</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> My Class Routine</a>
+                <a href="/student/edit-info" class="sidebar-item {% if request.path == '/student/edit-info' %}active{% endif %}"><i data-lucide="user-cog"></i> Edit Profile</a>
+                <a href="/student/attendance-leaves" class="sidebar-item {% if request.path == '/student/attendance-leaves' %}active{% endif %}"><i data-lucide="calendar-days"></i> Attendance & Leaves</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <a href="/admin/guardian-meetings" style="display:flex; align-items:center; gap:6px; text-decoration:none; color:var(--text-color); font-weight:600; font-size:14px;">
+                    <i data-lucide="arrow-left" style="width:18px; height:18px;"></i> Back to Directory
+                </a>
+            </header>
+
+            <div class="content-wrapper">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Premium Header Card -->
+                <div class="meeting-header-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <div></div>
+                            <h2 style="margin: 10px 0 5px; font-size: 26px; font-weight: 800;">{{ meeting.meeting_name }}</h2>
+                            <p style="margin: 0; opacity: 0.9; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="calendar"></i> Period: <strong>{{ meeting.meeting_month }}</strong> &nbsp;|&nbsp; 
+                                <i data-lucide="clock"></i> Conducted Date: <strong>{{ meeting.meeting_date }}</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <div class="tab-container">
+                    <button class="tab-btn {% if active_tab == 'teachers' %}active{% endif %}" onclick="switchTab('teachers')">
+                        <i data-lucide="graduation-cap"></i> Teachers attendance
+                    </button>
+                    <button class="tab-btn {% if active_tab == 'guardians' %}active{% endif %}" onclick="switchTab('guardians')">
+                        <i data-lucide="users"></i> Student Guardians
+                    </button>
+                    <button class="tab-btn {% if active_tab == 'others' %}active{% endif %}" onclick="switchTab('others')">
+                        <i data-lucide="user-cog"></i> Guests & Others
+                    </button>
+                </div>
+
+                <!-- 1. TEACHERS TAB -->
+                <div id="teachers-tab" class="attendance-tab {% if active_tab == 'teachers' %}active{% endif %}">
+                    <div class="auth-container" style="max-width: 100%; text-align: left; background: white; padding: 25px; border-radius: 12px; border: 1px solid #eee;">
+                        <h3 style="margin: 0 0 20px; color: var(--primary-color);">School Teacher Roster</h3>
+                        
+                        <form action="/admin/guardian-meetings/{{ meeting.id }}/attendance" method="POST">
+                            <input type="hidden" name="attendee_type" value="teacher">
+                            
+                            <div style="overflow-x: auto;">
+                                <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid #eee; text-align: left;">
+                                            <th style="width: 30%;">Teacher Name</th>
+                                            <th style="width: 15%;">Contact</th>
+                                            <th style="width: 30%;">Attendance Status</th>
+                                            <th style="width: 25%;">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for teacher in teachers_roster %}
+                                        <tr>
+                                            <td>
+                                                <div style="font-weight: 700; color: #2d3436;">{{ teacher.full_name or (teacher.username | clean_name) }}</div>
+                                                <span style="font-size: 12px; color: var(--text-muted);">@{{ teacher.username }}</span>
+                                            </td>
+                                            <td style="color: var(--text-muted); font-size: 13px;">{{ teacher.phone_number or 'N/A' }}</td>
+                                            <td>
+                                                <div class="status-radio-group">
+                                                    <label>
+                                                        <input type="radio" name="status_{{ teacher.user_id }}" value="Present" class="status-radio" {% if teacher.status == 'Present' %}checked{% endif %}>
+                                                        <span class="status-label label-present">Present</span>
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="status_{{ teacher.user_id }}" value="Absent" class="status-radio" {% if teacher.status == 'Absent' %}checked{% endif %}>
+                                                        <span class="status-label label-absent">Absent</span>
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="status_{{ teacher.user_id }}" value="Late" class="status-radio" {% if teacher.status == 'Late' %}checked{% endif %}>
+                                                        <span class="status-label label-late">Late</span>
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="status_{{ teacher.user_id }}" value="On Leave" class="status-radio" {% if teacher.status == 'On Leave' %}checked{% endif %}>
+                                                        <span class="status-label label-leave">Leave</span>
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="remarks_{{ teacher.user_id }}" class="form-control" placeholder="Optional notes" value="{{ teacher.remarks or '' }}" style="min-height: 36px; padding: 4px 10px;">
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="4" style="text-align: center; padding: 30px; color: var(--text-muted);">No teachers registered in the system.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {% if teachers_roster %}
+                            <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-primary" style="width: auto; padding: 10px 24px; min-height: 40px; font-weight:600; display:flex; align-items:center; gap:8px;">
+                                    <i data-lucide="save"></i> Save Teacher Attendance
+                                </button>
+                            </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 2. GUARDIANS TAB -->
+                <div id="guardians-tab" class="attendance-tab {% if active_tab == 'guardians' %}active{% endif %}">
+                    <div class="auth-container" style="max-width: 100%; text-align: left; background: white; padding: 25px; border-radius: 12px; border: 1px solid #eee;">
+                        
+                        <!-- Class Cascading Filter Form -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                            <div>
+                                <h3 style="margin: 0; color: var(--primary-color);">Student Guardians Roster</h3>
+                                <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 14px;">Select a class below to load its student guardians roster.</p>
+                            </div>
+                            
+                            <div>
+                                <form method="GET" id="classFilterForm" style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="hidden" name="tab" value="guardians">
+                                    <label for="class_name" style="font-weight:600; font-size:14px; color:#2d3436;">Select Class:</label>
+                                    <select name="class_name" id="class_name" class="form-control" onchange="this.form.submit()" style="min-height: 38px; width: 180px;">
+                                        <option value="" disabled>-- Choose Class --</option>
+                                        {% for cls in classes %}
+                                        <option value="{{ cls }}" {% if selected_class == cls %}selected{% endif %}>{{ cls }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            </div>
+                        </div>
+
+                        {% if selected_class %}
+                        <form action="/admin/guardian-meetings/{{ meeting.id }}/attendance" method="POST">
+                            <input type="hidden" name="attendee_type" value="guardian">
+                            <input type="hidden" name="class_name" value="{{ selected_class }}">
+                            
+                            <div style="overflow-x: auto;">
+                                <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid #eee; text-align: left;">
+                                            <th style="width: 10%;">Roll No</th>
+                                            <th style="width: 25%;">Student Details</th>
+                                            <th style="width: 25%;">Guardian Name</th>
+                                            <th style="width: 20%;">Attendance Status</th>
+                                            <th style="width: 20%;">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for s in guardians_roster %}
+                                        <tr>
+                                            <td style="font-weight:700; color:var(--primary-color);">#{{ s.roll_number or 'N/A' }}</td>
+                                            <td>
+                                                <div style="font-weight: 700; color: #2d3436;">{{ s.student_name or 'N/A' }}</div>
+                                                <span style="font-size: 11px; background:#f1f2f6; padding:2px 6px; border-radius:4px; color:var(--text-muted);">{{ s.class }}</span>
+                                            </td>
+                                            <td style="font-weight: 600; color: #2d3436;">
+                                                <i data-lucide="heart-handshake" style="width:14px; height:14px; vertical-align:middle; color:#ff7675; margin-right:4px;"></i>
+                                                {{ s.guardian_name or 'Not specified' }}
+                                            </td>
+                                            <td>
+                                                <div class="status-radio-group">
+                                                    <label>
+                                                        <input type="radio" name="status_{{ s.user_id }}" value="Present" class="status-radio" {% if s.status == 'Present' %}checked{% endif %}>
+                                                        <span class="status-label label-present">Present</span>
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="status_{{ s.user_id }}" value="Absent" class="status-radio" {% if s.status == 'Absent' %}checked{% endif %}>
+                                                        <span class="status-label label-absent">Absent</span>
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="remarks_{{ s.user_id }}" class="form-control" placeholder="Optional notes" value="{{ s.remarks or '' }}" style="min-height: 36px; padding: 4px 10px;">
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">No student guardian entries found in {{ selected_class }}.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {% if guardians_roster %}
+                            <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-primary" style="width: auto; padding: 10px 24px; min-height: 40px; font-weight:600; display:flex; align-items:center; gap:8px;">
+                                    <i data-lucide="save"></i> Save Guardian Attendance
+                                </button>
+                            </div>
+                            {% endif %}
+                        </form>
+                        {% else %}
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i data-lucide="users" style="width: 48px; height: 48px; color: #ddd; margin-bottom: 10px;"></i>
+                            <p style="margin:0;">No classes found to select.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 3. OTHERS TAB -->
+                <div id="others-tab" class="attendance-tab {% if active_tab == 'others' %}active{% endif %}">
+                    <div class="auth-container" style="max-width: 100%; text-align: left; background: white; padding: 25px; border-radius: 12px; border: 1px solid #eee;">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 340px; gap: 30px; align-items: start; flex-wrap: wrap;">
+                            <!-- Guests List Table -->
+                            <div>
+                                <h3 style="margin: 0 0 20px; color: var(--primary-color);">Dynamic Guest & Other Attendees</h3>
+                                
+                                <div style="overflow-x: auto;">
+                                    <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="border-bottom: 2px solid #eee; text-align: left;">
+                                                <th>Attendee Name</th>
+                                                <th>Designation / Role</th>
+                                                <th>Status</th>
+                                                <th>Remarks</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for other in others_roster %}
+                                            <tr>
+                                                <td style="font-weight: 700; color: #2d3436;">{{ other.other_name }}</td>
+                                                <td style="color: var(--text-muted); font-size: 13px;">{{ other.other_designation or 'N/A' }}</td>
+                                                <td>
+                                                    <span class="badge" style="background:#e3faf2; color:#07c160; padding: 4px 10px; border-radius: 20px; font-weight:600; font-size:12px;">
+                                                        {{ other.status }}
+                                                    </span>
+                                                </td>
+                                                <td style="font-size: 13px; color: var(--text-muted);">{{ other.remarks or '' }}</td>
+                                                <td style="text-align: center;">
+                                                    <form action="/admin/guardian-meetings/{{ meeting.id }}/attendance" method="POST" onsubmit="return confirm('Remove guest {{ other.other_name }}?');" style="margin:0;">
+                                                        <input type="hidden" name="attendee_type" value="delete_other">
+                                                        <input type="hidden" name="other_id" value="{{ other.id }}">
+                                                        <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                                            <i data-lucide="trash-2" style="width:12px; height:12px;"></i> Remove
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">No guest attendees recorded yet. Use the registration panel to add them.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Guest Addition Side Form -->
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e9ecef;">
+                                <h4 style="margin: 0 0 15px; color: #2d3436; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="user-plus" style="color:var(--primary-color);"></i> Add Guest Attendee
+                                </h4>
+                                
+                                <form action="/admin/guardian-meetings/{{ meeting.id }}/attendance" method="POST">
+                                    <input type="hidden" name="attendee_type" value="other">
+                                    
+                                    <div class="form-group">
+                                        <label for="other_name" class="form-label">Full Name</label>
+                                        <input type="text" name="other_name" id="other_name" class="form-control" placeholder="Guest Full Name" required style="min-height:38px;">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="other_designation" class="form-label">Designation / Role</label>
+                                        <input type="text" name="other_designation" id="other_designation" class="form-control" placeholder="e.g. Local Member, Speaker" required style="min-height:38px;">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="status" class="form-label">Status</label>
+                                        <select name="status" id="status" class="form-control" style="min-height:38px;">
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="remarks" class="form-label">Remarks</label>
+                                        <textarea name="remarks" id="remarks" class="form-control" placeholder="Optional details" style="min-height:60px; padding: 8px 12px; resize: none;"></textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary" style="width: 100%; min-height: 40px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px;">
+                                        <i data-lucide="plus"></i> Register Guest
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function switchTab(tabId) {
+            // Update UI tabs active classes
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.attendance-tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Activate clicked
+            const eventBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+            if (eventBtn) eventBtn.classList.add('active');
+            
+            const targetTab = document.getElementById(tabId + '-tab');
+            if (targetTab) targetTab.classList.add('active');
+            
+            // Push active state into URL query parameter without fully reloading the page!
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabId);
+            window.history.pushState({}, '', url);
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

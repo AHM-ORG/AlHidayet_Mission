@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate - {{ cert.recipient_name }}</title>
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Great+Vibes&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #e2e8f0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .print-btn-container {
+            padding: 20px;
+            background: white;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .print-btn {
+            background: #1f6f78;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(31, 111, 120, 0.2);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(31, 111, 120, 0.3);
+        }
+
+        .print-btn-back {
+            background: #7f8c8d;
+            box-shadow: 0 4px 10px rgba(127, 140, 141, 0.2);
+        }
+
+        .print-btn-back:hover {
+            box-shadow: 0 6px 15px rgba(127, 140, 141, 0.3);
+        }
+
+        /* Certificate Container: A4 Landscape */
+        .cert-wrapper {
+            width: 297mm;
+            height: 210mm;
+            margin: 20px auto;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+            padding: 22mm;
+            position: relative;
+            overflow: hidden;
+            background-repeat: no-repeat;
+            background-size: cover;
+            transition: all 0.3s ease;
+        }
+
+        /* Watermark Image */
+        .cert-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 380px;
+            height: 380px;
+            opacity: 0.06;
+            z-index: 1;
+            pointer-events: none;
+            object-fit: contain;
+        }
+
+        /* Ornate Corner Ornaments */
+        .cert-corner {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .cert-corner::before, .cert-corner::after {
+            content: '';
+            position: absolute;
+            background: currentColor;
+        }
+        .cert-corner-tl { top: 20px; left: 20px; }
+        .cert-corner-tr { top: 20px; right: 20px; }
+        .cert-corner-bl { bottom: 20px; left: 20px; }
+        .cert-corner-br { bottom: 20px; right: 20px; }
+
+        /* TL corners */
+        .cert-corner-tl::before { top: 0; left: 0; width: 35px; height: 3px; }
+        .cert-corner-tl::after { top: 0; left: 0; width: 3px; height: 35px; }
+        /* TR corners */
+        .cert-corner-tr::before { top: 0; right: 0; width: 35px; height: 3px; }
+        .cert-corner-tr::after { top: 0; right: 0; width: 3px; height: 35px; }
+        /* BL corners */
+        .cert-corner-bl::before { bottom: 0; left: 0; width: 35px; height: 3px; }
+        .cert-corner-bl::after { bottom: 0; left: 0; width: 3px; height: 35px; }
+        /* BR corners */
+        .cert-corner-br::before { bottom: 0; right: 0; width: 35px; height: 3px; }
+        .cert-corner-br::after { bottom: 0; right: 0; width: 3px; height: 35px; }
+
+        /* Inner Accent Corners */
+        .cert-corner-inner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid currentColor;
+            pointer-events: none;
+            opacity: 0.85;
+        }
+        .cert-corner-inner-tl { top: 28px; left: 28px; border-right: none; border-bottom: none; }
+        .cert-corner-inner-tr { top: 28px; right: 28px; border-left: none; border-bottom: none; }
+        .cert-corner-inner-bl { bottom: 28px; left: 28px; border-right: none; border-top: none; }
+        .cert-corner-inner-br { bottom: 28px; right: 28px; border-left: none; border-top: none; }
+
+        /* Themes and Borders */
+        .theme-classic {
+            border: 24px double #c5a880;
+            background: radial-gradient(circle, #fdfcf7 0%, #f7f4ea 100%);
+            color: #c5a880;
+        }
+        .theme-classic::before {
+            content: '';
+            position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 1px solid #c5a880;
+            pointer-events: none;
+        }
+
+        .theme-modern {
+            border: 18px solid #1e3a8a;
+            border-left: 35px solid #1e3a8a;
+            background: radial-gradient(circle, #ffffff 0%, #eef2f7 100%);
+            color: #1e3a8a;
+        }
+
+        .theme-sports {
+            border: 18px double #dc2626;
+            background: radial-gradient(circle, #fffbfa 0%, #fef2f2 100%);
+            color: #dc2626;
+        }
+
+        .theme-elegant {
+            border: 14px solid #000000;
+            background: radial-gradient(circle, #ffffff 0%, #f5f5f5 100%);
+            color: #000000;
+        }
+        .theme-elegant::after {
+            content: '';
+            position: absolute;
+            top: 5px; left: 5px; right: 5px; bottom: 5px;
+            border: 1px solid #ccc;
+            pointer-events: none;
+        }
+
+        /* Certificate Layout Content */
+        .cert-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            z-index: 2; /* Sits above watermark */
+        }
+
+        .cert-header {
+            margin-top: 5px;
+        }
+
+        .school-name {
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: #1a2e40;
+            margin: 0 0 5px 0;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .cert-subtitle {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #dc2626;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 2px 0 8px 0;
+            font-style: italic;
+        }
+
+        .cert-heading-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 21px;
+            font-weight: 800;
+            color: #b45309;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+            border-bottom: 2px solid #b45309;
+            padding-bottom: 4px;
+            display: inline-block;
+        }
+
+        /* Certified Block */
+        .cert-certify {
+            font-family: 'Great Vibes', cursive;
+            font-size: 34px;
+            color: #7f5f3f;
+            margin-top: 20px;
+        }
+
+        .recipient-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 30px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #111111;
+            margin: 10px 0;
+            letter-spacing: 2px;
+            border-bottom: 2px dotted #c5a880;
+            display: inline-block;
+            padding: 0 30px 4px 30px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.05);
+        }
+
+        .relationship-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14.5px;
+            color: #475569;
+            margin: 2px 0 10px 0;
+        }
+
+        /* Body text formatting */
+        .cert-body {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16.5px;
+            line-height: 1.6;
+            color: #2c3e50;
+            max-width: 85%;
+            margin: 15px auto 5px auto;
+        }
+
+        .cert-body strong {
+            color: #111;
+        }
+
+        .congrats-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #475569;
+            font-style: italic;
+            max-width: 80%;
+            margin: 10px auto 10px auto;
+        }
+
+        /* Footer layouts */
+        .cert-footer {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 15px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+
+        .cert-date {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14.5px;
+            font-weight: 600;
+            color: #475569;
+            text-align: left;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 5px;
+            width: 200px;
+        }
+
+        .cert-signature {
+            text-align: center;
+            width: 200px;
+        }
+
+        .sig-line {
+            border-top: 1.5px solid #2c3e50;
+            padding-top: 5px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            text-transform: capitalize;
+        }
+
+        /* CSS Gold Seal styling */
+        .cert-seal {
+            position: relative;
+            width: 85px;
+            height: 85px;
+            z-index: 3;
+            margin: 0 auto;
+            align-self: center;
+        }
+        .seal-star {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #ffe17d 0%, #cda131 70%, #9e7512 100%);
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(158, 117, 18, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.6);
+            border: 2px dashed #9e7512;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .seal-inner {
+            width: 82%;
+            height: 82%;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .seal-text {
+            font-size: 8.5px;
+            font-weight: 900;
+            color: #5d4407;
+            text-align: center;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+        .seal-ribbon-l, .seal-ribbon-r {
+            position: absolute;
+            width: 22px;
+            height: 55px;
+            background: linear-gradient(135deg, #b22222 0%, #8b0000 100%);
+            z-index: -1;
+            top: 55px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+        }
+        .seal-ribbon-l {
+            left: 16px;
+            transform: rotate(18deg);
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 82%, 0% 100%);
+        }
+        .seal-ribbon-r {
+            right: 16px;
+            transform: rotate(-18deg);
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 82%, 0% 100%);
+        }
+
+        /* Styles for print media */
+        @media print {
+            body {
+                background: white;
+            }
+            .print-btn-container {
+                display: none;
+            }
+            .cert-wrapper {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: avoid;
+            }
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-container">
+        <button class="print-btn" onclick="window.print()">
+            <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print Certificate
+        </button>
+        <button class="print-btn print-btn-back" onclick="window.close(); window.history.back();">
+            Go Back
+        </button>
+    </div>
+
+    <!-- Landscape Certificate Structure -->
+    <div class="cert-wrapper theme-{{ cert.theme_style }}">
+        <!-- Unique Corner Ornaments -->
+        <div class="cert-corner cert-corner-tl"></div>
+        <div class="cert-corner cert-corner-tr"></div>
+        <div class="cert-corner cert-corner-bl"></div>
+        <div class="cert-corner cert-corner-br"></div>
+        <div class="cert-corner-inner cert-corner-inner-tl"></div>
+        <div class="cert-corner-inner cert-corner-inner-tr"></div>
+        <div class="cert-corner-inner cert-corner-inner-bl"></div>
+        <div class="cert-corner-inner cert-corner-inner-br"></div>
+
+        <!-- Subtle Watermark Logo -->
+        <img class="cert-watermark" src="{{ logo_url }}" alt="Watermark Logo">
+
+        <div class="cert-content">
+            <!-- Header Section -->
+            <div class="cert-header">
+                <h1 class="school-name">BHOGRAM AL-HIDAYET MISSION</h1>
+                {% if cert.subtitle %}
+                    <div class="cert-subtitle">{{ cert.subtitle }}</div>
+                {% endif %}
+                <div class="cert-heading-text">{{ cert.title }}</div>
+            </div>
+
+            <!-- Certification Title -->
+            <div>
+                <div class="cert-certify">This is to certify that</div>
+                <div class="recipient-name">{{ cert.recipient_name }}</div>
+                {% if (cert.recipient_type == 'student' or cert.recipient_type == 'other') and cert.father_name %}
+                    <div class="relationship-text">son/daughter of <strong>{{ cert.father_name }}</strong></div>
+                {% endif %}
+            </div>
+
+            <!-- Body of the Certificate -->
+            <div class="cert-body">
+                {% if cert.recipient_type == 'student' %}
+                    of Class <strong>{{ cert.class_name or '-' }}</strong>, Section: <strong>{{ cert.section or '-' }}</strong> Roll: <strong>{{ cert.roll_number or '-' }}</strong>,
+                {% endif %}
+                {{ cert.reason_text }}
+                {% if cert.position_text and cert.position_text != 'None' %}
+                    He/She has secured <strong>{{ cert.position_text }}</strong> place in the <strong>{{ cert.event_name or '-' }}</strong>.
+                {% endif %}
+            </div>
+
+            <!-- Congratulations Text -->
+            {% if cert.congrats_text %}
+                <div class="congrats-text">
+                    {{ cert.congrats_text }}
+                </div>
+            {% endif %}
+
+            <!-- Footer Signatures, Gold Seal & Date -->
+            <div class="cert-footer">
+                <div class="cert-date">
+                    DATE: {{ cert.date_text or '-' }}
+                </div>
+                
+                <!-- Premium Gold Seal Placement -->
+                <div class="cert-seal">
+                    <div class="seal-star">
+                        <div class="seal-inner">
+                            <div class="seal-text">OFFICIAL<br>SEAL</div>
+                        </div>
+                    </div>
+                    <div class="seal-ribbon-l"></div>
+                    <div class="seal-ribbon-r"></div>
+                </div>
+
+                <div class="cert-signature">
+                    <div class="sig-line">
+                        {{ cert.signature_text or 'T.I.C Signature' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

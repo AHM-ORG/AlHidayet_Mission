@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Server Error - AHM Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .error-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            padding: 40px;
+            max-width: 700px;
+            margin: 80px auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            text-align: center;
+            font-family: 'Outfit', sans-serif;
+        }
+        .error-icon {
+            font-size: 60px;
+            color: #d63031;
+            margin-bottom: 20px;
+        }
+        .error-title {
+            color: #2d3436;
+            margin-bottom: 15px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .error-message {
+            color: #636e72;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .error-details {
+            text-align: left;
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-bottom: 30px;
+            border: 1px solid #0984e3;
+        }
+    </style>
+</head>
+<body class="bg-pattern" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, rgba(214, 48, 49, 0.05) 0%, rgba(246, 248, 251, 1) 100%);">
+    <div class="error-card">
+        <div class="error-icon">
+            <i data-lucide="alert-triangle" style="width: 60px; height: 60px; margin: 0 auto;"></i>
+        </div>
+        <h1 class="error-title">Oops! Something went wrong</h1>
+        <p class="error-message">
+            The server encountered an internal error while processing your request. The details of the error are shown below:
+        </p>
+        
+        {% if error %}
+        <div class="error-details"><strong>Error:</strong> {{ error }}
+
+{% if traceback %}
+<strong>Traceback:</strong>
+{{ traceback }}
+{% endif %}</div>
+        {% endif %}
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <a href="/dashboard" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i> Go to Dashboard
+            </a>
+            <a href="/" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                <i data-lucide="home" style="width: 18px; height: 18px;"></i> Go to Home
+            </a>
+        </div>
+    </div>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

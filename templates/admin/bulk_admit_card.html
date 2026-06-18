@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Admit Cards - Class {{ class_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f1f2f6;
+            font-family: 'Outfit', sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .print-btn-container {
+            padding: 20px;
+            background: white;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .print-btn {
+            background: #1f6f78;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(31, 111, 120, 0.2);
+            transition: all 0.2s;
+        }
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto 30px auto;
+            background: white;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            padding: 8mm;
+            position: relative;
+            page-break-after: always;
+            display: grid;
+            gap: 10px;
+        }
+        .a4-page:last-child {
+            page-break-after: avoid !important;
+            margin-bottom: 0;
+        }
+        .layout-2 { grid-template-rows: 1fr 1fr; }
+        .layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; padding: 5mm; }
+
+        /* ADMIT CARD FANCY DESIGN */
+        .admit-card-container {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            border: 3px solid #111;
+            padding: 3px;
+            background: #fff;
+            position: relative;
+            box-sizing: border-box;
+            color: #000;
+            overflow: hidden;
+        }
+        
+        .admit-card-inner {
+            border: 1px solid #666;
+            background: linear-gradient(to bottom, #ffece0 0%, #e8edf9 100%);
+            padding: 10px;
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .layout-4 .admit-card-inner {
+            padding: 8px;
+        }
+
+        .ac-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            opacity: 0.08;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .layout-4 .ac-watermark { width: 150px; height: 150px; }
+
+        .ac-header-title {
+            font-family: 'Times New Roman', serif;
+            font-size: 22px;
+            font-weight: 900;
+            color: #4a0066;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            text-align: center;
+            margin: 2px 0 5px 0;
+            letter-spacing: 0.5px;
+        }
+        .layout-4 .ac-header-title { font-size: 13px; margin: 12px 0 4px 0; padding: 0 45px; line-height: 1.1; }
+
+        .ac-top-logos {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+        .layout-4 .ac-top-logos { top: 8px; left: 8px; right: 8px; }
+
+        .ac-logo-box { text-align: center; width: 60px; }
+        .layout-4 .ac-logo-box { width: 40px; }
+
+        .ac-logo-box img { width: 50px; height: 50px; object-fit: contain; }
+        .layout-4 .ac-logo-box img { width: 30px; height: 30px; }
+
+        .ac-logo-box .estd {
+            font-size: 9px;
+            font-weight: bold;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            padding: 1px 0;
+            margin-top: 3px;
+            font-family: 'Times New Roman', serif;
+        }
+        .layout-4 .ac-logo-box .estd { font-size: 6px; margin-top: 2px; border-width: 0.5px; }
+
+        .ac-address-box {
+            margin: 0 auto 5px auto;
+            width: 75%;
+            border: 1px solid #6b82b8;
+            border-radius: 8px;
+            padding: 2px 8px;
+            text-align: center;
+        }
+        .layout-4 .ac-address-box { margin: 0 auto 5px auto; padding: 2px 5px; width: 80%; border-radius: 4px; }
+
+        .ac-address-box p {
+            margin: 0;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 13px;
+            color: #111;
+            line-height: 1.2;
+        }
+        .layout-4 .ac-address-box p { font-size: 11px; }
+
+        .ac-badge-container { text-align: center; margin: 5px 0; }
+        .layout-4 .ac-badge-container { margin: 5px 0; }
+        
+        .ac-admit-badge {
+            background: #ffff00;
+            color: #cc0000;
+            font-family: 'Times New Roman', serif;
+            font-weight: 900;
+            font-size: 17px;
+            display: inline-block;
+            padding: 2px 25px;
+            border: 1px solid #b3b300;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            position: relative;
+        }
+        .layout-4 .ac-admit-badge { font-size: 14px; padding: 2px 15px; }
+        
+        .ac-admit-badge span { border-bottom: 3px double #cc0000; padding-bottom: 2px; }
+        .layout-4 .ac-admit-badge span { border-bottom: 2px double #cc0000; padding-bottom: 1px; }
+
+        .ac-admit-badge::before, .ac-admit-badge::after {
+            content: '';
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border: 1px solid #333;
+            border-radius: 50%;
+            background: #fff;
+            top: -4px;
+        }
+        .ac-admit-badge::before { left: -4px; }
+        .ac-admit-badge::after { right: -4px; }
+
+        .ac-exam-name {
+            font-family: 'Times New Roman', serif;
+            font-size: 15px;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+            margin-bottom: 4px;
+            text-align: center;
+        }
+        .layout-4 .ac-exam-name { font-size: 13px; margin-bottom: 4px; }
+
+        .ac-student-details {
+            text-align: left;
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            padding: 0 10px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        .layout-4 .ac-student-details { font-size: 11px; padding: 0 10px; line-height: 1.5; margin-bottom: 4px; }
+
+        .ac-subjects-box {
+            margin: 4px 10px;
+            border: 2px solid #6b93d6;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 6px 10px;
+            text-align: left;
+            font-family: 'Times New Roman', serif;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 0 6px rgba(107, 147, 214, 0.4);
+            position: relative;
+        }
+        .layout-4 .ac-subjects-box { margin: 3px 6px; padding: 4px 6px; font-size: 10px; border-width: 1.5px; border-radius: 4px; }
+
+        .ac-schedule-box {
+            margin: 2px 10px;
+            font-family: 'Times New Roman', serif;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .layout-4 .ac-schedule-box { margin: 2px 6px; }
+
+        .ac-schedule-title {
+            font-weight: bold;
+            font-size: 10px;
+            text-align: center;
+            text-decoration: underline;
+            margin-bottom: 2px;
+            color: #000;
+        }
+        .layout-4 .ac-schedule-title { font-size: 8px; }
+
+        .ac-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            color: #000;
+        }
+        .layout-4 .ac-schedule-table { font-size: 9px; }
+
+        .ac-schedule-table th, .ac-schedule-table td {
+            border: 1px solid #5a8bd4;
+            padding: 1px 3px;
+            text-align: left;
+        }
+        .layout-4 .ac-schedule-table th, .layout-4 .ac-schedule-table td { padding: 1px 2px; }
+
+        .ac-schedule-table th {
+            background: rgba(107, 147, 214, 0.2);
+            font-weight: bold;
+        }
+
+        .ac-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto;
+            padding: 5px 10px 0 10px;
+            font-family: 'Times New Roman', serif;
+        }
+        .layout-4 .ac-footer { padding: 3px 6px 0 6px; }
+
+        .ac-note {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .layout-4 .ac-note { font-size: 10px; }
+
+        .ac-sig {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: right;
+        }
+        .layout-4 .ac-sig { font-size: 10px; }
+
+        @media print {
+            body { background: white; }
+            .print-btn-container { display: none; }
+            .a4-page {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+            }
+            .a4-page:last-child { page-break-after: avoid !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-container">
+        <button class="print-btn" onclick="window.print()">Print Admit Cards</button>
+        <button class="print-btn" onclick="window.history.back()" style="background: #7f8c8d; margin-left: 10px;">Go Back</button>
+    </div>
+
+    <!-- Generate Pages in batches of 2 or 4 -->
+    {% set chunk_size = cards_per_page %}
+    {% set total_students = students|length %}
+    
+    {% for idx in range(0, total_students, chunk_size) %}
+    <div class="a4-page {% if cards_per_page == 2 %}layout-2{% else %}layout-4{% endif %}">
+        {% for student in students[idx:idx + chunk_size] %}
+        <div class="admit-card-container">
+            <div class="admit-card-inner">
+                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" class="ac-watermark">
+                
+                <div class="ac-top-logos">
+                    <div class="ac-logo-box">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                        <div class="estd">ESTD: 2010</div>
+                    </div>
+                    <div class="ac-logo-box">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                        <div class="estd">ESTD: 2010</div>
+                    </div>
+                </div>
+
+                <div class="ac-header-title">AL-HIDAYET MISSION (BHOGRAM BRANCH)</div>
+                
+                <div class="ac-address-box">
+                    <p>A Renowned Day Residential, Non-Residential Campus<br>
+                    Bhogram, Hemtabad, Uttar Dinajpur - 733134</p>
+                </div>
+
+                <div class="ac-badge-container">
+                    <div class="ac-admit-badge"><span>ADMIT CARD</span></div>
+                </div>
+                
+                <div class="ac-exam-name">
+                    {{ term_name|upper }}
+                </div>
+
+                <div class="ac-student-details">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>STUDENT NAME: {{ (student.full_name or student.username)|upper }}</span>
+                        <span>CLASS: {{ class_name or 'N/A' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-right: 10px;">
+                        <span>ROLL: {{ student.roll_number or 'N/A' }}</span>
+                        <span>SECTION: A</span>
+                    </div>
+                </div>
+
+                <div class="ac-subjects-box">
+                    <div style="line-height: 1.6;">
+                        SUBJECTS : 
+                        {% if schedule_list %}
+                            {% for day in schedule_list %}
+                                <span style="display:inline-block; margin-right: 6px; white-space: nowrap;">
+                                    {{ day.subject|upper }}{% if not loop.last %},{% endif %}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span style="font-style: italic; font-weight: normal; color: #555;">No subjects configured in the routine for this term yet.</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="ac-footer">
+                    <div class="ac-note">
+                        N: B: - THIS ADMIT CARD SHOULD BE CAREFULLY
+                    </div>
+                    <div class="ac-sig">
+                        SIGNATURE OF T.I.C.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>
+</html>

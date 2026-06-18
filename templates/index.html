@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhogram Al-Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes noticeGlow {
+            0% { border-color: rgba(31, 111, 120, 0.4); box-shadow: 0 10px 30px rgba(31, 111, 120, 0.05); }
+            50% { border-color: rgba(47, 128, 237, 0.4); box-shadow: 0 10px 30px rgba(47, 128, 237, 0.1); }
+            100% { border-color: rgba(31, 111, 120, 0.4); box-shadow: 0 10px 30px rgba(31, 111, 120, 0.05); }
+        }
+        @keyframes rainbowGlow {
+            0% { border-color: #1f6f78; box-shadow: 0 10px 30px rgba(31, 111, 120, 0.2); }
+            25% { border-color: #2f80ed; box-shadow: 0 10px 30px rgba(47, 128, 237, 0.2); }
+            50% { border-color: #e4a824; box-shadow: 0 10px 30px rgba(228, 168, 36, 0.2); }
+            75% { border-color: #ee5253; box-shadow: 0 10px 30px rgba(238, 82, 83, 0.2); }
+            100% { border-color: #1f6f78; box-shadow: 0 10px 30px rgba(31, 111, 120, 0.2); }
+        }
+        @keyframes badgePulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.06); opacity: 0.85; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .notice-card-animated {
+            animation: noticeGlow 6s infinite ease-in-out;
+        }
+        .notice-card-new {
+            animation: rainbowGlow 4s infinite linear !important;
+            border-left: 6px solid !important;
+        }
+        .badge-new-pulse {
+            animation: badgePulse 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM Logo" class="logo-img">
+                <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+            </div>
+            <nav class="main-nav">
+                <a href="#home" class="nav-link active">Home</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#reviews" class="nav-link">Reviews</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
+                <a href="#notice-board" class="nav-link">Notice Board</a>
+                <a href="#fees-chart" class="nav-link">Fees Chart</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                {% if session.get('user') %}
+                    <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+                {% else %}
+                    <a href="/login/student" class="btn btn-primary">Login</a>
+                {% endif %}
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container hero-container">
+            <div class="hero-content">
+
+                <h1 class="hero-title">Bhogram Al-Hidayet Mission</h1>
+                <p class="hero-description">
+                    An Ideal Residential / Non-Residential / Day-Boarding Educational Institution.
+                    <br><strong>Admission Open - 2026</strong> (Nursery to Class X | Bengali Medium)
+                </p>
+                <div class="hero-buttons" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <a href="/register" class="btn btn-primary">Get Started</a>
+                    <a href="/services" class="btn btn-outline">Learn More</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <!-- Placeholder or Logo -->
+                <div class="hero-shape-blob"></div>
+                <img src="{{ logo_url }}" alt="School Logo" class="hero-img-main"
+                    style="border-radius: 50%; max-width: 300px;">
+            </div>
+        </div>
+        <div class="hero-wave">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
+                <path fill="#ffffff" fill-opacity="1"
+                    d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+                </path>
+            </svg>
+        </div>
+    </section>
+
+    <!-- Notice Board Section -->
+    <section id="notice-board" class="section notices-section" style="position: relative; padding: 80px 0; background: radial-gradient(circle at 50% 50%, rgba(31, 111, 120, 0.08) 0%, rgba(47, 128, 237, 0.05) 50%, rgba(246, 248, 251, 1) 100%); overflow: hidden; border-bottom: 1px solid #eee;">
+        <!-- Glowing background blobs -->
+        <div style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(31, 111, 120, 0.18) 0%, rgba(31, 111, 120, 0) 70%); filter: blur(60px); border-radius: 50%; pointer-events: none;"></div>
+        <div style="position: absolute; bottom: -100px; right: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(47, 128, 237, 0.15) 0%, rgba(47, 128, 237, 0) 70%); filter: blur(60px); border-radius: 50%; pointer-events: none;"></div>
+        
+        <div class="container" style="position: relative; z-index: 2;">
+            <div class="section-header text-center" style="margin-bottom: 35px; text-align: center;">
+                <span class="section-subtitle" style="font-family: 'Outfit', sans-serif; text-transform: uppercase; font-size: 13px; font-weight: 700; color: var(--primary-color); letter-spacing: 2px;">Notice Board</span>
+                <h2 class="section-title" style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: #2d3436; margin-top: 10px;">Latest Announcements</h2>
+                <div class="header-line" style="width: 50px; height: 3px; background: var(--primary-color); margin: 15px auto;"></div>
+                <p style="color: #636e72; max-width: 600px; margin: 0 auto; font-size: 15px;">Stay updated with the latest instructions and notices from our school.</p>
+            </div>
+
+            <!-- Notices Display Target -->
+            <div id="notices-container" style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px;">
+                <!-- Dynamically filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Roles / Login Section -->
+    <section id="roles" class="section bg-pattern">
+        <div class="container">
+            <div class="section-header text-center">
+                <h4 class="section-subtitle">Select Your Role</h4>
+                <h2 class="section-title">Login to Portal</h2>
+
+                <div class="alert-box">
+                    <strong>NOTICE:</strong> Teacher Recruitment: Experienced and qualified teachers are required.
+                </div>
+            </div>
+
+            <div class="facilities-grid">
+                <!-- Headmaster -->
+                <a href="/login/headmaster" class="facility-card color-4">
+                    <div class="facility-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h3>Headmaster</h3>
+                    <p>Admin Access to Dashboard</p>
+                </a>
+
+                <!-- Teacher -->
+                <a href="/login/teacher" class="facility-card color-2">
+                    <div class="facility-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3>Teacher</h3>
+                    <p>Upload & View Resources</p>
+                </a>
+
+                <!-- Student -->
+                <a href="/login/student" class="facility-card color-1">
+                    <div class="facility-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>Student</h3>
+                    <p>View Classes & Results</p>
+                </a>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- About & Services -->
+    <section id="about" class="section about-section">
+        <div class="container about-container">
+            <div class="about-content">
+                <h4 class="section-subtitle">Why Choose Us?</h4>
+                <h2 class="section-title">Services & Features</h2>
+                <ul class="feature-list">
+                    <li>
+                        <span class="icon-box"><i class="fas fa-laptop-code"></i></span>
+                        <div>
+                            <h3>Computer Education</h3>
+                            <p>Modern computer labs for all students.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-chalkboard"></i></span>
+                        <div>
+                            <h3>Coaching Facilities</h3>
+                            <p>Extra care and coaching support available.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-bus"></i></span>
+                        <div>
+                            <h3>Transport Service</h3>
+                            <p>Bus service available via Mastanpara.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-user-md"></i></span>
+                        <div>
+                            <h3>Psychological Care</h3>
+                            <p>Mental health support for student well-being.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="about-content">
+                <h4 class="section-subtitle">About Mission</h4>
+                <h2 class="section-title">Established in 2010</h2>
+                <p class="section-text">
+                    We are dedicated to providing quality education.
+                    <strong>Reg No: S/IL/81291</strong>
+                </p>
+                <ul class="feature-list">
+                    <li>
+                        <span class="icon-box"><i class="fas fa-bed"></i></span>
+                        <div>
+                            <h3>Day Hostel Facility</h3>
+                            <p>Day hostel services with nutritious meals are available for students.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-check-circle"></i></span>
+                        <div>
+                            <h3>Experienced Teachers</h3>
+                            <p>Highly skilled and dedicated faculty.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="icon-box"><i class="fas fa-hand-holding-heart"></i></span>
+                        <div>
+                            <h3>Special Care</h3>
+                            <p>Focused attention on weak students.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Public Class Routine Section -->
+    <section id="routine-viewer" class="section routine-viewer-section bg-pattern" style="border-top: 1px solid #eee; background-color: #fafafa;">
+        <style>
+            .day-tab-btn {
+                background: #f1f2f6;
+                color: #57606f;
+                border: none;
+                outline: none;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s;
+                font-family: 'Outfit', sans-serif;
+            }
+            .day-tab-btn.active {
+                background: var(--primary-color);
+                color: white;
+                box-shadow: 0 4px 12px rgba(31, 111, 120, 0.2);
+            }
+            .day-tab-btn:hover:not(.active) {
+                background: #dfe4ea;
+                color: #2f3542;
+            }
+            .day-routine-content {
+                display: none;
+                animation: routineFadeIn 0.35s ease-in-out;
+            }
+            .day-routine-content.active {
+                display: block;
+            }
+            @keyframes routineFadeIn {
+                from { opacity: 0; transform: translateY(8px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        </style>
+        <div class="container">
+            <div class="section-header text-center" style="margin-bottom: 35px;">
+                <h4 class="section-subtitle">Academic Schedule</h4>
+                <h2 class="section-title">Class Time Table / Routine</h2>
+                <p style="color: #636e72; font-size: 15px; max-width: 600px; margin: 10px auto 0 auto; line-height: 1.5;">
+                    Select your Class below to dynamically view the complete weekly routine.
+                </p>
+            </div>
+
+            <!-- Cascading Selectors Grid -->
+            <div style="display: grid; grid-template-columns: 1fr; max-width: 600px; margin: 0 auto 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+                <input type="hidden" id="public_branch" value="bhogram">
+                <div class="input-group" style="margin:0;">
+                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-dark);">Select Class:</label>
+                    <select id="public_class_name" onchange="renderPublicRoutine()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: 'Outfit', sans-serif;">
+                        <option value="">Choose Class</option>
+                        {% for c in classes if c.branch == 'bhogram' %}
+                            <option value="{{ c.name }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Schedule Target -->
+            <div id="public_routine_content" style="max-width: 800px; margin: 0 auto;">
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                    <i class="far fa-calendar-alt" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                    <p style="margin: 0; font-weight: 500; font-size: 15px;">Please select your Class from the dropdown above to view the schedule.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Public Exam Schedule Section -->
+    <section id="exam-schedule-viewer" class="section exam-schedule-section bg-pattern" style="border-top: 1px solid #eee; background-color: #f1f2f6;">
+        <div class="container">
+            <div class="section-header text-center" style="margin-bottom: 35px;">
+                <h4 class="section-subtitle">Examination Schedule</h4>
+                <h2 class="section-title">Entire Exam Schedule</h2>
+                <p style="color: #636e72; font-size: 15px; max-width: 600px; margin: 10px auto 0 auto; line-height: 1.5;">
+                    Select the term below to view the exam schedule for all classes.
+                </p>
+            </div>
+
+            <!-- Selectors Grid -->
+            <div style="display: grid; grid-template-columns: 1fr; max-width: 600px; margin: 0 auto 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+                <div class="input-group" style="margin:0;">
+                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-dark);">Select Term:</label>
+                    <select id="public_exam_term" onchange="renderPublicExamSchedule()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: 'Outfit', sans-serif;">
+                        <option value="1st Unit">1st Unit Test</option>
+                        <option value="2nd Unit">2nd Unit Test</option>
+                        <option value="3rd Unit">3rd Unit Test</option>
+                        <option value="Annual">Annual Exam</option>
+                        <option value="Half Yearly">Half Yearly Exam</option>
+                        <option value="Pre-Test">Pre-Test Exam</option>
+                        <option value="Test">Test Exam</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Exam Schedule Target -->
+            <div id="public_exam_content" style="max-width: 800px; margin: 0 auto;">
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                    <i class="far fa-calendar-check" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                    <p style="margin: 0; font-weight: 500; font-size: 15px;">Loading exam schedule...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Section -->
+    <section id="reviews" class="section reviews-section bg-pattern">
+        <div class="container">
+            <div class="reviews-header">
+                <div class="reviews-title-block">
+                    <h4 class="section-subtitle">Testimonials</h4>
+                    <h2 class="section-title">What Our Visitors Say</h2>
+                </div>
+                <button type="button" class="btn btn-primary btn-highlight" id="writeReviewBtn">
+                    <i data-lucide="pen-tool"></i> Write a Review
+                </button>
+            </div>
+
+            <div class="reviews-grid">
+                {% for review in reviews %}
+                <div class="review-card">
+                    <div class="review-meta">
+                        <div class="review-avatar">
+                            {{ review.visitor_name[0] | upper }}
+                        </div>
+                        <div class="review-author-info">
+                            <h3>{{ review.visitor_name }}</h3>
+                            <span class="review-date">{{ review.created_at[:10] }}</span>
+                        </div>
+                    </div>
+                    <div class="review-rating">
+                        {% for i in range(5) %}
+                            {% if i < review.rating %}
+                                <i class="fas fa-star text-star"></i>
+                            {% else %}
+                                <i class="far fa-star text-star-empty"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="review-text">
+                        <i class="fas fa-quote-left quote-icon"></i>
+                        {{ review.review_text }}
+                    </p>
+                </div>
+                {% else %}
+                <div class="no-reviews-card">
+                    <p>No reviews yet. Be the first to share your thoughts!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Write a Review Modal -->
+    <div id="reviewModal" class="review-modal">
+        <div class="review-modal-content">
+            <button type="button" class="modal-close" id="closeReviewModal">
+                <i data-lucide="x"></i>
+            </button>
+            <h2>Leave a Review</h2>
+            <p class="modal-desc">Share your experience about Bhogram Al-Hidayet Mission with us and other visitors.</p>
+            
+            <form action="/submit-review" method="POST" id="submitReviewForm">
+                <div class="input-group">
+                    <label>Select Rating</label>
+                    <div class="star-rating-select">
+                        <i class="fas fa-star" data-value="1"></i>
+                        <i class="fas fa-star" data-value="2"></i>
+                        <i class="fas fa-star" data-value="3"></i>
+                        <i class="fas fa-star" data-value="4"></i>
+                        <i class="fas fa-star" data-value="5"></i>
+                    </div>
+                    <input type="hidden" name="rating" id="ratingInput" value="5">
+                </div>
+                
+                <div class="input-group">
+                    <label for="visitor_name">Your Name</label>
+                    <input type="text" id="visitor_name" name="visitor_name" placeholder="e.g. John Doe" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="review_text">Your Feedback</label>
+                    <textarea id="review_text" name="review_text" rows="4" placeholder="Share your experience..." required></textarea>
+                </div>
+                
+                <button type="submit" class="auth-btn btn-modal-submit">Submit Feedback</button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Teachers Section -->
+    <section id="teachers" class="section teachers-section">
+        <div class="container">
+            <div class="section-header text-center">
+                <h4 class="section-subtitle">Our Team</h4>
+                <h2 class="section-title">Meet Our Teachers</h2>
+            </div>
+
+            <div class="teachers-grid">
+                {% if teachers %}
+                    {% for t in teachers %}
+                    <div class="teacher-card">
+                        <div class="teacher-img">
+                            {% if t.photo_path %}
+                                <img src="{{ url_for('static', filename='uploads/teacher_photos/' + t.photo_path) }}" alt="{{ t.full_name }}">
+                            {% else %}
+                                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="{{ t.full_name }}">
+                            {% endif %}
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                        <div class="teacher-info">
+                            <h3>{{ t.full_name }}</h3>
+                            <span>{{ t.qualification or 'Teacher' }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="teacher-card">
+                        <div class="teacher-img">
+                            <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                                alt="Teacher 1">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                        <div class="teacher-info">
+                            <h3>Majidur Rahman</h3>
+                            <span>Secretary</span>
+                        </div>
+                    </div>
+                    <div class="teacher-card">
+                        <div class="teacher-img">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                                alt="Teacher 2">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                        <div class="teacher-info">
+                            <h3>Habibur Rahman</h3>
+                            <span>President</span>
+                        </div>
+                    </div>
+                    <div class="teacher-card">
+                        <div class="teacher-img">
+                            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                                alt="Teacher 3">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                        <div class="teacher-info">
+                            <h3>Sarah Khan</h3>
+                            <span>Senior Teacher</span>
+                        </div>
+                    </div>
+                    <div class="teacher-card">
+                        <div class="teacher-img">
+                            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                                alt="Teacher 4">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                            </div>
+                        </div>
+                        <div class="teacher-info">
+                            <h3>Ahmed Ali</h3>
+                            <span>Math Teacher</span>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Fees Chart Section -->
+    <section id="fees-chart" class="section fees-section bg-light" style="padding: 80px 0; background: #f9fbfb;">
+        <div class="container">
+            <div class="section-header text-center" style="margin-bottom: 50px; text-align: center;">
+                <span class="section-subtitle" style="font-family: 'Outfit', sans-serif; text-transform: uppercase; font-size: 13px; font-weight: 700; color: var(--primary-color); letter-spacing: 2px;">School Structure</span>
+                <h2 class="section-title" style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: #2d3436; margin-top: 10px;">Class Fee Structure - 2026</h2>
+                <div class="header-line" style="width: 50px; height: 3px; background: var(--primary-color); margin: 15px auto;"></div>
+                <p style="color: #636e72; max-width: 600px; margin: 0 auto; font-size: 15px;">Detailed admission fees, re-admission fees, and monthly fees for Bhogram Branch.</p>
+            </div>
+
+            <style>
+                .fee-tab-btn {
+                    background: #f1f2f6;
+                    color: #57606f;
+                    border: none;
+                    outline: none;
+                    padding: 12px 24px;
+                    border-radius: 30px;
+                    font-weight: 600;
+                    font-size: 14.5px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    font-family: 'Outfit', sans-serif;
+                }
+                .fee-tab-btn.active {
+                    background: var(--primary-color);
+                    color: white;
+                    box-shadow: 0 4px 15px rgba(31, 111, 120, 0.25);
+                }
+                .fee-tab-btn:hover:not(.active) {
+                    background: #dfe4ea;
+                    color: #2f3542;
+                }
+                .fee-tab-content {
+                    display: none;
+                    animation: feeFadeIn 0.4s ease-in-out;
+                }
+                .fee-tab-content.active {
+                    display: block;
+                }
+                @keyframes feeFadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            </style>
+            
+            <!-- Beautiful Tabbed Interface for Fee Categories -->
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; flex-wrap: wrap;">
+                <button class="fee-tab-btn active" onclick="switchFeeTab('new-admission', this)">New Admission Fee</button>
+                <button class="fee-tab-btn" onclick="switchFeeTab('re-admission', this)">Re-Admission Fee</button>
+                <button class="fee-tab-btn" onclick="switchFeeTab('monthly', this)">Monthly Fee</button>
+            </div>
+
+            <!-- Tab 1: New Admission Fee -->
+            <div id="new-admission" class="fee-tab-content active fees-table-container" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eef2f5;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Outfit', sans-serif;">
+                    <thead>
+                        <tr style="background: var(--primary-color) !important; color: white !important;">
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Class</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Only School</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">School + Coaching</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Day Hostel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in classes %}
+                            {% if c.branch == 'bhogram' %}
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee_coaching|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee_hostel|int }}/-</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tab 2: Re-Admission Fee -->
+            <div id="re-admission" class="fee-tab-content fees-table-container" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eef2f5;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Outfit', sans-serif;">
+                    <thead>
+                        <tr style="background: var(--primary-color) !important; color: white !important;">
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Class</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Only School</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">School + Coaching</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Day Hostel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in classes %}
+                            {% if c.branch == 'bhogram' %}
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_school|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_coaching|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_hostel|int }}/-</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tab 3: Monthly Fee -->
+            <div id="monthly" class="fee-tab-content fees-table-container" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eef2f5;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Outfit', sans-serif;">
+                    <thead>
+                        <tr style="background: var(--primary-color) !important; color: white !important;">
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Class</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Only School</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">School + Coaching</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Day Hostel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in classes %}
+                            {% if c.branch == 'bhogram' %}
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.monthly_fee|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.monthly_fee_coaching|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.hostel_fee|int }}/-</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="padding: 20px 24px; background: #fafbfc; border-top: 1px solid #eef2f5; font-size: 14.5px; line-height: 1.5; color:#2d3436;">
+                    <div style="margin-bottom: 8px; font-weight: 800; color: #d63031; font-size: 16px;">🚗 Monthly Car Rate (N - VI): ₹400/-</div>
+                    <div style="font-weight: 500; color: var(--primary-color);">
+                        N.B. :- নার্সারি থেকে চতুর্থ শ্রেণি পর্যন্ত নতুন ভর্তি হওয়া ছাত্র-ছাত্রীদের School Dress, Books, IDENTITY ও BELT মিশনের তরফ থেকে দেওয়া হবে।
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function switchFeeTab(tabId, btn) {
+                    document.querySelectorAll('.fee-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.querySelectorAll('.fee-tab-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    document.getElementById(tabId).classList.add('active');
+                    btn.classList.add('active');
+                }
+            </script>
+        </div>
+    </section>
+
+
+
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq-section" style="padding: 80px 0; background: var(--bg-light);">
+        <div class="container">
+            <div class="section-header text-center" style="margin-bottom: 50px; text-align: center;">
+                <span class="section-subtitle" style="font-family: 'Outfit', sans-serif; text-transform: uppercase; font-size: 13px; font-weight: 700; color: var(--primary-color); letter-spacing: 2px;">Got Questions?</span>
+                <h2 class="section-title" style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: #2d3436; margin-top: 10px;">Frequently Asked Questions</h2>
+                <div class="header-line" style="width: 50px; height: 3px; background: var(--primary-color); margin: 15px auto;"></div>
+                <p style="color: #636e72; max-width: 600px; margin: 0 auto; font-size: 15px;">Here are answers to the most common questions about admission, routines, hostel facilities, and recruitment.</p>
+            </div>
+            
+            <div class="faq-grid" style="max-width: 850px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+                <!-- Q1 -->
+                <div class="faq-item" style="background: white; border: 1px solid #eef2f5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.01); transition: all 0.3s ease;">
+                    <div class="faq-question" onclick="toggleFAQ(this)" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s;">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16.5px; font-weight: 600; color: #2d3436; margin: 0; display: flex; align-items: center; gap: 10px;"><i class="far fa-question-circle" style="color: var(--primary-color);"></i> What is the admission procedure for new students?</h3>
+                        <i class="fas fa-chevron-down faq-icon" style="font-size: 14px; color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); background: #fafbfc;">
+                        <div class="faq-answer-content" style="padding: 20px 24px; font-size: 15px; color: #636e72; line-height: 1.6; border-top: 1px solid #f1f5f9;">
+                            Parents or guardians can apply online by clicking "Apply Now" on our homepage. Complete the Admission Form, upload the required documents (Aadhaar Card, Birth Certificate, and Photos), and submit the application. Once reviewed and approved by the administrator, you will be assigned a class, roll number, and a unique registration code.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="faq-item" style="background: white; border: 1px solid #eef2f5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.01); transition: all 0.3s ease;">
+                    <div class="faq-question" onclick="toggleFAQ(this)" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s;">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16.5px; font-weight: 600; color: #2d3436; margin: 0; display: flex; align-items: center; gap: 10px;"><i class="far fa-question-circle" style="color: var(--primary-color);"></i> What are the class timings and school routing?</h3>
+                        <i class="fas fa-chevron-down faq-icon" style="font-size: 14px; color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); background: #fafbfc;">
+                        <div class="faq-answer-content" style="padding: 20px 24px; font-size: 15px; color: #636e72; line-height: 1.6; border-top: 1px solid #f1f5f9;">
+                            Bhogram Al-Hidayet Mission runs classes from Nursery up to Class VI. Normal school hours are Monday to Thursday and Saturday from 8:00 AM to 11:30 AM, and Friday from 8:00 AM to 10:00 AM. Coaching Classes start from {{ coaching_class_time }} on every class days. Detailed daily schedules and routines are posted on the digital notice boards and are also viewable inside the Student and Teacher dashboards.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="faq-item" style="background: white; border: 1px solid #eef2f5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.01); transition: all 0.3s ease;">
+                    <div class="faq-question" onclick="toggleFAQ(this)" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s;">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16.5px; font-weight: 600; color: #2d3436; margin: 0; display: flex; align-items: center; gap: 10px;"><i class="far fa-question-circle" style="color: var(--primary-color);"></i> Is there a hostel facility at this branch?</h3>
+                        <i class="fas fa-chevron-down faq-icon" style="font-size: 14px; color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); background: #fafbfc;">
+                        <div class="faq-answer-content" style="padding: 20px 24px; font-size: 15px; color: #636e72; line-height: 1.6; border-top: 1px solid #f1f5f9;">
+                            No, we do not offer residential hostel facilities at this branch right now. Only day hostel facilities are available, which include dedicated study hours, learning support, and nutritious meals for day hostel students.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q4 -->
+                <div class="faq-item" style="background: white; border: 1px solid #eef2f5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.01); transition: all 0.3s ease;">
+                    <div class="faq-question" onclick="toggleFAQ(this)" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s;">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16.5px; font-weight: 600; color: #2d3436; margin: 0; display: flex; align-items: center; gap: 10px;"><i class="far fa-question-circle" style="color: var(--primary-color);"></i> How do I pay school and hostel fees?</h3>
+                        <i class="fas fa-chevron-down faq-icon" style="font-size: 14px; color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); background: #fafbfc;">
+                        <div class="faq-answer-content" style="padding: 20px 24px; font-size: 15px; color: #636e72; line-height: 1.6; border-top: 1px solid #f1f5f9;">
+                            Online payments are currently disabled and will start soon. For now, payments should be made directly in cash or via bank transfer at the school's administration office. Official payment receipts will be generated and handed over instantly.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q5 -->
+                <div class="faq-item" style="background: white; border: 1px solid #eef2f5; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.01); transition: all 0.3s ease;">
+                    <div class="faq-question" onclick="toggleFAQ(this)" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s;">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16.5px; font-weight: 600; color: #2d3436; margin: 0; display: flex; align-items: center; gap: 10px;"><i class="far fa-question-circle" style="color: var(--primary-color);"></i> How can qualified teachers join Al-Hidayet Mission?</h3>
+                        <i class="fas fa-chevron-down faq-icon" style="font-size: 14px; color: var(--text-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); background: #fafbfc;">
+                        <div class="faq-answer-content" style="padding: 20px 24px; font-size: 15px; color: #636e72; line-height: 1.6; border-top: 1px solid #f1f5f9;">
+                            We are always looking for passionate, experienced educators to join our team. You can apply directly through our "Application Portal" under the "Teacher Joining Request" tab. Fill in your academic details, Aadhaar card number, qualifications, and preferred classes/subjects.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="main-footer" id="contact">
+        <div class="container footer-container">
+            <div class="footer-col">
+                <div class="logo footer-logo">
+                    <span class="logo-text">AHM Mission</span>
+                </div>
+                <p>
+                    {% if managing_committee %}
+                        {% for member in managing_committee %}
+                            <strong>{{ member.designation }}:</strong> {{ member.name }}<br>
+                        {% endfor %}
+                    {% else %}
+                        <strong>Secretary:</strong> Majidur Rahman Chowdhury<br>
+                        <strong>President:</strong> Habibur Rahman (Ripon)
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Campus Location</h3>
+                <p style="color: #B2BEC3;">
+                    Bhogram (East Side of Bhogram Market),<br>
+                    Hemtabad, Uttar Dinajpur, 733130.
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h3>Contact Us</h3>
+                <ul class="contact-list">
+                    <li style="margin-top: 5px;">
+                        <a href="https://wa.me/918001748636?text=Hello%20Al-Hidayet%20Mission%2C%20I%20have%20a%20query%20regarding%20admissions%20or%20other%20information." 
+                           target="_blank" 
+                           style="background: #25D366; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 10px rgba(37,211,102,0.2); transition: all 0.3s;"
+                           onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px rgba(37,211,102,0.3)'"
+                           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 10px rgba(37,211,102,0.2)'">
+                            <i class="fab fa-whatsapp" style="font-size: 16px; color: white;"></i> Chat on WhatsApp
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Bhogram Al-Hidayet Mission. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script id="public-routine-data" type="application/json">
+        {{ routine_list | tojson | safe if routine_list else '[]' }}
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        const publicRoutineData = JSON.parse(document.getElementById('public-routine-data').textContent || '[]');
+        const coachingClassTime = "{{ coaching_class_time }}";
+        
+        function switchDayTab(day, btn) {
+            document.querySelectorAll('.day-routine-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.day-tab-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            const targetContent = document.getElementById('routine-day-' + day);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+            if (btn) {
+                btn.classList.add('active');
+            }
+        }
+
+        function renderPublicRoutine() {
+            const branch = document.getElementById("public_branch").value;
+            const className = document.getElementById("public_class_name").value;
+            const container = document.getElementById("public_routine_content");
+            
+            if (!className) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                        <i class="far fa-calendar-alt" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                        <p style="margin: 0; font-weight: 500; font-size: 15px;">Please select your Class from the dropdown above to view the schedule.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Filter by branch and class
+            const filtered = publicRoutineData.filter(r => r.branch === branch && r.class_name === className);
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 45px 30px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 36px; margin-bottom: 15px; color: #ffeaa7; display: block;"></i>
+                        <p style="margin: 0; font-weight: 600; font-size: 15px; color:#2d3436;">No routine set for Class ${className} at this campus yet.</p>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color:#7f8c8d;">Please contact the administrator for official schedules.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Group by Day
+            const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const grouped = {};
+            filtered.forEach(r => {
+                if (!grouped[r.day]) {
+                    grouped[r.day] = [];
+                }
+                grouped[r.day].push(r);
+            });
+            
+            const activeDays = daysOrder.filter(day => grouped[day] && grouped[day].length > 0);
+            
+            if (activeDays.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                        <p style="margin: 0; font-weight: 500; font-size: 15px;">No routine slots defined.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let tabsHtml = `<div class="day-tabs-container" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">`;
+            activeDays.forEach((day, idx) => {
+                const isActive = idx === 0 ? 'active' : '';
+                tabsHtml += `<button class="day-tab-btn ${isActive}" onclick="switchDayTab('${day}', this)">${day}</button>`;
+            });
+            tabsHtml += `</div>`;
+
+            let contentsHtml = `<div class="day-tab-content-container">`;
+            activeDays.forEach((day, idx) => {
+                const isActive = idx === 0 ? 'active' : '';
+                contentsHtml += `
+                    <div id="routine-day-${day}" class="day-routine-content ${isActive}">
+                        <div class="facility-card" style="background: white; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: var(--shadow-sm); border-top: 4px solid var(--secondary-color); text-align: left; transition: none; transform: none; cursor: default; width: auto; max-width: none;">
+                            <h3 style="color: var(--secondary-color); margin-top: 0; margin-bottom: 15px; font-family: 'Fredoka', sans-serif; font-size: 18px; border-bottom: 2px solid #fdf2f8; padding-bottom: 5px;">${day} <span style="font-size: 13.5px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i class="far fa-clock" style="margin-right: 4px;"></i>Coaching Time: ${coachingClassTime}</span></h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #eee;">
+                                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 13px; color: #2d3436;">Time</th>
+                                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 13px; color: #2d3436;">Subject</th>
+                                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 13px; color: #2d3436;">Teacher</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                grouped[day].forEach(slot => {
+                    contentsHtml += `
+                        <tr style="border-bottom: 1px solid #f6f6f6;">
+                            <td style="padding: 10px; font-size: 14px; color: #2d3436;">${slot.start_time} - ${slot.end_time}</td>
+                            <td style="padding: 10px; font-size: 14px; color: #2d3436;"><strong>${slot.subject}</strong></td>
+                            <td style="padding: 10px; font-size: 14px; color: #7f8c8d;">${slot.teacher_name}</td>
+                        </tr>
+                    `;
+                });
+                
+                contentsHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+            contentsHtml += `</div>`;
+            
+            container.innerHTML = tabsHtml + contentsHtml;
+        }
+
+    </script>
+    <script id="notices-data" type="application/json">
+        {{ notices | tojson | safe if notices else '[]' }}
+    </script>
+    <script>
+        const noticesData = JSON.parse(document.getElementById('notices-data').textContent || '[]');
+        
+        function filterNotices(branch) {
+            const btnSurangapur = document.getElementById("btn-notice-surangapur");
+            const btnBhogram = document.getElementById("btn-notice-bhogram");
+            
+            // Clear any inline styles that might have been applied previously
+            if (btnSurangapur) {
+                btnSurangapur.style.backgroundColor = "";
+                btnSurangapur.style.color = "";
+            }
+            if (btnBhogram) {
+                btnBhogram.style.backgroundColor = "";
+                btnBhogram.style.color = "";
+            }
+
+            if (branch === 'surangapur') {
+                if (btnSurangapur) {
+                    btnSurangapur.classList.add("btn-primary");
+                    btnSurangapur.classList.remove("btn-outline");
+                }
+                if (btnBhogram) {
+                    btnBhogram.classList.add("btn-outline");
+                    btnBhogram.classList.remove("btn-primary");
+                }
+            } else {
+                if (btnSurangapur) {
+                    btnSurangapur.classList.add("btn-outline");
+                    btnSurangapur.classList.remove("btn-primary");
+                }
+                if (btnBhogram) {
+                    btnBhogram.classList.add("btn-primary");
+                    btnBhogram.classList.remove("btn-outline");
+                }
+            }
+            
+            const container = document.getElementById("notices-container");
+            if (!container) return;
+            
+            const filtered = noticesData.filter(n => n.branch === branch);
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-radius: 16px; border: 1px dashed rgba(31, 111, 120, 0.3); color: #7f8c8d; font-family: 'Outfit', sans-serif;">
+                        <i data-lucide="bell-off" style="width: 36px; height: 36px; margin: 0 auto 10px auto; color: #cbd5e1; display: block;"></i>
+                        <p style="margin: 0; font-weight: 500; font-size: 15px;">No active notices for this branch at the moment.</p>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
+                return;
+            }
+            
+            let html = "";
+            filtered.forEach(n => {
+                const dateStr = n.created_at ? n.created_at.substring(0, 16) : 'Just now';
+                const badgeColor = 'linear-gradient(135deg, #e4a824, #d59f2f)';
+                const borderGlow = 'rgba(213, 159, 47, 0.15)';
+                const sideBorder = 'var(--accent-color)';
+                
+                const cardClass = n.is_new ? 'notice-card notice-card-animated notice-card-new' : 'notice-card notice-card-animated';
+                const newBadge = n.is_new ? `<span class="badge-new-pulse" style="background: linear-gradient(135deg, #ff7675, #ee5253); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(238, 82, 83, 0.2); font-family: 'Outfit', sans-serif; display: inline-flex; align-items: center; gap: 4px; margin-right: 8px;"><span style="width: 6px; height: 6px; background: white; border-radius: 50%;"></span> NEW</span>` : '';
+                
+                html += `
+                    <div class="${cardClass}" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.01); display: flex; flex-direction: column; gap: 12px; border-left: 5px solid ${sideBorder}; text-align: left; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: default;" onmouseover="this.style.transform='translateY(-3px)'; if(!${n.is_new}) { this.style.boxShadow='0 15px 35px ${borderGlow}'; this.style.borderColor='rgba(255, 255, 255, 0.8)'; }" onmouseout="this.style.transform='none'; if(!${n.is_new}) { this.style.boxShadow='0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.01)'; this.style.borderColor='rgba(255, 255, 255, 0.6)'; }">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #7f8c8d; font-size: 13px; font-family: 'Outfit', sans-serif;">
+                                <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary-color);"></i> ${dateStr}
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                ${newBadge}
+                                <span style="background: ${badgeColor}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); font-family: 'Outfit', sans-serif;">
+                                    Bhogram Campus
+                                </span>
+                            </div>
+                        </div>
+                        <p style="margin: 0; color: #2c3e50; font-size: 16px; line-height: 1.6; font-weight: 500; font-family: 'Outfit', sans-serif; letter-spacing: -0.1px;">${n.content}</p>
+                        ${n.photo_path ? `<div style="margin-top: 12px; border-radius: 10px; overflow: hidden; max-width: 100%; border: 1px solid rgba(0,0,0,0.1);"><img src="/static/uploads/notices/${n.photo_path}" alt="Notice Attachment" style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block; background: #fafafa;"></div>` : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function showFeeChart(branch) {
+            const btnSurangapur = document.getElementById("btn-fees-surangapur");
+            const btnBhogram = document.getElementById("btn-fees-bhogram");
+            const tableSurangapur = document.getElementById("fees-table-surangapur");
+            const tableBhogram = document.getElementById("fees-table-bhogram");
+            
+            // Clear any inline styles that might have been applied previously
+            if (btnSurangapur) {
+                btnSurangapur.style.backgroundColor = "";
+                btnSurangapur.style.color = "";
+            }
+            if (btnBhogram) {
+                btnBhogram.style.backgroundColor = "";
+                btnBhogram.style.color = "";
+            }
+
+            if (branch === 'surangapur') {
+                if (btnSurangapur) {
+                    btnSurangapur.classList.add("btn-primary");
+                    btnSurangapur.classList.remove("btn-outline");
+                }
+                if (btnBhogram) {
+                    btnBhogram.classList.add("btn-outline");
+                    btnBhogram.classList.remove("btn-primary");
+                }
+                if (tableSurangapur) tableSurangapur.style.display = "block";
+                if (tableBhogram) tableBhogram.style.display = "none";
+            } else {
+                if (btnSurangapur) {
+                    btnSurangapur.classList.add("btn-outline");
+                    btnSurangapur.classList.remove("btn-primary");
+                }
+                if (btnBhogram) {
+                    btnBhogram.classList.add("btn-primary");
+                    btnBhogram.classList.remove("btn-outline");
+                }
+                if (tableSurangapur) tableSurangapur.style.display = "none";
+                if (tableBhogram) tableBhogram.style.display = "block";
+            }
+        }
+
+        function toggleFAQ(element) {
+            const item = element.parentElement;
+            const isActive = item.classList.contains('active');
+            
+            // Close all FAQ items first to make it a neat single accordion
+            document.querySelectorAll('.faq-item').forEach(i => {
+                i.classList.remove('active');
+                const ans = i.querySelector('.faq-answer');
+                if (ans) ans.style.maxHeight = null;
+            });
+            
+            if (!isActive) {
+                item.classList.add('active');
+                const answer = item.querySelector('.faq-answer');
+                if (answer) answer.style.maxHeight = answer.scrollHeight + 'px';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            filterNotices('bhogram');
+            renderPublicExamSchedule(); // Load exam schedules on init
+        });
+
+        async function renderPublicExamSchedule() {
+            const term = document.getElementById('public_exam_term').value;
+            const branch = document.getElementById('public_branch') ? document.getElementById('public_branch').value : 'bhogram';
+            const container = document.getElementById('public_exam_content');
+            
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 40px; margin-bottom: 15px; color: var(--primary-color); display: block;"></i>
+                    <p style="margin: 0; font-weight: 500; font-size: 15px;">Loading Exam Schedules...</p>
+                </div>
+            `;
+            
+            try {
+                const res = await fetch(`/api/exam-schedule/all?term=${encodeURIComponent(term)}&branch=${encodeURIComponent(branch)}`);
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.schedules && data.schedules.length > 0) {
+                    let html = '';
+                    data.schedules.forEach(schedule => {
+                        html += `
+                        <div style="margin-bottom: 30px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; overflow: hidden;">
+                            <div style="background: var(--primary-color); padding: 15px; color: white;">
+                                <h3 style="margin: 0; font-size: 18px; text-align: center;">Class: ${schedule.class_name}</h3>
+                            </div>
+                            <div style="padding: 20px;">
+                        `;
+                        
+                        if (schedule.schedule_image) {
+                            html += `<img src="/static/uploads/exam_schedules/${schedule.schedule_image}" alt="Exam Routine" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;">`;
+                        } else if (schedule.schedule_text) {
+                            try {
+                                const sList = JSON.parse(schedule.schedule_text);
+                                if (sList && sList.length > 0) {
+                                    html += `
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                                        <thead>
+                                            <tr style="background: rgba(31, 111, 120, 0.1);">
+                                                <th style="padding: 10px; border: 1px solid #eee;">Date</th>
+                                                <th style="padding: 10px; border: 1px solid #eee;">Time</th>
+                                                <th style="padding: 10px; border: 1px solid #eee;">Subject</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                    `;
+                                    sList.forEach(item => {
+                                        html += `
+                                            <tr>
+                                                <td style="padding: 10px; border: 1px solid #eee;">${item.date || ''}</td>
+                                                <td style="padding: 10px; border: 1px solid #eee;">${item.time || ''}</td>
+                                                <td style="padding: 10px; border: 1px solid #eee; font-weight: 600;">${item.subject || ''}</td>
+                                            </tr>
+                                        `;
+                                    });
+                                    html += `</tbody></table>`;
+                                } else {
+                                    html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">No schedule data available.</p>`;
+                                }
+                            } catch (e) {
+                                html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">Invalid schedule format.</p>`;
+                            }
+                        } else {
+                            html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">No schedule configured.</p>`;
+                        }
+                        
+                        html += `
+                                <div style="text-align: center; margin-top: 15px;">
+                                    <a href="/exam-routine/print/${encodeURIComponent(schedule.class_name)}?term=${encodeURIComponent(term)}" target="_blank" class="btn btn-outline" style="padding: 8px 16px; font-size: 14px;">
+                                        <i class="fas fa-print"></i> Print Routine
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                            <i class="far fa-calendar-times" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                            <p style="margin: 0; font-weight: 500; font-size: 15px;">No exam schedules found for this term.</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #e74c3c;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 40px; margin-bottom: 15px; display: block;"></i>
+                        <p style="margin: 0; font-weight: 500; font-size: 15px;">Error loading exam schedules.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>

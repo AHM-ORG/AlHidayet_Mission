@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Details - Admin Panel</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .details-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-pending {
+            background: #ffeaa7;
+            color: #d35400;
+        }
+
+        .status-accepted {
+            background: #e8fdf4;
+            color: #00b894;
+            border: 1px solid #55efc4;
+        }
+
+        .status-rejected {
+            background: #ffebeb;
+            color: #d63031;
+            border: 1px solid #ff7675;
+        }
+
+        .info-section {
+            margin-bottom: 35px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 600;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #f0f0f0;
+        }
+
+        .info-item label {
+            display: block;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .info-item span {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2d3436;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 15px 20px;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        .comparison-table th {
+            background: #f1f2f6;
+            color: #2d3436;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .comparison-table tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        .comparison-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .diff-changed {
+            background: #e8fdf4;
+            color: #00b894;
+            font-weight: 600;
+        }
+
+        .action-bar {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-action {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, opacity 0.2s;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+        }
+
+        .btn-approve {
+            background: #00b894;
+            color: white;
+        }
+
+        .btn-reject {
+            background: #ff7675;
+            color: white;
+        }
+
+        .btn-back {
+            background: #dfe6e9;
+            color: #636e72;
+            margin-right: auto;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body style="background-color: #f1f2f6; font-family: 'Outfit', sans-serif;">
+
+    <div class="details-container">
+        <div class="header-row">
+            <div>
+                <h1 style="margin:0; font-size: 26px; color: var(--text-dark); font-family: 'Fredoka', sans-serif; font-weight: 600;">
+                    {% if form.type == 'student_info_edit' or form.type == 'teacher_info_edit' %}
+                        Profile Edit Request
+                    {% elif form.type == 'student_password_change' %}
+                        Password Change Request
+                    {% else %}
+                        Application Details
+                    {% endif %}
+                </h1>
+                <p style="margin:5px 0 0; color: #636e72; font-size: 14px;">ID: #{{ form.id }} | Submitted: {{ form.submitted_at or form.created_at }}</p>
+            </div>
+            <div>
+                <span class="status-badge {% if form.status == 'Accepted' %}status-accepted{% elif form.status == 'Rejected' %}status-rejected{% else %}status-pending{% endif %}">
+                    {{ form.status }}
+                </span>
+            </div>
+        </div>
+
+        <!-- FLASH MESSAGES -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- DUAL RENDERING SECTION -->
+        {% if form.type == 'student_info_edit' %}
+            <!-- Profile Info Edit Comparison -->
+            <div class="info-section">
+                <div class="section-title">
+                    <i class="fas fa-user-cog"></i> Profile Verification comparison
+                </div>
+                <p style="color: #636e72; font-size: 14px; margin-bottom: 15px;">
+                    Review the student's current information compared with their requested updates below. Changed fields are highlighted in green.
+                </p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Field Name</th>
+                            <th style="width: 35%;">Current Value</th>
+                            <th style="width: 35%;">Requested Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set fields = [
+                            ('full_name', 'Full Name'),
+                            ('gender', 'Gender'),
+                            ('dob', 'Date of Birth'),
+                            ('caste', 'Caste'),
+                            ('religion', 'Religion'),
+                            ('nationality', 'Nationality'),
+                            ('blood_group', 'Blood Group'),
+                            ('aadhaar_number', 'Aadhaar Number'),
+                            ('guardian_name', 'Father\'s / Guardian\'s Name'),
+                            ('father_qualification', 'Father\'s Qualification'),
+                            ('father_occupation', 'Father\'s Occupation'),
+                            ('father_monthly_income', 'Father\'s Monthly Income'),
+                            ('mothers_name', 'Mother\'s Name'),
+                            ('mother_qualification', 'Mother\'s Qualification'),
+                            ('mother_occupation', 'Mother\'s Occupation'),
+                            ('mother_monthly_income', 'Mother\'s Monthly Income'),
+                            ('whatsapp_no', 'Guardian\'s Whatsapp Number'),
+                            ('unique_code', 'Unique Code'),
+                            ('session', 'Academic Session'),
+                            ('mode_of_admission', 'Mode of Admission'),
+                            ('coaching_opted', 'Coaching Opted'),
+                            ('car_opted', 'Car Service Opted'),
+                            ('previous_class', 'Previous Class'),
+                            ('prev_marks_percentage', '% in Last Exam'),
+                            ('identification_mark', 'Identification Mark'),
+                            ('attached_documents', 'Attached Documents'),
+                            ('village', 'Village'),
+                            ('post_office', 'Post Office'),
+                            ('police_station', 'Police Station'),
+                            ('district', 'District'),
+                            ('bank_details', 'Bank Account Details')
+                        ] %}
+                        
+                        {% for key, label in fields %}
+                            {% if key == 'bank_details' %}
+                                {% set temp_bank_details = '' %}
+                                {% if current_info %}
+                                    {% if current_info.get is defined %}
+                                        {% set temp_bank_details = current_info.get(key) or '' %}
+                                    {% else %}
+                                        {% if key in current_info.keys() %}
+                                            {% set temp_bank_details = current_info[key] or '' %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% set curr_bank = parse_bank_details(temp_bank_details) %}
+                                {% set req_bank = parse_bank_details(data.get(key)) %}
+                                {% set current_val = (curr_bank.bank_name ~ ' (' ~ curr_bank.branch_name ~ ')' if curr_bank.branch_name else curr_bank.bank_name) ~ ' (A/C: ' ~ curr_bank.account_no ~ ', IFSC: ' ~ curr_bank.ifsc_code ~ ')' if curr_bank.bank_name else 'Blank' %}
+                                {% set requested_val = (req_bank.bank_name ~ ' (' ~ req_bank.branch_name ~ ')' if req_bank.branch_name else req_bank.bank_name) ~ ' (A/C: ' ~ req_bank.account_no ~ ', IFSC: ' ~ req_bank.ifsc_code ~ ')' if req_bank.bank_name else 'Blank' %}
+                            {% elif key in ['coaching_opted', 'car_opted'] %}
+                                {% set temp_val = '0' %}
+                                {% if current_info %}
+                                    {% if current_info.get is defined %}
+                                        {% set temp_val = current_info.get(key) %}
+                                    {% else %}
+                                        {% if key in current_info.keys() %}
+                                            {% set temp_val = current_info[key] %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% set current_val = 'Yes' if (temp_val == 1 or temp_val == '1' or temp_val == 'Yes') else 'No' %}
+                                {% set req_val_raw = data.get(key) %}
+                                {% set requested_val = 'Yes' if (req_val_raw == 1 or req_val_raw == '1' or req_val_raw == 'Yes') else 'No' %}
+                            {% else %}
+                                {% set current_val = 'N/A' %}
+                                {% if current_info %}
+                                    {% if current_info.get is defined %}
+                                        {% set current_val = current_info.get(key) %}
+                                    {% else %}
+                                        {% if key in current_info.keys() %}
+                                            {% set current_val = current_info[key] %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% set requested_val = data.get(key) %}
+                            {% endif %}
+                            {% set is_changed = current_val|string|lower|trim != requested_val|string|lower|trim %}
+                            
+                            <tr {% if is_changed %}class="diff-changed"{% endif %}>
+                                <td><strong>{{ label }}</strong></td>
+                                <td>{{ current_val or 'Blank' }}</td>
+                                <td>
+                                    {{ requested_val or 'Blank' }}
+                                    {% if is_changed %}
+                                        <i class="fas fa-pencil-alt" style="margin-left: 8px; font-size: 12px; opacity: 0.8;"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% elif form.type == 'teacher_info_edit' %}
+            <!-- Teacher Profile Info Edit Comparison -->
+            <div class="info-section">
+                <div class="section-title">
+                    <i class="fas fa-user-cog"></i> Profile Verification comparison
+                </div>
+                <p style="color: #636e72; font-size: 14px; margin-bottom: 15px;">
+                    Review the teacher's current information compared with their requested updates below. Changed fields are highlighted in green.
+                </p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Field Name</th>
+                            <th style="width: 35%;">Current Value</th>
+                            <th style="width: 35%;">Requested Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set fields = [
+                            ('full_name', 'Full Name'),
+                            ('phone_number', 'Mobile/Phone No.'),
+                            ('qualification', 'Qualification'),
+                            ('address', 'Address'),
+                            ('aadhaar_number', 'Aadhaar Number'),
+                            ('bank_details', 'Bank Account Details')
+                        ] %}
+                        
+                        {% for key, label in fields %}
+                            {% if key == 'bank_details' %}
+                                {% set temp_bank_details = '' %}
+                                {% if current_info %}
+                                    {% if current_info.get is defined %}
+                                        {% set temp_bank_details = current_info.get(key) or '' %}
+                                    {% else %}
+                                        {% if key in current_info.keys() %}
+                                            {% set temp_bank_details = current_info[key] or '' %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% set curr_bank = parse_bank_details(temp_bank_details) %}
+                                {% set req_bank = parse_bank_details(data.get(key)) %}
+                                {% set current_val = (curr_bank.bank_name ~ ' (' ~ curr_bank.branch_name ~ ')' if curr_bank.branch_name else curr_bank.bank_name) ~ ' (A/C: ' ~ curr_bank.account_no ~ ', IFSC: ' ~ curr_bank.ifsc_code ~ ')' if curr_bank.bank_name else 'Blank' %}
+                                {% set requested_val = (req_bank.bank_name ~ ' (' ~ req_bank.branch_name ~ ')' if req_bank.branch_name else req_bank.bank_name) ~ ' (A/C: ' ~ req_bank.account_no ~ ', IFSC: ' ~ req_bank.ifsc_code ~ ')' if req_bank.bank_name else 'Blank' %}
+                            {% else %}
+                                {% set current_val = 'N/A' %}
+                                {% if current_info %}
+                                    {% if current_info.get is defined %}
+                                        {% set current_val = current_info.get(key) %}
+                                    {% else %}
+                                        {% if key in current_info.keys() %}
+                                            {% set current_val = current_info[key] %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% set requested_val = data.get(key) %}
+                            {% endif %}
+                            {% set is_changed = current_val|string|lower|trim != requested_val|string|lower|trim %}
+                            
+                            <tr {% if is_changed %}class="diff-changed"{% endif %}>
+                                <td><strong>{{ label }}</strong></td>
+                                <td>{{ current_val or 'Blank' }}</td>
+                                <td>
+                                    {{ requested_val or 'Blank' }}
+                                    {% if is_changed %}
+                                        <i class="fas fa-pencil-alt" style="margin-left: 8px; font-size: 12px; opacity: 0.8;"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% elif form.type == 'student_password_change' %}
+            <!-- Student Password Change Request -->
+            <div class="info-section">
+                <div class="section-title">
+                    <i class="fas fa-key"></i> Password Change Details
+                </div>
+                <p style="color: #636e72; font-size: 14px; margin-bottom: 15px;">
+                    Review the requested student password change below. Clicking "Approve" will update the student's password immediately.
+                </p>
+
+                <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="info-item">
+                        <label style="display: block; font-size: 12px; color: #636e72; margin-bottom: 5px; font-weight: 600;">Student Username</label>
+                        <span style="font-size: 16px; color: #2d3436; font-weight: 500;">{{ current_info.username if current_info else 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label style="display: block; font-size: 12px; color: #636e72; margin-bottom: 5px; font-weight: 600;">Student Name</label>
+                        <span style="font-size: 16px; color: #2d3436; font-weight: 500;">{{ current_info.full_name if current_info else 'N/A' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label style="display: block; font-size: 12px; color: #636e72; margin-bottom: 5px; font-weight: 600;">Branch/Campus</label>
+                        <span style="font-size: 16px; color: #2d3436; font-weight: 500; text-transform: uppercase;">{{ form.branch or 'N/A' }}</span>
+                    </div>
+                    <div class="info-item" style="background-color: #e8f0fe; padding: 10px; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <label style="display: block; font-size: 12px; color: #2980b9; margin-bottom: 5px; font-weight: 600;">Requested New Password</label>
+                        <span style="font-size: 16px; color: #2c3e50; font-weight: 700; font-family: monospace;">{{ data.get('new_password', 'N/A') }}</span>
+                    </div>
+                </div>
+            </div>
+
+        {% else %}
+            <!-- Standard Admission Application Display -->
+            {% if form.type == 'Teacher Joining Form' %}
+                <!-- Section 1: Teacher Profile -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-id-card"></i> Candidate Personal Profile
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Full Name</label>
+                            <span>{{ data.get('full_name', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Date of Birth</label>
+                            <span>{{ data.get('dob', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Gender</label>
+                            <span>{{ data.get('gender', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Email Address</label>
+                            <span>{{ data.get('email', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Contact Phone No</label>
+                            <span>{{ data.get('phone_no', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Aadhaar Number</label>
+                            <span>{{ data.get('aadhar_no', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Bank Account Details</label>
+                            <span>
+                                {% if data.get('bank_name') %}
+                                    {{ data.get('bank_name') }} (A/C: {{ data.get('account_no', 'N/A') }}, IFSC: {{ data.get('ifsc_code', 'N/A') }})
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Qualifications & Experience -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-user-graduate"></i> Qualifications & Experience
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Highest Qualification</label>
+                            <span>{{ data.get('qualification', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Subject Specialization</label>
+                            <span>{{ data.get('specialization', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Teaching Experience (Years)</label>
+                            <span>{{ data.get('experience_years', 'N/A') }} Years</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Previous School Name</label>
+                            <span>{{ data.get('prev_school', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>CV Document</label>
+                            {% if data.get('cv_path') %}
+                                <span>
+                                    <a href="{{ url_for('static', filename=data.get('cv_path')) }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                        <i class="fas fa-file-pdf" style="font-size: 18px;"></i> View CV
+                                    </a>
+                                </span>
+                            {% else %}
+                                <span style="color: #e74c3c; font-weight: 600;">Not Uploaded</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #f0f0f0; margin-top: 15px;">
+                        <label style="display: block; font-size: 12px; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase; font-weight: 600;">Experience Summary & Achievements</label>
+                        <p style="margin: 0; font-size: 15px; color: #2d3436; line-height: 1.5; white-space: pre-wrap;">{{ data.get('experience_details', 'No details provided.') }}</p>
+                    </div>
+                </div>
+
+                <!-- Section 3: Preferences & Expectations -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-building"></i> Preferences & Financials
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Preferred Branch</label>
+                            <span>{{ data.get('branch', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Teaching Preference</label>
+                            <span>{{ data.get('teacher_type', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Expected Salary (per month)</label>
+                            <span>₹{{ data.get('expected_salary', 'N/A') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Address Details -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-map-marker-alt"></i> Permanent Address
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Village / Street</label>
+                            <span>{{ data.get('village', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Post Office (P.O)</label>
+                            <span>{{ data.get('po', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Police Station (P.S)</label>
+                            <span>{{ data.get('ps', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>District</label>
+                            <span>{{ data.get('dist', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>State</label>
+                            <span>{{ data.get('state', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Pin Code</label>
+                            <span>{{ data.get('pin', 'N/A') }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Section 1: Student Information -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-user-graduate"></i> Student Information
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Full Name</label>
+                            <span>{{ data.get('full_name', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Date of Birth</label>
+                            <span>{{ data.get('dob', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Gender</label>
+                            <span>{{ data.get('gender', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Blood Group</label>
+                            <span>{{ data.get('blood_group', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Religion</label>
+                            <span>{{ data.get('religion', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Nationality</label>
+                            <span>{{ data.get('nationality', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Caste</label>
+                            <span>{{ data.get('caste', 'N/A') }}</span>
+                        </div>
+
+                        <div class="info-item">
+                            <label>Identification Mark</label>
+                            <span>{{ data.get('identification_mark', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Aadhar Number</label>
+                            <span>{{ data.get('aadhar_no', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Bank Account Details</label>
+                            <span>
+                                {% if data.get('bank_name') %}
+                                    {{ data.get('bank_name') }} {% if data.get('branch_name') %}({{ data.get('branch_name') }}){% endif %} (A/C: {{ data.get('account_no', 'N/A') }}, IFSC: {{ data.get('ifsc_code', 'N/A') }})
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Admission Details -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-school"></i> Admission Details
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Branch</label>
+                            <span>{{ data.get('branch', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Class Applied For</label>
+                            <span>{{ data.get('class_applied', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Student Type</label>
+                            <span>{{ data.get('student_type', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Previous School</label>
+                            <span>{{ data.get('prev_school', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Unique Code</label>
+                            <span>{{ data.get('unique_code') or 'Auto-generated on approval' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Academic Session</label>
+                            <span>{{ data.get('session', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Mode of Admission</label>
+                            <span>{{ data.get('mode_of_admission', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Coaching Opted</label>
+                            <span>{{ data.get('coaching_opted', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Car Service Opted</label>
+                            <span>{{ data.get('car_opted', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Previous Class</label>
+                            <span>{{ data.get('previous_class', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>% in Last Exam</label>
+                            <span>{{ data.get('prev_marks_percentage', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Attached Documents</label>
+                            <span>
+                                {% set attached = data.get('attached_documents') %}
+                                {% set uploaded = data.get('uploaded_documents', {}) %}
+                                {% if attached %}
+                                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+                                    {% if attached is string %}
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <span style="font-weight: 500;">✓ {{ attached }}</span>
+                                            {% if uploaded.get(attached) %}
+                                                <a href="{{ url_for('static', filename=uploaded.get(attached)) }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; font-size: 13px;">
+                                                    <i class="fas fa-file-download"></i> View File
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        {% for doc in attached %}
+                                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                <span style="font-weight: 500;">✓ {{ doc }}</span>
+                                                {% if uploaded.get(doc) %}
+                                                    <a href="{{ url_for('static', filename=uploaded.get(doc)) }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; font-size: 13px;">
+                                                        <i class="fas fa-file-download"></i> View File
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    </div>
+                                {% else %}
+                                    None
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Guardian Details -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-users"></i> Guardian Information
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Father's Name</label>
+                            <span>{{ data.get('father_name', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Mother's Name</label>
+                            <span>{{ data.get('mother_name', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Father's Occupation</label>
+                            <span>{{ data.get('father_occupation', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Father's Qualification</label>
+                            <span>{{ data.get('father_qualification', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Father's Monthly Income</label>
+                            <span>{{ data.get('father_monthly_income', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Mother's Qualification</label>
+                            <span>{{ data.get('mother_qualification', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Mother's Occupation</label>
+                            <span>{{ data.get('mother_occupation', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Mother's Monthly Income</label>
+                            <span>{{ data.get('mother_monthly_income', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Guardian's Phone</label>
+                            <span>{{ data.get('guardian_phone', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Alternative Phone</label>
+                            <span>{{ data.get('alt_phone', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Guardian's Whatsapp No</label>
+                            <span>{{ data.get('whatsapp_no', 'N/A') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Address Details -->
+                <div class="info-section">
+                    <div class="section-title">
+                        <i class="fas fa-map-marker-alt"></i> Permanent Address
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Village</label>
+                            <span>{{ data.get('village', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Post Office</label>
+                            <span>{{ data.get('po', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Police Station</label>
+                            <span>{{ data.get('ps', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>District</label>
+                            <span>{{ data.get('dist', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>State</label>
+                            <span>{{ data.get('state', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Pin Code</label>
+                            <span>{{ data.get('pin', 'N/A') }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+
+        <!-- ACTION BUTTONS BAR -->
+        <div class="action-bar">
+            <a href="/admin/applications" class="btn-action btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Admission Requests
+            </a>
+
+            {% if form.status == 'Pending' %}
+                <form action="/admin/form-action/{{ form.id }}/reject" method="POST" style="margin:0;">
+                    <button type="submit" class="btn-action btn-reject" onclick="return confirm('Reject this application?');">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                </form>
+
+                <form action="/admin/form-action/{{ form.id }}/approve" method="POST" style="margin:0;">
+                    <button type="submit" class="btn-action btn-approve" onclick="return confirm('Approve this request/application?');">
+                        <i class="fas fa-check"></i> {% if form.type in ['student_info_edit', 'teacher_info_edit', 'student_password_change'] %}Approve Request{% else %}Approve Application{% endif %}
+                    </button>
+                </form>
+            {% else %}
+                <span style="color: #636e72; font-style: italic; align-self: center;">
+                    This request has already been processed ({{ form.status }}).
+                </span>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

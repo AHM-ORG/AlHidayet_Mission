@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch Dashboard - Al Hidayet Mission</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-pattern">
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <img src="{{ logo_url }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span class="logo-text">AHM <span class="highlight">Panel</span></span>
+                </a>
+            </div>
+            <div class="user-menu">
+                <span>{{ branch_name }} Head</span>
+                <a href="/logout" class="btn btn-outline"
+                    style="border-color: #e74c3c; color: #e74c3c; padding: 5px 15px;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container section">
+        <div class="dashboard-header" style="margin-bottom: 30px;">
+            <h1 class="hero-title" style="font-size: 28px; text-align: left;">
+                <span style="color: var(--primary-color);">{{ branch_name }}</span> Dashboard
+            </h1>
+            <p style="color: var(--text-light);">Manage branch activities and view applications.</p>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert-info"
+            style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; color: #0984e3; border-radius: 8px;">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Tab Navigation -->
+        <div class="tabs"
+            style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+            <button class="tab-btn active" onclick="switchTab('forms')"><i data-lucide="file-text"></i>
+                Applications</button>
+            <button class="tab-btn" onclick="switchTab('gallery')"><i data-lucide="image"></i> Gallery Uploads</button>
+            <button class="tab-btn" onclick="switchTab('notices')"><i data-lucide="bell"></i> Notices</button>
+        </div>
+
+        <!-- 1. Applications Section -->
+        <div id="forms" class="tab-content active">
+            <h3 class="section-title">Received Applications for {{ branch_name }}</h3>
+            {% if branch_forms %}
+            <div class="table-container" style="overflow-x: auto;">
+                <table
+                    style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm);">
+                    <thead>
+                        <tr style="background: #f8f9fa; text-align: left;">
+                            <th style="padding: 15px;">ID</th>
+                            <th style="padding: 15px;">Type</th>
+                            <th style="padding: 15px;">Applicant</th>
+                            <th style="padding: 15px;">Status</th>
+                            <th style="padding: 15px;">Date</th>
+                            <th style="padding: 15px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in branch_forms %}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 15px;">#{{ form['id'] }}</td>
+                            <td style="padding: 15px;">{{ form['type'] }}</td>
+                            <td style="padding: 15px;">
+                                {% set data = form['data'] | tojson %}
+                                <!-- Safe load in template? No, data is string -->
+                                {{ form['username'] or 'Guest' }}
+                            </td>
+                            <td style="padding: 15px;">
+                                <span class="badge"
+                                    style="padding: 5px 10px; border-radius: 20px; font-size: 12px; 
+                                    background: {% if form['status']=='Accepted' %}#dff9fb{% elif form['status']=='Rejected' %}#ffdddd{% else %}#fff4e5{% endif %};
+                                    color: {% if form['status']=='Accepted' %}#2ecc71{% elif form['status']=='Rejected' %}#e74c3c{% else %}#f39c12{% endif %};">
+                                    {{ form['status'] }}
+                                </span>
+                            </td>
+                            <td style="padding: 15px;">{{ form['submitted_at'] }}</td>
+                            <td style="padding: 15px;">
+                                <a href="{{ url_for('view_form', form_id=form['id']) }}" class="btn-sm"
+                                    style="color: var(--primary-color);">View Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999; padding: 30px;">No applications found for this branch.</p>
+            {% endif %}
+        </div>
+
+        <!-- 2. Gallery Section -->
+        <div id="gallery" class="tab-content" style="display: none;">
+            <h3 class="section-title">Pending Gallery Uploads</h3>
+            {% if pending_gallery %}
+            <div class="gallery-review-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                {% for upload in pending_gallery %}
+                <div class="review-card"
+                    style="background: white; padding: 10px; border-radius: 8px; box-shadow: var(--shadow-sm);">
+                    <img src="{{ url_for('static', filename='uploads/temp/' + upload['filename']) }}" alt="Upload"
+                        style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;">
+                    <div class="info" style="margin: 10px 0;">
+                        <p style="font-size: 14px; margin: 0;"><strong>By:</strong> {{ upload['username'] }}</p>
+                        <p style="font-size: 12px; color: #666; margin: 0;">{{ upload['category'] }}</p>
+                    </div>
+                    <div class="actions" style="display: flex; gap: 5px;">
+                        <form action="{{ url_for('media_action', media_id=upload['id'], action='approve') }}" method="POST" style="flex: 1;">
+                            <button type="submit"
+                                style="width: 100%; background: #2ecc71; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;">Approve</button>
+                        </form>
+                        <form action="{{ url_for('media_action', media_id=upload['id'], action='reject') }}" method="POST" style="flex: 1;">
+                            <button type="submit"
+                                style="width: 100%; background: #e74c3c; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;">Reject</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999; padding: 30px;">No pending uploads.</p>
+            {% endif %}
+        </div>
+
+        <!-- 3. Notices Section -->
+        <div id="notices" class="tab-content" style="display: none;">
+            <h3 class="section-title">All Notices</h3>
+            {% if all_notices %}
+            <div class="notice-list">
+                {% for notice in all_notices %}
+                <div class="notice-card"
+                    style="background: white; padding: 15px; border-left: 4px solid var(--primary-color); margin-bottom: 10px; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 15px;">{{ notice['content'] }}</p>
+                    <small style="color: #999;">{{ notice['created_at'] }}</small>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999; padding: 30px;">No notices available.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+
+        function switchTab(tabId) {
+            // Hide all
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Show target
+            document.getElementById(tabId).style.display = 'block';
+            // Find button (simple way)
+            event.target.closest('.tab-btn').classList.add('active');
+        }
+
+        // Add some basic styling for active tabs if not in main CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            .tab-btn {
+                background: none;
+                border: none;
+                padding: 10px 20px;
+                font-family: inherit;
+                font-size: 16px;
+                cursor: pointer;
+                color: #666;
+                transition: all 0.3s;
+                border-bottom: 2px solid transparent;
+            }
+            .tab-btn:hover { color: var(--primary-color); }
+            .tab-btn.active {
+                color: var(--primary-color);
+                border-bottom-color: var(--primary-color);
+                font-weight: 600;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>

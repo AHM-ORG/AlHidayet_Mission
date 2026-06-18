@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Portal - Bhogram Al-Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+
+    <style>
+        .portal-container {
+            width: min(95%, 1100px);
+            margin: 40px auto;
+            padding: 0 15px;
+        }
+
+        .portal-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .portal-header .hero-title {
+            margin-left: auto !important;
+            margin-right: auto !important;
+            max-width: 100% !important;
+        }
+
+        .portal-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+        }
+
+        .portal-tab-btn {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            background: #fff;
+            color: #555;
+            border-radius: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .portal-tab-btn i {
+            width: 18px;
+            height: 18px;
+            color: #7f8c8d;
+            transition: color 0.3s;
+        }
+
+        .portal-tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(26, 188, 156, 0.2);
+        }
+
+        .portal-tab-btn.active i {
+            color: white;
+        }
+
+        .form-section {
+            background: #fff;
+            padding: 35px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 30px;
+            border-top: 4px solid var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .form-section h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 600;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 992px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-dark);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eef2f5;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            background: #fdfefe;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: var(--primary-color);
+            background: #fff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.15);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 4px 6px rgba(26, 188, 156, 0.2);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(26, 188, 156, 0.3);
+        }
+
+        .error-msg {
+            font-size: 13px;
+            color: #e74c3c;
+            display: none;
+            margin-top: 4px;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+
+    <!-- Header -->
+    <header class="main-header" style="background: #fff;">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" style="display:flex; align-items:center; gap:10px;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/#faq" class="nav-link">FAQ</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-outline">Login</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="portal-container">
+        <div class="portal-header">
+            <h1 class="hero-title" style="font-size: 34px; color: var(--primary-color);">Application Portal</h1>
+            <p style="color: var(--text-light); margin-top: 5px;">Apply online for student admissions or teacher recruitment.</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div style="background: #e74c3c; color: white; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500;">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Interactive Tab Switcher -->
+        <div class="portal-tabs">
+            <button class="portal-tab-btn active" id="tab-student-btn" onclick="switchPortalTab('student')">
+                <i data-lucide="graduation-cap"></i> Student Admission
+            </button>
+            <button class="portal-tab-btn" id="tab-teacher-btn" onclick="switchPortalTab('teacher')">
+                <i data-lucide="briefcase"></i> Teacher Joining Request
+            </button>
+        </div>
+
+        <!-- ================= STUDENT ADMISSION FORM ================= -->
+        <div id="student-portal-form" class="portal-form-content" style="display: block;">
+            <form action="/submit-application" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="form_type" value="Admission Form">
+
+                <!-- Section 1: Student Information -->
+                <div class="form-section">
+                    <h3><i class="fas fa-user-graduate"></i> Student Information</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Full Name*</label>
+                            <input type="text" name="full_name" required placeholder="Enter student's full name">
+                        </div>
+                        <div class="input-group">
+                            <label>Date of Birth*</label>
+                            <input type="date" name="dob" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Gender*</label>
+                            <select name="gender" required>
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Blood Group</label>
+                            <input type="text" name="blood_group" placeholder="e.g. O+">
+                        </div>
+                        <div class="input-group">
+                            <label>Religion*</label>
+                            <select name="religion" required>
+                                <option value="">Select Religion</option>
+                                <option value="Islam">Islam</option>
+                                <option value="Hinduism">Hinduism</option>
+                                <option value="Christianity">Christianity</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Nationality</label>
+                            <input type="text" name="nationality" value="Indian" readonly>
+                        </div>
+                        <div class="input-group">
+                            <label>Caste*</label>
+                            <select name="caste" required>
+                                <option value="">Select Caste</option>
+                                <option value="General">General</option>
+                                <option value="OBC">OBC</option>
+                                <option value="SC">SC</option>
+                                <option value="ST">ST</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Aadhaar Number*</label>
+                            <input type="text" name="aadhar_no" required placeholder="12-digit Aadhaar Number" pattern="\d{12}" minlength="12" maxlength="12" title="Must be exactly 12 digits" id="student_aadhar">
+                            <div class="error-msg" id="err-student-aadhar">
+                                <i class="fas fa-exclamation-circle"></i> Aadhaar Number must be exactly 12 digits.
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Identification Mark</label>
+                            <input type="text" name="identification_mark" placeholder="e.g. mole on right cheek">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Admission Details -->
+                <div class="form-section" style="border-top-color: var(--secondary-color);">
+                    <h3><i class="fas fa-school"></i> Admission Details</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Unique Code</label>
+                            <input type="text" readonly value="Auto-generated on registration" style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif; color: #94a3b8;">
+                        </div>
+                        <div class="input-group">
+                            <label>Academic Session*</label>
+                            <input type="text" name="session" value="2026" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Branch*</label>
+                            <input type="text" value="Bhogram Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
+                            <input type="hidden" name="branch" value="Bhogram">
+                        </div>
+                        <div class="input-group">
+                            <label>Class Applying For*</label>
+                            <select name="class_applied" required>
+                                <option value="">Select Class</option>
+                                <option value="Nursery">Nursery</option>
+                                <option value="Upper Nursery">Upper Nursery</option>
+                                <option value="I">I</option>
+                                <option value="II">II</option>
+                                <option value="III">III</option>
+                                <option value="IV">IV</option>
+                                <option value="V">V</option>
+                                <option value="VI">VI</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Mode of Admission*</label>
+                            <select name="mode_of_admission" required>
+                                <option value="School">School</option>
+                                <option value="School with Coaching">School with Coaching</option>
+                                <option value="Day Hostel">Day Hostel</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Car Service Opted?*</label>
+                            <select name="car_opted" required>
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Previous Class</label>
+                            <input type="text" name="previous_class" placeholder="e.g. Nursery">
+                        </div>
+                        <div class="input-group">
+                            <label>% in Last Annual Exam</label>
+                            <input type="text" name="prev_marks_percentage" placeholder="e.g. 85%">
+                        </div>
+                        <div class="input-group">
+                            <label>Previous School Name</label>
+                            <input type="text" name="prev_school" placeholder="Name of last school attended">
+                        </div>
+                        <div class="input-group">
+                            <label>Bank Name</label>
+                            <input type="text" name="bank_name" placeholder="e.g. State Bank of India">
+                        </div>
+                        <div class="input-group">
+                            <label>Branch Name</label>
+                            <input type="text" name="branch_name" placeholder="e.g. Bhogram Branch">
+                        </div>
+                        <div class="input-group">
+                            <label>Account Number</label>
+                            <input type="text" name="account_no" placeholder="e.g. 1234567890">
+                        </div>
+                        <div class="input-group">
+                            <label>IFSC Code</label>
+                            <input type="text" name="ifsc_code" placeholder="e.g. SBIN0001234">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Guardian Details -->
+                <div class="form-section" style="border-top-color: #00b894;">
+                    <h3><i class="fas fa-users"></i> Guardian Information</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Father's Name*</label>
+                            <input type="text" name="father_name" required placeholder="Enter father's full name">
+                        </div>
+                        <div class="input-group">
+                            <label>Father's Qualification</label>
+                            <input type="text" name="father_qualification" placeholder="e.g. Graduate">
+                        </div>
+                        <div class="input-group">
+                            <label>Father's Occupation</label>
+                            <input type="text" name="father_occupation" placeholder="e.g. Business">
+                        </div>
+                        <div class="input-group">
+                            <label>Father's Monthly Income</label>
+                            <input type="text" name="father_monthly_income" placeholder="e.g. 15000">
+                        </div>
+                        <div class="input-group">
+                            <label>Mother's Name*</label>
+                            <input type="text" name="mother_name" required placeholder="Enter mother's full name">
+                        </div>
+                        <div class="input-group">
+                            <label>Mother's Qualification</label>
+                            <input type="text" name="mother_qualification" placeholder="e.g. Secondary">
+                        </div>
+                        <div class="input-group">
+                            <label>Mother's Occupation</label>
+                            <input type="text" name="mother_occupation" placeholder="e.g. Homemaker">
+                        </div>
+                        <div class="input-group">
+                            <label>Mother's Monthly Income</label>
+                            <input type="text" name="mother_monthly_income" placeholder="e.g. 5000">
+                        </div>
+                        <div class="input-group">
+                            <label>Guardian's Phone No*</label>
+                            <input type="tel" name="guardian_phone" required placeholder="10-digit Mobile No" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="student_guardian_phone">
+                            <div class="error-msg" id="err-student-phone">
+                                <i class="fas fa-exclamation-circle"></i> Mobile number must be exactly 10 digits.
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Alternative Phone No</label>
+                            <input type="tel" name="alt_phone" placeholder="10-digit Mobile No" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="student_alt_phone">
+                            <div class="error-msg" id="err-student-alt">
+                                <i class="fas fa-exclamation-circle"></i> Mobile number must be exactly 10 digits.
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Guardian's Whatsapp No</label>
+                            <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="guardian_whatsapp_no">
+                            <div class="error-msg" id="err-guardian-whatsapp">
+                                <i class="fas fa-exclamation-circle"></i> Whatsapp number must be exactly 10 digits.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Address Details -->
+                <div class="form-section" style="border-top-color: #e17055;">
+                    <h3><i class="fas fa-map-marker-alt"></i> Permanent Address</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Village*</label>
+                            <input type="text" name="village" required placeholder="Village / Area">
+                        </div>
+                        <div class="input-group">
+                            <label>Post Office (P.O)*</label>
+                            <input type="text" name="po" required placeholder="Post Office">
+                        </div>
+                        <div class="input-group">
+                            <label>Police Station (P.S)*</label>
+                            <input type="text" name="ps" required placeholder="Police Station">
+                        </div>
+                        <div class="input-group">
+                            <label>District*</label>
+                            <input type="text" name="dist" required placeholder="District">
+                        </div>
+                        <div class="input-group">
+                            <label>State*</label>
+                            <input type="text" name="state" value="West Bengal" required placeholder="State">
+                        </div>
+                        <div class="input-group">
+                            <label>Pin Code*</label>
+                            <input type="text" name="pin" required placeholder="6-digit PIN" pattern="\d{6}" maxlength="6" id="student_pin">
+                            <div class="error-msg" id="err-student-pin">
+                                <i class="fas fa-exclamation-circle"></i> Pin Code must be exactly 6 digits.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: Attached Documents -->
+                <div class="form-section" style="border-top-color: #9b59b6;">
+                    <h3><i class="fas fa-paperclip"></i> Attached Copy (Xerox)</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eef2f5;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-dark);">
+                                Birth Certificate*
+                            </label>
+                            <input type="hidden" name="attached_documents" value="Birth Certificate">
+                            <div style="margin-top: 8px;">
+                                <input type="file" name="file_birth_certificate" required accept=".pdf,.jpg,.jpeg,.png,.webp" style="padding: 4px; font-size: 12px; border: 1px dashed #ccc; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eef2f5;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-dark);">
+                                Aadhaar Card*
+                            </label>
+                            <input type="hidden" name="attached_documents" value="Aadhaar Card">
+                            <div style="margin-top: 8px;">
+                                <input type="file" name="file_aadhaar_card" required accept=".pdf,.jpg,.jpeg,.png,.webp" style="padding: 4px; font-size: 12px; border: 1px dashed #ccc; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eef2f5;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-dark);">
+                                Profile Photo*
+                            </label>
+                            <input type="hidden" name="attached_documents" value="Profile Photo">
+                            <div style="margin-top: 8px;">
+                                <input type="file" name="file_one_photo" required accept=".pdf,.jpg,.jpeg,.png,.webp" style="padding: 4px; font-size: 12px; border: 1px dashed #ccc; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eef2f5;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-dark);">
+                                <input type="checkbox" name="attached_documents" value="Bank Passbook" onchange="toggleFileUpload(this, 'file_bank_passbook')" style="width: 16px; height: 16px;"> Bank Passbook
+                            </label>
+                            <div id="file_bank_passbook_container" style="display: none; margin-top: 8px;">
+                                <input type="file" name="file_bank_passbook" accept=".pdf,.jpg,.jpeg,.png,.webp" style="padding: 4px; font-size: 12px; border: 1px dashed #ccc; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eef2f5;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--text-dark);">
+                                <input type="checkbox" name="attached_documents" value="T.C Certificate" onchange="toggleFileUpload(this, 'file_tc_certificate')" style="width: 16px; height: 16px;"> T.C Certificate
+                            </label>
+                            <div id="file_tc_certificate_container" style="display: none; margin-top: 8px;">
+                                <input type="file" name="file_tc_certificate" accept=".pdf,.jpg,.jpeg,.png,.webp" style="padding: 4px; font-size: 12px; border: 1px dashed #ccc; border-radius: 4px; width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Declaration -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 25px;">
+                    <label style="display:flex; align-items:flex-start; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" required style="width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary-color);">
+                        <span style="font-size: 15px; color: #555; line-height: 1.5; font-family: 'Outfit', sans-serif;">
+                            <strong>Declaration:</strong> I hereby declare that the information provided above is true and correct to the best of my knowledge and belief. I understand that any false information may lead to the rejection of this admission application.
+                        </span>
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Admission Application</button>
+            </form>
+        </div>
+
+
+        <!-- ================= TEACHER JOINING REQUEST FORM ================= -->
+        <div id="teacher-portal-form" class="portal-form-content" style="display: none;">
+            <form action="/submit-application" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="form_type" value="Teacher Joining Form">
+
+                <!-- Section 1: Personal Details -->
+                <div class="form-section">
+                    <h3><i class="fas fa-id-card"></i> Personal Information</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Full Name*</label>
+                            <input type="text" name="full_name" required placeholder="Enter candidate's full name">
+                        </div>
+                        <div class="input-group">
+                            <label>Date of Birth*</label>
+                            <input type="date" name="dob" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Gender*</label>
+                            <select name="gender" required>
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Email Address*</label>
+                            <input type="email" name="email" required placeholder="Enter active email address">
+                        </div>
+                        <div class="input-group">
+                            <label>Contact Phone No*</label>
+                            <input type="tel" name="phone_no" required placeholder="10-digit Mobile No" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="teacher_phone">
+                            <div class="error-msg" id="err-teacher-phone">
+                                <i class="fas fa-exclamation-circle"></i> Mobile number must be exactly 10 digits.
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Aadhaar Number*</label>
+                            <input type="text" name="aadhar_no" required placeholder="12-digit Aadhaar Number" pattern="\d{12}" minlength="12" maxlength="12" title="Must be exactly 12 digits" id="teacher_aadhar">
+                            <div class="error-msg" id="err-teacher-aadhar">
+                                <i class="fas fa-exclamation-circle"></i> Aadhaar Number must be exactly 12 digits.
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Bank Name</label>
+                            <input type="text" name="bank_name" placeholder="e.g. State Bank of India">
+                        </div>
+                        <div class="input-group">
+                            <label>Account Number</label>
+                            <input type="text" name="account_no" placeholder="e.g. 1234567890">
+                        </div>
+                        <div class="input-group">
+                            <label>IFSC Code</label>
+                            <input type="text" name="ifsc_code" placeholder="e.g. SBIN0001234">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Educational & Professional details -->
+                <div class="form-section" style="border-top-color: var(--secondary-color);">
+                    <h3><i class="fas fa-user-graduate"></i> Qualifications & Experience</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Highest Educational Qualification*</label>
+                            <input type="text" name="qualification" required placeholder="e.g. M.Sc. in Physics, B.Ed., M.A. English">
+                        </div>
+                        <div class="input-group">
+                            <label>Specialization / Subject Expertise*</label>
+                            <input type="text" name="specialization" required placeholder="e.g. Mathematics, Physical Science, History">
+                        </div>
+                        <div class="input-group">
+                            <label>Total Teaching Experience (in Years)*</label>
+                            <input type="number" name="experience_years" required min="0" placeholder="e.g. 3 (Enter 0 if Fresher)">
+                        </div>
+                        <div class="input-group">
+                            <label>Previous Institution Name (If Any)</label>
+                            <input type="text" name="prev_school" placeholder="Last school/organization worked at">
+                        </div>
+                        <div class="input-group">
+                            <label>Upload CV (PDF or Image)*</label>
+                            <input type="file" name="cv_file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label>Experience Details / Achievements Summary</label>
+                        <textarea name="experience_details" rows="4" placeholder="Briefly describe your teaching background, key achievements, or skills..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Section 3: Preferences & Details -->
+                <div class="form-section" style="border-top-color: #00b894;">
+                    <h3><i class="fas fa-building"></i> Preferences & Financials</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Preferred Campus Branch*</label>
+                            <input type="text" value="Bhogram Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
+                            <input type="hidden" name="branch" value="Bhogram">
+                        </div>
+                        <div class="input-group">
+                            <label>Teaching Preference*</label>
+                            <select name="teacher_type" required>
+                                <option value="">Select Option</option>
+                                <option value="Coaching Class">Coaching</option>
+                                <option value="Regular Class">School</option>
+                                <option value="Both">Both</option>
+                                <option value="Guest Teacher">As Guest</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Expected Salary (per month in INR)*</label>
+                            <input type="number" name="expected_salary" required min="100" placeholder="e.g. 15000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Address Details -->
+                <div class="form-section" style="border-top-color: #e17055;">
+                    <h3><i class="fas fa-map-marker-alt"></i> Permanent Address</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Village / Street*</label>
+                            <input type="text" name="village" required placeholder="Village / Area">
+                        </div>
+                        <div class="input-group">
+                            <label>Post Office (P.O)*</label>
+                            <input type="text" name="po" required placeholder="Post Office">
+                        </div>
+                        <div class="input-group">
+                            <label>Police Station (P.S)*</label>
+                            <input type="text" name="ps" required placeholder="Police Station">
+                        </div>
+                        <div class="input-group">
+                            <label>District*</label>
+                            <input type="text" name="dist" required placeholder="District">
+                        </div>
+                        <div class="input-group">
+                            <label>State*</label>
+                            <input type="text" name="state" value="West Bengal" required placeholder="State">
+                        </div>
+                        <div class="input-group">
+                            <label>Pin Code*</label>
+                            <input type="text" name="pin" required placeholder="6-digit PIN" pattern="\d{6}" maxlength="6" id="teacher_pin">
+                            <div class="error-msg" id="err-teacher-pin">
+                                <i class="fas fa-exclamation-circle"></i> Pin Code must be exactly 6 digits.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Declaration -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 25px;">
+                    <label style="display:flex; align-items:flex-start; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" required style="width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary-color);">
+                        <span style="font-size: 15px; color: #555; line-height: 1.5; font-family: 'Outfit', sans-serif;">
+                            <strong>Declaration:</strong> I hereby declare that the information provided above is true and correct to the best of my knowledge and belief. I understand that any false information may lead to the cancellation of my teacher application.
+                        </span>
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Teacher Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        lucide.createIcons();
+
+        function toggleFileUpload(checkbox, fileInputId) {
+            const container = document.getElementById(fileInputId + '_container');
+            if (!container) return;
+            const fileInput = container.querySelector('input[type="file"]');
+            if (checkbox.checked) {
+                container.style.display = 'block';
+                if (fileInput) fileInput.required = true;
+            } else {
+                container.style.display = 'none';
+                if (fileInput) {
+                    fileInput.required = false;
+                    fileInput.value = '';
+                }
+            }
+        }
+
+        // 1. Real-time validation handler
+        function setupValidation(inputId, errorId, length) {
+            const input = document.getElementById(inputId);
+            const errorMsg = document.getElementById(errorId);
+
+            if (!input || !errorMsg) return;
+
+            input.addEventListener('input', function () {
+                const value = this.value;
+                if (value.length > 0 && (value.length !== length || !/^\d+$/.test(value))) {
+                    errorMsg.style.display = 'flex';
+                    this.style.borderColor = '#e74c3c';
+                } else {
+                    errorMsg.style.display = 'none';
+                    this.style.borderColor = '#eef2f5';
+                    if (value.length === length) {
+                        this.style.borderColor = '#2ecc71';
+                    }
+                }
+            });
+        }
+
+        // Initialize validations
+        setupValidation('student_aadhar', 'err-student-aadhar', 12);
+        setupValidation('student_guardian_phone', 'err-student-phone', 10);
+        setupValidation('student_alt_phone', 'err-student-alt', 10);
+        setupValidation('guardian_whatsapp_no', 'err-guardian-whatsapp', 10);
+        setupValidation('student_pin', 'err-student-pin', 6);
+
+        setupValidation('teacher_aadhar', 'err-teacher-aadhar', 12);
+        setupValidation('teacher_phone', 'err-teacher-phone', 10);
+        setupValidation('teacher_pin', 'err-teacher-pin', 6);
+
+        // 2. Tab switcher logic
+        function switchPortalTab(tabType) {
+            const studentBtn = document.getElementById('tab-student-btn');
+            const teacherBtn = document.getElementById('tab-teacher-btn');
+            const studentForm = document.getElementById('student-portal-form');
+            const teacherForm = document.getElementById('teacher-portal-form');
+
+            if (tabType === 'student') {
+                studentBtn.classList.add('active');
+                teacherBtn.classList.remove('active');
+                studentForm.style.display = 'block';
+                teacherForm.style.display = 'none';
+                
+                // Update URL parameter without reload
+                history.replaceState(null, '', '/register?type=student');
+            } else {
+                teacherBtn.classList.add('active');
+                studentBtn.classList.remove('active');
+                teacherForm.style.display = 'block';
+                studentForm.style.display = 'none';
+                
+                // Update URL parameter without reload
+                history.replaceState(null, '', '/register?type=teacher');
+            }
+        }
+
+        // 3. Auto-load tab from query parameter on page mount
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const portalType = urlParams.get('type');
+            if (portalType === 'teacher') {
+                switchPortalTab('teacher');
+            } else {
+                switchPortalTab('student');
+            }
+
+            // Initialize TomSelect dropdown enhancements
+            document.querySelectorAll('select').forEach((el)=>{
+                if (!el.classList.contains('search-select')) {
+                    el.classList.add('search-select');
+                }
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

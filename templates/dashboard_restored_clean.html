@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Al Hidayet Mission</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Keep FontAwesome for existing icons in logic -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        .dashboard-header-bg {
+            background: linear-gradient(135deg, #6C5CE7 0%, #a29bfe 100%);
+            color: #fff;
+            padding: 40px;
+            border-radius: var(--radius);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #fff;
+            padding
+<!-- MISSING LINE 43 -->
+<!-- MISSING LINE 44 -->
+<!-- MISSING LINE 45 -->
+<!-- MISSING LINE 46 -->
+<!-- MISSING LINE 47 -->
+<!-- MISSING LINE 48 -->
+<!-- MISSING LINE 49 -->
+<!-- MISSING LINE 50 -->
+<!-- MISSING LINE 51 -->
+<!-- MISSING LINE 52 -->
+<!-- MISSING LINE 53 -->
+<!-- MISSING LINE 54 -->
+<!-- MISSING LINE 55 -->
+            }
+<!-- MISSING LINE 57 -->
+<!-- MISSING LINE 58 -->
+<!-- MISSING LINE 59 -->
+<!-- MISSING LINE 60 -->
+<!-- MISSING LINE 61 -->
+<!-- MISSING LINE 62 -->
+<!-- MISSING LINE 63 -->
+<!-- MISSING LINE 64 -->
+<!-- MISSING LINE 65 -->
+<!-- MISSING LINE 66 -->
+<!-- MISSING LINE 67 -->
+<!-- MISSING LINE 68 -->
+<!-- MISSING LINE 69 -->
+<!-- MISSING LINE 70 -->
+<!-- MISSING LINE 71 -->
+<!-- MISSING LINE 72 -->
+<!-- MISSING LINE 73 -->
+<!-- MISSING LINE 74 -->
+<!-- MISSING LINE 75 -->
+<!-- MISSING LINE 76 -->
+<!-- MISSING LINE 77 -->
+<!-- MISSING LINE 78 -->
+<!-- MISSING LINE 79 -->
+<!-- MISSING LINE 80 -->
+<!-- MISSING LINE 81 -->
+<!-- MISSING LINE 82 -->
+<!-- MISSING LINE 83 -->
+<!-- MISSING LINE 84 -->
+<!-- MISSING LINE 85 -->
+<!-- MISSING LINE 86 -->
+<!-- MISSING LINE 87 -->
+<!-- MISSING LINE 88 -->
+<!-- MISSING LINE 89 -->
+                </a>
+                <a href="/admin/spend" class="sidebar-item">
+                    <i data-lucide="receipt"></i> Spend
+                </a>
+
+                <!-- AUDIT -->
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item">
+                    <i data-lucide="clipboard-check"></i> Audit Report
+                </a>
+
+                <!-- DOCS & CARDS -->
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item">
+                    <i data-lucide="ticket"></i> Admit & Seat Token
+                </a>
+                <a href="/admin/marksheet" class="sidebar-item">
+                    <i data-lucide="file-spreadsheet"></i> Marksheet
+                </a>
+                <a href="/admin/id-card" class="sidebar-item">
+                    <i data-lucide="contact"></i> Id Card
+                </a>
+
+                <!-- ACADEMICS -->
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/academics-setting" class="sidebar-item">
+                    <i data-lucide="settings"></i> Academics Setting
+                </a>
+                <a href="/admin/input-result" class="sidebar-item">
+                    <i data-lucide="edit-3"></i> Input Result
+                </a>
+                <a href="/admin/student-promotion" class="sidebar-item">
+                    <i data-lucide="user-check"></i> Student Promotion
+                </a>
+                {% endif %}
+
+                </a>
+                <a href="/admin/marksheet" class="sidebar-item">
+                    <i data-lucide="file-spreadsheet"></i> Marksheets
+                </a>
+                <a href="/admin/academics-setting" class="sidebar-item">
+                    <i data-lucide="settings"></i> Academic Setting
+                </a>
+                <a href="/admin/student-promotion" class="sidebar-item">
+                    <i data-lucide="user-check"></i> Student Promotion
+                </a>
+                </a>
+                <a href="/admin/bulk-upload" class="sidebar-item">
+                    <i data-lucide="upload-cloud"></i> Bulk Upload Marks
+                </a>
+                <a href="/admin/marksheet" class="sidebar-item">
+                    <i data-lucide="file-spreadsheet"></i> Marksheets
+                </a>
+                <a href="/admin/academics-setting" class="sidebar-item">
+                    <i data-lucide="settings"></i> Academic Setting
+                </a>
+                <a href="/admin/student-promotion" class="sidebar-item">
+                    <i data-lucide="user-check"></i> Student Promotion
+                </a>
+                <a href="/admin/id-card" class="sidebar-item">
+                    <i data-lucide="contact"></i> ID Cards
+                </a>
+                <a href="/admin/admit-card" class="sidebar-item">
+                    <i data-lucide="ticket"></i> Admit Cards
+                </a>
+                {% endif %}
+
+                {% if role == 'student' %}
+                <div class="sidebar-label">My Desk</div>
+                <a href="/admin/marksheet" class="sidebar-item">
+                    <i data-lucide="file-spreadsheet"></i> My Marksheet
+<!-- MISSING LINE 161 -->
+<!-- MISSING LINE 162 -->
+                    <i data-lucide="wallet"></i> My Fee Status
+                </a>
+                <a href="/routine" class="sidebar-item">
+                    <i data-lucide="calendar-days"></i> Class Routine
+                </a>
+                <a href="/admin/id-card" class="sidebar-item">
+                    <i data-lucide="contact"></i> My ID Card
+                </a>
+                <a href="/admin/admit-card" class="sidebar-item">
+                    <i data-lucide="ticket"></i> My Admit Card
+                </a>
+                {% endif %}
+
+                <div style="margin-top: 50px;">
+                    <a href="/logout" class="sidebar-item" style="color: var(--danger-color);">
+                        <i data-lucide="log-out"></i> Logout
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <a href="{{ url_for('home') }}" class="top-bar-brand" aria-label="Go to home page">
+                        <img src="{{ logo_url }}" alt="Al Hidayet Mission" class="top-bar-logo">
+                        <span>Al Hidayet Mission</span>
+                    </a>
+                <h3>Admit Card</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Download Exam Admit</p>
+                <button class="btn btn-outline"
+                    style="border-color: #e91e63; color: #e91e63; padding: 8px 20px; font-size: 14px;">Download</button>
+            </div>
+
+            <!-- Result -->
+            <div class="dash-card" onclick="alert('Result System Pending!')" style="border-color: #4caf50;">
+                <div class="dash-icon" style="color: #4caf50;">
+                    <i class="fas fa-poll-h"></i>
+                </div>
+                <h3>Result</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Check Exam Results</p>
+                <button class="btn btn-outline"
+                    style="border-color: #4caf50; color: #4caf50; padding: 8px 20px; font-size: 14px;">View</button>
+            </div>
+
+            <!-- Resources -->
+            <div class="dash-card" style="border-color: #3f51b5;">
+                <div class="dash-icon" style="color: #3f51b5;">
+                    <i class="fas fa-book"></i>
+                </div>
+                <h3>Resources</h3>
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Access Class Materials</p>
+                <button class="btn btn-outline"
+                    style="border-color: #3f51b5; color: #3f51b5; padding: 8px 20px; font-size: 14px;">Access</button>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
+                    <div class="auth-container" style="margin: 0; text-align: left;">
+                        <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
+                            <i data-lucide="megaphone"></i> Post New Instruction
+                        </h3>
+                        <form action="/admin/post-notice" method="POST" style="display: flex; gap: 10px;">
+                            <input type="text" name="content" placeholder="Write a notice..." required style="flex-grow: 1; margin-bottom: 0;">
+                            <button type="submit" class="auth-btn" style="width: auto; padding: 0 20px;">Post</button>
+                        </form>
+                    </div>
+
+                    <!-- Quick Stats -->
+                  
+<!-- MISSING LINE 244 -->
+<!-- MISSING LINE 245 -->
+<!-- MISSING LINE 246 -->
+<!-- MISSING LINE 247 -->
+<!-- MISSING LINE 248 -->
+<!-- MISSING LINE 249 -->
+<!-- MISSING LINE 250 -->
+<!-- MISSING LINE 251 -->
+<!-- MISSING LINE 252 -->
+<!-- MISSING LINE 253 -->
+<!-- MISSING LINE 254 -->
+<!-- MISSING LINE 255 -->
+<!-- MISSING LINE 256 -->
+<!-- MISSING LINE 257 -->
+<!-- MISSING LINE 258 -->
+<!-- MISSING LINE 259 -->
+<!-- MISSING LINE 260 -->
+<!-- MISSING LINE 261 -->
+<!-- MISSING LINE 262 -->
+<!-- MISSING LINE 263 -->
+<!-- MISSING LINE 264 -->
+<!-- MISSING LINE 265 -->
+<!-- MISSING LINE 266 -->
+<!-- MISSING LINE 267 -->
+<!-- MISSING LINE 268 -->
+<!-- MISSING LINE 269 -->
+<!-- MISSING LINE 270 -->
+<!-- MISSING LINE 271 -->
+<!-- MISSING LINE 272 -->
+<!-- MISSING LINE 273 -->
+<!-- MISSING LINE 274 -->
+<!-- MISSING LINE 275 -->
+<!-- MISSING LINE 276 -->
+<!-- MISSING LINE 277 -->
+<!-- MISSING LINE 278 -->
+<!-- MISSING LINE 279 -->
+<!-- MISSING LINE 280 -->
+<!-- MISSING LINE 281 -->
+<!-- MISSING LINE 282 -->
+<!-- MISSING LINE 283 -->
+<!-- MISSING LINE 284 -->
+<!-- MISSING LINE 285 -->
+<!-- MISSING LINE 286 -->
+<!-- MISSING LINE 287 -->
+<!-- MISSING LINE 288 -->
+<!-- MISSING LINE 289 -->
+<!-- MISSING LINE 290 -->
+<!-- MISSING LINE 291 -->
+<!-- MISSING LINE 292 -->
+<!-- MISSING LINE 293 -->
+<!-- MISSING LINE 294 -->
+<!-- MISSING LINE 295 -->
+<!-- MISSING LINE 296 -->
+<!-- MISSING LINE 297 -->
+<!-- MISSING LINE 298 -->
+<!-- MISSING LINE 299 -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in all_users %}
+                                <tr style="border-bottom: 1px solid #eee;" id="user-row-{{ user.id }}">
+                                    <td style="padding: 12px;">
+                                        <strong>{{ user.username }}</strong><br>
+                                        <small style="color: #636e72;">{{ user.email }}</small>
+                                    </td>
+                                    <td style="padding: 12px;">{{ user.role|title }}</td>
+                                    <td style="padding: 12px; text-align: center; display: flex; justify-content: center; gap: 10px;">
+                                        <form action="/admin/reset-password/{{ user.id }}" method="POST" onsubmit="return confirm('Reset this user password?');">
+                                            <button type="submit" style="background:none; border:none; cursor:pointer;" title="Reset Password"><i data-lucide="refresh-cw" style="color: #fdcb6e;"></i></button>
+                                        </form>
+                                        <button onclick="deleteUserAJAX({{ user.id }})" type="button" style="background:none; border:none; cursor:pointer;" title="Delete User"><i data-lucide="trash-2" style="color: var(--danger-color);"></i></button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ================= TEACHER DASHBOARD ================= -->
+                {% elif role == 'teacher' %}
+                
+                <div class="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <a href="/admin/student-list" class="facility-card color-1" style="text-decoration: none; text-align: center; padding: 30px;">
+                        <i class="fas fa-users" style="font-size: 30px; margin-bottom: 10px;"></i>
+                        <h3>Student List</h3>
+                        <p>View all students</p>
+                    </a>
+                    <a href="/admin/bulk-marks" class="facility-card color-2" style="text-decoration: none; text-align: center; padding: 30px;">
+                         <i class="fas fa-edit" style="font-size: 30px; margin-bottom: 10px;"></i>
+                        <h3>Input Marks</h3>
+                        <p>Update results</p>
+                    </a>
+                    <a href="/admin/marksheet" class="facility-card color-3" style="text-decoration: none; text-align: center; padding: 30px;">
+                         <i class="fas fa-file-alt" style="font-size: 30px; margin-bottom: 10px;"></i>
+                        <h3>Marksheets</h3>
+                        <p>Generate reports</p>
+                    </a>
+                </div>
+
+                 <div class="auth-contain
+                    <h3 style="margin-bottom: 20px; color: var(--secondary-color);"><i data-lucide="clock"></i> Quick Actions</h3>
+                    <p>Select an action from the sidebar or the cards above to manage your classes.</p>
+                </div>
+
+                <!-- ================= STUDENT DASHBOARD ================= -->
+                {% elif role == 'student' %}
+<!-- MISSING LINE 351 -->
+<!-- MISSING LINE 352 -->
+<!-- MISSING LINE 353 -->
+<!-- MISSING LINE 354 -->
+<!-- MISSING LINE 355 -->
+<!-- MISSING LINE 356 -->
+<!-- MISSING LINE 357 -->
+<!-- MISSING LINE 358 -->
+<!-- MISSING LINE 359 -->
+<!-- MISSING LINE 360 -->
+<!-- MISSING LINE 361 -->
+<!-- MISSING LINE 362 -->
+<!-- MISSING LINE 363 -->
+<!-- MISSING LINE 364 -->
+<!-- MISSING LINE 365 -->
+<!-- MISSING LINE 366 -->
+<!-- MISSING LINE 367 -->
+<!-- MISSING LINE 368 -->
+<!-- MISSING LINE 369 -->
+<!-- MISSING LINE 370 -->
+<!-- MISSING LINE 371 -->
+<!-- MISSING LINE 372 -->
+<!-- MISSING LINE 373 -->
+<!-- MISSING LINE 374 -->
+<!-- MISSING LINE 375 -->
+<!-- MISSING LINE 376 -->
+<!-- MISSING LINE 377 -->
+<!-- MISSING LINE 378 -->
+<!-- MISSING LINE 379 -->
+<!-- MISSING LINE 380 -->
+<!-- MISSING LINE 381 -->
+<!-- MISSING LINE 382 -->
+<!-- MISSING LINE 383 -->
+<!-- MISSING LINE 384 -->
+<!-- MISSING LINE 385 -->
+<!-- MISSING LINE 386 -->
+<!-- MISSING LINE 387 -->
+<!-- MISSING LINE 388 -->
+<!-- MISSING LINE 389 -->
+<!-- MISSING LINE 390 -->
+<!-- MISSING LINE 391 -->
+<!-- MISSING LINE 392 -->
+<!-- MISSING LINE 393 -->
+<!-- MISSING LINE 394 -->
+<!-- MISSING LINE 395 -->
+<!-- MISSING LINE 396 -->
+<!-- MISSING LINE 397 -->
+<!-- MISSING LINE 398 -->
+<!-- MISSING LINE 399 -->
+<!-- MISSING LINE 400 -->
+<!-- MISSING LINE 401 -->
+<!-- MISSING LINE 402 -->
+<!-- MISSING LINE 403 -->
+<!-- MISSING LINE 404 -->
+<!-- MISSING LINE 405 -->
+<!-- MISSING LINE 406 -->
+<!-- MISSING LINE 407 -->
+<!-- MISSING LINE 408 -->
+<!-- MISSING LINE 409 -->
+<!-- MISSING LINE 410 -->
+<!-- MISSING LINE 411 -->
+<!-- MISSING LINE 412 -->
+<!-- MISSING LINE 413 -->
+<!-- MISSING LINE 414 -->
+<!-- MISSING LINE 415 -->
+<!-- MISSING LINE 416 -->
+<!-- MISSING LINE 417 -->
+<!-- MISSING LINE 418 -->
+<!-- MISSING LINE 419 -->
+<!-- MISSING LINE 420 -->
+<!-- MISSING LINE 421 -->
+<!-- MISSING LINE 422 -->
+<!-- MISSING LINE 423 -->
+<!-- MISSING LINE 424 -->
+<!-- MISSING LINE 425 -->
+<!-- MISSING LINE 426 -->
+<!-- MISSING LINE 427 -->
+<!-- MISSING LINE 428 -->
+<!-- MISSING LINE 429 -->
+<!-- MISSING LINE 430 -->
+<!-- MISSING LINE 431 -->
+<!-- MISSING LINE 432 -->
+<!-- MISSING LINE 433 -->
+<!-- MISSING LINE 434 -->
+<!-- MISSING LINE 435 -->
+<!-- MISSING LINE 436 -->
+<!-- MISSING LINE 437 -->
+<!-- MISSING LINE 438 -->
+<!-- MISSING LINE 439 -->
+<!-- MISSING LINE 440 -->
+<!-- MISSING LINE 441 -->
+<!-- MISSING LINE 442 -->
+<!-- MISSING LINE 443 -->
+<!-- MISSING LINE 444 -->
+<!-- MISSING LINE 445 -->
+<!-- MISSING LINE 446 -->
+<!-- MISSING LINE 447 -->
+<!-- MISSING LINE 448 -->
+<!-- MISSING LINE 449 -->
+<!-- MISSING LINE 450 -->
+<!-- MISSING LINE 451 -->
+<!-- MISSING LINE 452 -->
+<!-- MISSING LINE 453 -->
+<!-- MISSING LINE 454 -->
+<!-- MISSING LINE 455 -->
+<!-- MISSING LINE 456 -->
+        }
+
+        function deleteUserAJAX(userId) {
+            if (confirm('Delete this user?')) {
+                fetch('/admin/delete-user/' + userId, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.status === 'success') {
+                          const row = document.getElementById('user-row-' + userId);
+                          if (row) row.remove();
+                      } else {
+                          alert('Error deleting user: ' + (data.message || 'Unknown error'));
+                      }
+                  }).catch(err => {
+                      console.error(err);
+                      alert('Failed to delete user.');
+                  });
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select').forEach((el)=>{
+                if (!el.classList.contains('search-select')) {
+                    el.classList.add('search-select');
+                }
+                new TomSelect(el,{
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    }
+                });
+            });
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>
+

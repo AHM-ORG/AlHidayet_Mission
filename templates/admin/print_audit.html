@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Detailed Audit Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 16px;
+        }
+        .summary-box {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-item h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .summary-item h2 {
+            margin: 0;
+            font-size: 20px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            page-break-inside: auto;
+        }
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 6px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        h2.section-title {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 18px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Print Report</button>
+    </div>
+
+    <div class="header">
+        <h1>Al Hidayet Mission</h1>
+        <p>Detailed Financial Audit Report</p>
+    </div>
+
+    <div class="summary-box">
+        <div class="summary-item">
+            <h3>Total Fees Collected</h3>
+            <h2 style="color: #27ae60;">₹{{ fees }}</h2>
+        </div>
+        <div class="summary-item">
+            <h3>Total Expenses</h3>
+            <h2 style="color: #c0392b;">₹{{ expenses }}</h2>
+        </div>
+        <div class="summary-item">
+            <h3>Net Balance</h3>
+            <h2 style="color: #2980b9;">₹{{ balance }}</h2>
+        </div>
+        <div class="summary-item">
+            <h3>Total Remaining Dues</h3>
+            <h2 style="color: #f39c12;">₹{{ remaining_fees }}</h2>
+        </div>
+    </div>
+
+    <h2 class="section-title">Fees Collected (Students)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>SL No</th>
+                <th>Student Name</th>
+                <th>Class</th>
+                <th>Roll No</th>
+                <th>Month & Year</th>
+                <th>Paid At</th>
+                <th style="text-align: right;">Amount (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fee in fees_details %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ fee.student_name or 'N/A' }}</td>
+                <td>{{ fee.class or 'N/A' }}</td>
+                <td>{{ fee.roll_number or 'N/A' }}</td>
+                <td>{{ fee.month }} {{ fee.year }}</td>
+                <td>{{ fee.paid_at }}</td>
+                <td style="text-align: right;">{{ fee.amount }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center;">No fees recorded.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="section-title">Expenses & Teacher Salaries</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>SL No</th>
+                <th>Category</th>
+                <th>Recipient Type</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th style="text-align: right;">Amount (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for exp in expenses_details %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ exp.category }}</td>
+                <td>{{ exp.recipient_type or 'General' | title }}</td>
+                <td>{{ exp.description }}</td>
+                <td>{{ exp.date }}</td>
+                <td style="text-align: right;">{{ exp.amount }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No expenses recorded.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="section-title">Remaining Dues (Unpaid Student Fees)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>SL No</th>
+                <th>Class</th>
+                <th>Roll No</th>
+                <th>Student Name</th>
+                <th>Login ID</th>
+                <th style="text-align: right;">Remaining Dues (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in remaining_fees_details %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.class }}</td>
+                <td>{{ row.roll_number }}</td>
+                <td>{{ row.full_name or 'N/A' }}</td>
+                <td>{{ row.username }}</td>
+                <td style="text-align: right; font-weight: bold; color: #c0392b;">{{ row.remaining_fee }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No remaining fees pending.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
