@@ -322,11 +322,8 @@
                                 <input type="number" name="monthly_fee" step="0.01" value="{{ student.monthly_fee or '' }}">
                             </div>
                         </div>
+                        <input type="hidden" name="admission_fee" value="{{ student.admission_fee or '0.00' }}">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                            <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Admission Fee (₹)</label>
-                                <input type="number" name="admission_fee" step="0.01" value="{{ student.admission_fee or '0.00' }}">
-                            </div>
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Re-admission Fee (₹)</label>
                                 <input type="number" name="readmission_fee" step="0.01" value="{{ student.readmission_fee or '0.00' }}">

@@ -185,6 +185,14 @@
                     </div>
                     {% else %}
                     <div class="auth-container" style="max-width: 100%; text-align: left; margin-bottom: 30px; padding-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: var(--primary-color);">All Students</h3>
+                            {% if role == 'admin' %}
+                            <a href="/admin/print-students?class=All" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Print Data
+                            </a>
+                            {% endif %}
+                        </div>
                         <div class="table-scroll-container">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <thead>
@@ -318,9 +326,16 @@
                     <!-- Tab Content -->
                     <div id="class-{{ class_name|replace(' ', '-')|replace('/', '-')|replace('\\', '-') }}" class="tab-content" style="display: {% if loop.first %}block{% else %}none{% endif %};">
                         <div class="auth-container" style="max-width: 100%; text-align: left; margin-bottom: 30px; padding-bottom: 10px;">
-                        <h3 style="margin-bottom: 20px; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px;">
-                            Class: {{ class_name }}
-                        </h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+                            <h3 style="margin: 0; color: var(--primary-color);">
+                                Class: {{ class_name }}
+                            </h3>
+                            {% if role == 'admin' %}
+                            <a href="/admin/print-students?class={{ class_name | urlencode }}" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Print Data
+                            </a>
+                            {% endif %}
+                        </div>
                             <div class="table-scroll-container">
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <thead>
@@ -437,6 +452,14 @@
                 <!-- MASTER TAB: TEACHERS -->
                 <div id="tab-teachers" class="master-tab-content" style="display: none;">
                     <div class="auth-container" style="max-width: 100%; text-align: left;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: var(--primary-color);">Teacher List</h3>
+                            {% if role == 'admin' %}
+                            <a href="/admin/print-teachers" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Print Teacher Data
+                            </a>
+                            {% endif %}
+                        </div>
                         <div class="table-scroll-container">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <thead>
@@ -895,8 +918,10 @@
 
             <form id="changePasswordForm" method="POST" action="">
                 <div style="margin-bottom: 20px; text-align: left;">
-                    <label for="new_password" style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-dark); font-size: 14px;">New Password</label>
-                    <input type="password" id="new_password" name="new_password" required minlength="6" placeholder="Enter new password (min 6 chars)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;">
+                    <input type="password" id="new_password" name="new_password" required minlength="6" maxlength="32" placeholder="Enter strong password (6-32 chars)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;">
+                    <p style="font-size: 11px; color: #7f8c8d; margin-top: 5px; line-height: 1.4;">
+                        Must be 6-32 characters long, containing at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g. !@#$%^&*).
+                    </p>
                 </div>
 
                 {% if role != 'admin' %}

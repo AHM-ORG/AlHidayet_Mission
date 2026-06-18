@@ -36,6 +36,7 @@
                 <div class="sidebar-label">Cash Manager</div>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
                 <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
                 <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
@@ -123,42 +124,11 @@
                                 <select name="category" id="category" required
                                     style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
                                     <option value="">-- Select Category --</option>
-                                    <option value="Salary">Salary</option>
                                     <option value="Maintenance">Maintenance</option>
                                     <option value="Electricity">Electricity</option>
                                     <option value="Stationery">Stationery</option>
                                     <option value="Others">Others</option>
                                 </select>
-                            </div>
-
-                            <!-- Salary Recipient Details -->
-                            <div id="salary-sub-section" style="display: none; border: 1px solid #eee; padding: 15px; border-radius: 8px; background: #fafafa; margin-bottom: 15px;">
-                                <div class="input-group">
-                                    <label>Recipient Type:</label>
-                                    <select name="salary_recipient_type" id="salary_recipient_type" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
-                                        <option value="">-- Select Recipient Type --</option>
-                                        <option value="Teacher">Teacher</option>
-                                        <option value="Staff">Staff</option>
-                                    </select>
-                                </div>
-                                <div class="input-group" id="teacher-recipient-group" style="display: none;">
-                                    <label>Select Teacher:</label>
-                                    <select name="teacher_recipient_id" id="teacher_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
-                                        <option value="" data-salary="0">-- Select Teacher --</option>
-                                        {% for t in teachers %}
-                                        <option value="{{ t.id }}" data-salary="{{ t.salary }}">{{ t.full_name or (t.username | clean_name) }} (Salary: ₹{{ t.salary }})</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="input-group" id="staff-recipient-group" style="display: none;">
-                                    <label>Select Staff:</label>
-                                    <select name="staff_recipient_id" id="staff_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
-                                        <option value="" data-salary="0">-- Select Staff Member --</option>
-                                        {% for s in staff_list %}
-                                        <option value="{{ s.id }}" data-salary="{{ s.salary }}">{{ s.full_name }} ({{ s.staff_type }}) (Salary: ₹{{ s.salary }})</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
                             </div>
                             <div class="input-group">
                                 <label>Description:</label>
@@ -249,110 +219,6 @@
                 });
             });
 
-            // Dynamic logic for Salary Category split
-            const categorySelect = document.getElementById('category');
-            const salarySubSection = document.getElementById('salary-sub-section');
-            const salaryRecipientType = document.getElementById('salary_recipient_type');
-            const teacherRecipientGroup = document.getElementById('teacher-recipient-group');
-            const staffRecipientGroup = document.getElementById('staff-recipient-group');
-            const teacherSelect = document.getElementById('teacher_recipient_id');
-            const staffSelect = document.getElementById('staff_recipient_id');
-            const amountInput = document.getElementById('amount');
-            
-            function toggleSalaryFields() {
-                if (categorySelect.value === 'Salary') {
-                    salarySubSection.style.display = 'block';
-                } else {
-                    salarySubSection.style.display = 'none';
-                    if (salaryRecipientType.tomselect) {
-                        salaryRecipientType.tomselect.setValue('');
-                    } else {
-                        salaryRecipientType.value = '';
-                    }
-                    toggleRecipientTypeFields();
-                }
-            }
-            
-            function toggleRecipientTypeFields() {
-                const type = salaryRecipientType.value;
-                if (type === 'Teacher') {
-                    teacherRecipientGroup.style.display = 'block';
-                    staffRecipientGroup.style.display = 'none';
-                    if (staffSelect.tomselect) {
-                        staffSelect.tomselect.setValue('');
-                    } else {
-                        staffSelect.value = '';
-                    }
-                } else if (type === 'Staff') {
-                    staffRecipientGroup.style.display = 'block';
-                    teacherRecipientGroup.style.display = 'none';
-                    if (teacherSelect.tomselect) {
-                        teacherSelect.tomselect.setValue('');
-                    } else {
-                        teacherSelect.value = '';
-                    }
-                } else {
-                    teacherRecipientGroup.style.display = 'none';
-                    staffRecipientGroup.style.display = 'none';
-                    if (teacherSelect.tomselect) teacherSelect.tomselect.setValue('');
-                    if (staffSelect.tomselect) staffSelect.tomselect.setValue('');
-                }
-                updateAmount();
-            }
-            
-            function updateAmount() {
-                const type = salaryRecipientType.value;
-                let salary = 0;
-                if (type === 'Teacher') {
-                    const val = teacherSelect.value;
-                    const opt = teacherSelect.querySelector(`option[value="${val}"]`);
-                    if (opt) {
-                        salary = opt.getAttribute('data-salary') || 0;
-                    }
-                } else if (type === 'Staff') {
-                    const val = staffSelect.value;
-                    const opt = staffSelect.querySelector(`option[value="${val}"]`);
-                    if (opt) {
-                        salary = opt.getAttribute('data-salary') || 0;
-                    }
-                }
-                if (salary && parseFloat(salary) > 0) {
-                    amountInput.value = salary;
-                }
-            }
-            
-            if (categorySelect) {
-                // If TomSelect initialized on categorySelect, hook into its change
-                if (categorySelect.tomselect) {
-                    categorySelect.tomselect.on('change', toggleSalaryFields);
-                } else {
-                    categorySelect.addEventListener('change', toggleSalaryFields);
-                }
-            }
-            if (salaryRecipientType) {
-                if (salaryRecipientType.tomselect) {
-                    salaryRecipientType.tomselect.on('change', toggleRecipientTypeFields);
-                } else {
-                    salaryRecipientType.addEventListener('change', toggleRecipientTypeFields);
-                }
-            }
-            if (teacherSelect) {
-                if (teacherSelect.tomselect) {
-                    teacherSelect.tomselect.on('change', updateAmount);
-                } else {
-                    teacherSelect.addEventListener('change', updateAmount);
-                }
-            }
-            if (staffSelect) {
-                if (staffSelect.tomselect) {
-                    staffSelect.tomselect.on('change', updateAmount);
-                } else {
-                    staffSelect.addEventListener('change', updateAmount);
-                }
-            }
-            
-            // Initial call
-            toggleSalaryFields();
         });
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

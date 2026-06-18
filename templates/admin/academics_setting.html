@@ -433,7 +433,7 @@
                             </div>
                             <div class="input-group">
                                 <label>Full Marks</label>
-                                <input type="number" name="full_marks" value="20" required min="1" max="100" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
+                                <input type="number" name="full_marks" placeholder="Full Marks" required min="1" max="100" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
                             </div>
                             <button type="submit" class="auth-btn">Save Configuration</button>
                         </form>
@@ -484,6 +484,113 @@
             </div>
 
 
+            <!-- EXAM ROUTINE CONFIGURATIONS SECTION -->
+            <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
+                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="calendar-days"></i> Exam Routine Configurations
+                </h3>
+                
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 30px;">
+                    <!-- Create Config Form -->
+                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa;">
+                        <h4 style="color: #0984e3; margin-bottom: 15px;">Configure Exam Schedule</h4>
+                        <form method="POST">
+                            <input type="hidden" name="create_exam_schedule" value="1">
+                            <div class="input-group">
+                                <label>Class</label>
+                                <select name="class_name" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
+                                    <option value="">Select Class</option>
+                                    {% for c in distinct_classes %}
+                                    <option value="{{ c.name }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Term Name</label>
+                                <select name="term_name" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
+                                    <option value="">Select Term</option>
+                                    {% for term in all_terms %}
+                                    <option value="{{ term }}">{{ term }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="input-group" style="margin-top: 15px;">
+                                <label style="display:flex; justify-content: space-between; align-items: center;">
+                                    Schedule Slots
+                                    <button type="button" onclick="addScheduleRow()" style="background: var(--primary-color); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                        <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Add Row
+                                    </button>
+                                </label>
+                                <div id="schedule-rows-container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                                    <!-- Initial Row -->
+                                    <div class="schedule-row" style="display: grid; grid-template-columns: 130px 110px 1fr auto; gap: 8px; align-items: center; background: white; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                        <input type="date" name="schedule_date[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                                        <input type="time" name="schedule_time[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                                        <select name="schedule_subject[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                                            <option value="">Select Subject</option>
+                                            {% for sub in distinct_subjects %}
+                                            <option value="{{ sub.name }}">{{ sub.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ff7675; cursor: pointer; padding: 4px;"><i data-lucide="x" style="width: 16px; height: 16px;"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="auth-btn" style="margin-top: 20px;">Save Exam Schedule</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Table View -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                            <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Configured Exam Schedules</h4>
+                            <input type="text" id="schedulesSearch" placeholder="Search schedules..." onkeyup="filterTable('schedulesSearch', 'schedulesTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
+                        </div>
+                        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
+                            <table id="schedulesTable" style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #f8f9fa; position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="padding: 12px; text-align: left;">Class</th>
+                                        <th style="padding: 12px; text-align: left;">Term Name</th>
+                                        <th style="padding: 12px; text-align: left;">Format</th>
+                                        <th style="padding: 12px; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sched in exam_schedules %}
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 12px;"><strong>Class {{ sched.class_name }}</strong></td>
+                                        <td style="padding: 12px;">{{ sched.term_name }}</td>
+                                        <td style="padding: 12px;">
+                                            {% if sched.schedule_image %}
+                                                <span style="background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; border: 1px solid #ffeeba;">Image Uploaded</span>
+                                            {% elif sched.schedule_text %}
+                                                <span style="background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; border: 1px solid #c3e6cb;">Text Table</span>
+                                            {% else %}
+                                                <span style="background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; border: 1px solid #f5c6cb;">Empty</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="padding: 12px; text-align: center;">
+                                            <form method="POST" onsubmit="return confirm('Delete schedule for Class {{ sched.class_name }} ({{ sched.term_name }})?')" style="display: inline;">
+                                                <input type="hidden" name="delete_exam_schedule" value="1">
+                                                <input type="hidden" name="schedule_id" value="{{ sched.id }}">
+                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
+                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" style="padding: 20px; text-align: center; color: #999;">No exam schedules configured yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- SCHOOL REGISTRATION DOCUMENTS MANAGER SECTION -->
             <details style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%; outline: none;" class="docs-details">
@@ -907,6 +1014,28 @@
             }
         }
 
+
+        function addScheduleRow() {
+            const container = document.getElementById('schedule-rows-container');
+            const row = document.createElement('div');
+            row.className = 'schedule-row';
+            row.style.cssText = 'display: grid; grid-template-columns: 130px 110px 1fr auto; gap: 8px; align-items: center; background: white; padding: 10px; border: 1px solid #ddd; border-radius: 6px;';
+            row.innerHTML = `
+                <input type="date" name="schedule_date[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                <input type="time" name="schedule_time[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                <select name="schedule_subject[]" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                    <option value="">Select Subject</option>
+                    {% for sub in distinct_subjects %}
+                    <option value="{{ sub.name }}">{{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ff7675; cursor: pointer; padding: 4px;"><i data-lucide="x" style="width: 16px; height: 16px;"></i></button>
+            `;
+            container.appendChild(row);
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
 
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

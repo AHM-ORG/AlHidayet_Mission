@@ -307,8 +307,35 @@
                             {% for branch, classes in routine_data.items() %}
                             
                             {% for class_name, days in classes.items() %}
-                                <div class="routine-card routine-schedule-card" style="margin-bottom: 25px; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+                                <div class="routine-card routine-schedule-card" style="margin-bottom: 25px; box-shadow: var(--shadow-sm); border: 1px solid #eee; position: relative;">
                                     <h3 style="margin-top:0; color:var(--text-dark); font-family: 'Fredoka', sans-serif; font-weight: 500;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
+                                    
+                                    <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                                        <button class="badge" style="background-color: var(--secondary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px;" onclick="toggleExamSchedule('{{ class_name }}', 'admin-exam-container-{{ loop.index }}')">
+                                            <i data-lucide="calendar-check" style="width: 14px; height: 14px; vertical-align: middle;"></i> Exam Schedule
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="admin-exam-container-{{ loop.index }}" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 15px; margin-bottom: 20px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                            <h4 style="margin: 0; color: var(--secondary-color);"><i data-lucide="file-text" style="width: 16px; height: 16px; vertical-align: middle;"></i> Exam Routine</h4>
+                                            <div style="display: flex; gap: 10px;">
+                                                <select id="term-select-admin-{{ loop.index }}" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;" onchange="fetchExamSchedule('{{ class_name }}', 'admin-exam-content-{{ loop.index }}', this.value)">
+                                                    <option value="1st Unit">1st Unit</option>
+                                                    <option value="2nd Unit">2nd Unit</option>
+                                                    <option value="3rd Unit">3rd Unit</option>
+                                                    <option value="Annual Exam">Annual Exam</option>
+                                                    <option value="Final Exam">Final Exam</option>
+                                                </select>
+                                                <button class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 4px;" onclick="printExamSchedule('{{ class_name }}', document.getElementById('term-select-admin-{{ loop.index }}').value)">
+                                                    <i data-lucide="printer" style="width: 14px; height: 14px; vertical-align: middle;"></i> Print
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="admin-exam-content-{{ loop.index }}" style="min-height: 100px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 14px;">
+                                            Select a term to view schedule...
+                                        </div>
+                                    </div>
                                     
                                     {% for day, schedule in days.items() %}
                                         <div class="day-group" data-day-name="{{ day }}">
@@ -366,8 +393,35 @@
                     {% for branch, classes in routine_data.items() %}
                     
                     {% for class_name, days in classes.items() %}
-                        <div class="routine-card routine-schedule-card" style="box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+                        <div class="routine-card routine-schedule-card" style="box-shadow: var(--shadow-sm); border: 1px solid #eee; position: relative;">
                             <h3 style="margin-top:0; font-family: 'Fredoka', sans-serif;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
+                            
+                            <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                                <button class="badge" style="background-color: var(--secondary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px;" onclick="toggleExamSchedule('{{ class_name }}', 'std-exam-container-{{ loop.index }}')">
+                                    <i data-lucide="calendar-check" style="width: 14px; height: 14px; vertical-align: middle;"></i> Exam Schedule
+                                </button>
+                            </div>
+                            
+                            <div id="std-exam-container-{{ loop.index }}" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 15px; margin-bottom: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h4 style="margin: 0; color: var(--secondary-color);"><i data-lucide="file-text" style="width: 16px; height: 16px; vertical-align: middle;"></i> Exam Routine</h4>
+                                            <div style="display: flex; gap: 10px;">
+                                        <select id="term-select-std-{{ loop.index }}" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;" onchange="fetchExamSchedule('{{ class_name }}', 'std-exam-content-{{ loop.index }}', this.value)">
+                                            <option value="1st Unit">1st Unit</option>
+                                            <option value="2nd Unit">2nd Unit</option>
+                                            <option value="3rd Unit">3rd Unit</option>
+                                            <option value="Annual Exam">Annual Exam</option>
+                                            <option value="Final Exam">Final Exam</option>
+                                        </select>
+                                        <button class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 4px;" onclick="printExamSchedule('{{ class_name }}', document.getElementById('term-select-std-{{ loop.index }}').value)">
+                                            <i data-lucide="printer" style="width: 14px; height: 14px; vertical-align: middle;"></i> Print
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="std-exam-content-{{ loop.index }}" style="min-height: 100px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 14px;">
+                                    Select a term to view schedule...
+                                </div>
+                            </div>
                             
                             {% for day, schedule in days.items() %}
                                 <div class="day-group" data-day-name="{{ day }}">
@@ -407,6 +461,7 @@
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     
     <script>
+        const classSubjectsMap = {{ class_subjects_map | tojson | safe }};
         let tsInstances = {};
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -420,6 +475,20 @@
                     placeholder: el.getAttribute('placeholder') || 'Select Option'
                 });
             });
+
+            if (tsInstances['class_name'] && tsInstances['subject']) {
+                tsInstances['class_name'].on('change', function(value) {
+                    const subjectTs = tsInstances['subject'];
+                    subjectTs.clear();
+                    subjectTs.clearOptions();
+                    if (value && classSubjectsMap[value]) {
+                        classSubjectsMap[value].forEach(sub => {
+                            subjectTs.addOption({value: sub, text: sub});
+                        });
+                    }
+                    subjectTs.refreshOptions(false);
+                });
+            }
 
             // AJAX Delete for Routine slots
             document.querySelectorAll('.delete-slot-form').forEach(form => {
@@ -541,7 +610,17 @@
             if (tsInstances['day']) {
                 tsInstances['day'].setValue(day);
             }
-            if (tsInstances['subject']) tsInstances['subject'].setValue(subject);
+            if (tsInstances['subject']) {
+                tsInstances['subject'].clearOptions();
+                if (className && classSubjectsMap[className]) {
+                    classSubjectsMap[className].forEach(sub => {
+                        tsInstances['subject'].addOption({value: sub, text: sub});
+                    });
+                } else {
+                    tsInstances['subject'].addOption({value: subject, text: subject});
+                }
+                tsInstances['subject'].setValue(subject);
+            }
             if (tsInstances['teacher_name']) tsInstances['teacher_name'].setValue(teacherName);
             
             document.getElementById('routine-start-time').value = startTime;
@@ -569,6 +648,71 @@
             
             document.getElementById('routine-cancel-btn').style.display = 'none';
             if (window.lucide) lucide.createIcons();
+        }
+
+        // Exam Schedule JS
+        function toggleExamSchedule(className, containerId) {
+            const container = document.getElementById(containerId);
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                // Trigger fetch for default selected term
+                let selectId = containerId.replace('container', 'select');
+                if (containerId.includes('admin')) {
+                    selectId = containerId.replace('admin-exam-container', 'term-select-admin');
+                } else if (containerId.includes('std')) {
+                    selectId = containerId.replace('std-exam-container', 'term-select-std');
+                }
+                const term = document.getElementById(selectId).value;
+                const contentId = containerId.replace('container', 'content');
+                fetchExamSchedule(className, contentId, term);
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function printExamSchedule(className, term) {
+            window.open(`/exam-routine/print/${encodeURIComponent(className)}?term=${encodeURIComponent(term)}`, '_blank');
+        }
+
+        async function fetchExamSchedule(className, contentId, term) {
+            const content = document.getElementById(contentId);
+            content.innerHTML = `<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Loading...`;
+            
+            try {
+                const res = await fetch(`/api/exam-schedule/${encodeURIComponent(className)}?term=${encodeURIComponent(term)}`);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    let html = '';
+                    if (data.schedule_image) {
+                        html += `<img src="/static/uploads/exam_schedules/${data.schedule_image}" style="max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 10px;">`;
+                    } else if (data.schedule_text) {
+                        try {
+                            const list = JSON.parse(data.schedule_text);
+                            if (list.length > 0) {
+                                html += `<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                    <thead><tr style="background: rgba(31, 111, 120, 0.1);"><th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Date</th><th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Time</th><th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Subject</th></tr></thead>
+                                    <tbody>`;
+                                list.forEach(item => {
+                                    html += `<tr><td style="padding: 8px; border: 1px solid #ddd;">${item.date}</td><td style="padding: 8px; border: 1px solid #ddd;">${item.time}</td><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">${item.subject}</td></tr>`;
+                                });
+                                html += `</tbody></table>`;
+                            } else {
+                                html = 'No exam schedule configured.';
+                            }
+                        } catch (e) {
+                            html = 'Invalid schedule format.';
+                        }
+                    } else {
+                        html = 'No exam schedule configured.';
+                    }
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = 'No exam schedule configured for this term.';
+                }
+            } catch (err) {
+                content.innerHTML = '<span style="color: red;">Failed to load schedule.</span>';
+            }
         }
     </script>
 </body>

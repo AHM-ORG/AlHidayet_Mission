@@ -9,41 +9,242 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .admit-card-container {
-            width: 500px;
-            margin: 50px auto;
-            border: 5px double var(--primary-color);
-            padding: 30px;
+            width: 100%;
+            max-width: 750px;
+            margin: 30px auto;
+            border: 3px solid #111;
+            padding: 3px;
             background: #fff;
             position: relative;
+            box-sizing: border-box;
+            color: #000;
+        }
+        
+        .admit-card-inner {
+            border: 1px solid #666;
+            background: linear-gradient(to bottom, #ffece0 0%, #e8edf9 100%);
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            min-height: 400px;
         }
 
-        .header-logo {
+        .ac-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 350px;
+            height: 350px;
+            opacity: 0.08;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .ac-header-title {
+            font-family: 'Times New Roman', serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: #4a0066;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            text-align: center;
+            margin: 10px 0 15px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .ac-top-logos {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .ac-logo-box {
+            text-align: center;
+            width: 70px;
+        }
+        .ac-logo-box img {
             width: 60px;
             height: 60px;
+            object-fit: contain;
+        }
+        .ac-logo-box .estd {
+            font-size: 10px;
+            font-weight: bold;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            padding: 2px 0;
+            margin-top: 5px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .ac-address-box {
+            margin: 0 auto 15px auto;
+            width: 60%;
+            border: 1px solid #6b82b8;
+            border-radius: 8px;
+            padding: 6px 15px;
+            text-align: center;
+        }
+
+        .ac-address-box p {
+            margin: 0;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 15px;
+            color: #111;
+            line-height: 1.4;
+        }
+
+        .ac-badge-container {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .ac-admit-badge {
+            background: #ffff00;
+            color: #cc0000;
+            font-family: 'Times New Roman', serif;
+            font-weight: 900;
+            font-size: 22px;
+            display: inline-block;
+            padding: 4px 40px;
+            border: 1px solid #b3b300;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            position: relative;
+        }
+        
+        /* Double underline effect */
+        .ac-admit-badge span {
+            border-bottom: 3px double #cc0000;
+            padding-bottom: 2px;
+        }
+
+        /* Folded corners simulation */
+        .ac-admit-badge::before, .ac-admit-badge::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border: 1px solid #333;
+            border-radius: 50%;
+            background: #fff;
+            top: -4px;
+        }
+        .ac-admit-badge::before { left: -4px; }
+        .ac-admit-badge::after { right: -4px; }
+
+        .ac-exam-name {
+            font-family: 'Times New Roman', serif;
+            font-size: 22px;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .ac-student-details {
+            text-align: left;
+            font-family: 'Times New Roman', serif;
+            font-size: 15px;
+            font-weight: bold;
+            color: #000;
+            padding: 0 30px;
+            line-height: 2.2;
             margin-bottom: 10px;
         }
 
-        .school-name {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .card-title {
-            background: var(--sidebar-bg);
-            color: #fff;
-            padding: 5px 20px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-top: 10px;
-        }
-
-        .student-info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        .ac-subjects-box {
+            margin: 15px 30px;
+            border: 3px solid #6b93d6;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 12px 15px;
             text-align: left;
-            margin-top: 30px;
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(107, 147, 214, 0.4);
+            position: relative;
+        }
+        
+        .ac-subjects-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .ac-checkbox {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #000;
+            background: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            margin-right: 12px;
+            position: relative;
+            top: -1px;
+        }
+
+        .ac-schedule-box {
+            margin: 15px 30px;
+            font-family: 'Times New Roman', serif;
+        }
+        .ac-schedule-title {
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            text-decoration: underline;
+            margin-bottom: 5px;
+            color: #000;
+        }
+        .ac-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            color: #000;
+        }
+        .ac-schedule-table th, .ac-schedule-table td {
+            border: 1px solid #5a8bd4;
+            padding: 4px 8px;
+            text-align: left;
+        }
+        .ac-schedule-table th {
+            background: rgba(107, 147, 214, 0.2);
+            font-weight: bold;
+        }
+
+        .ac-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 50px;
+            padding: 0 30px;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .ac-note {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .ac-sig {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: right;
         }
 
         .print-btn {
@@ -56,45 +257,16 @@
             margin-top: 30px;
         }
 
-        .schedule-box {
-            border: 1px dashed #ddd;
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 20px;
-            text-align: center;
-            background: #fbfbfb;
-        }
-        .schedule-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: #7f8c8d;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        .schedule-img {
-            max-width: 100%;
-            max-height: 150px;
-            object-fit: contain;
-            border-radius: 4px;
-        }
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        .schedule-table th, .schedule-table td {
-            border: 1px solid #e2e8f0;
-            padding: 5px 8px;
-            text-align: left;
-        }
-        .schedule-table th {
-            background: #f8fafc;
-            font-weight: 600;
-            color: #475569;
-        }
-
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+
+            body {
+                background: white;
+            }
+
             .sidebar,
             .top-bar,
             .print-btn,
@@ -102,7 +274,29 @@
                 display: none !important;
             }
 
+            .content-wrapper {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white;
+            }
+
+            .dashboard-container {
+                display: block;
+                height: auto;
+                background: white;
+            }
+
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100%;
+                overflow: visible;
+                background: white;
+            }
+
             .admit-card-container {
+                width: 100%;
+                max-width: 100%;
                 margin: 0 auto;
                 box-shadow: none;
                 border: 2px solid #000;
@@ -208,62 +402,102 @@
                     <select id="term_selector" onchange="changeTerm(this.value)" style="padding: 8px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; background: #fff; cursor: pointer; font-weight: 500;">
                         <option value="1st Unit" {% if term_name == '1st Unit' %}selected{% endif %}>1st Unit</option>
                         <option value="2nd Unit" {% if term_name == '2nd Unit' %}selected{% endif %}>2nd Unit</option>
-                        <option value="Final Exam" {% if term_name == 'Final Exam' %}selected{% endif %}>Final Exam</option>
+                        <option value="3rd Unit" {% if term_name == '3rd Unit' %}selected{% endif %}>3rd Unit</option>
+                        <option value="Annual Exam" {% if term_name == 'Annual Exam' %}selected{% endif %}>Annual Exam</option>
                     </select>
                 </div>
 
                 <div class="admit-card-container">
-                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo" class="header-logo">
-                    <div class="school-name">AL HIDAYET MISSION</div>
-                    <div style="font-size:12px; opacity:0.7;">ESTD: {{ estd_year or '2020' }}</div>
-                    <div class="card-title" style="text-transform: uppercase; font-family: 'Fredoka', sans-serif; font-weight: 600;">{{ term_name }} ADMIT CARD</div>
- 
-                    <div class="student-info-grid">
-                        <div style="grid-column: span 2;"><strong>NAME:</strong> {{ (student.full_name or student.username)|upper }}</div>
-                        <div><strong>CLASS:</strong> {{ student.class or 'N/A' }}</div>
-                        <div><strong>ROLL NO:</strong> {{ student.roll_number or 'N/A' }}</div>
-                    </div>
+                    <div class="admit-card-inner">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" class="ac-watermark">
+                        
+                        <div class="ac-top-logos">
+                            <div class="ac-logo-box">
+                                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                                <div class="estd">ESTD: 2010</div>
+                            </div>
+                            <div class="ac-logo-box">
+                                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Logo">
+                                <div class="estd">ESTD: 2010</div>
+                            </div>
+                        </div>
 
-                    <!-- Exam Routine Schedule -->
-                    <div class="schedule-box" style="margin-top: 25px; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; background: #fafafa;">
-                        <div class="schedule-title" style="font-size: 11px; font-weight: 700; color: #7f8c8d; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Exam Routine Schedule</div>
-                        {% if schedule_image %}
-                        <img src="/static/uploads/exam_schedules/{{ schedule_image }}" class="schedule-img" alt="Exam Routine" style="max-width: 100%; max-height: 120px; object-fit: contain; display: block; margin: 0 auto; border-radius: 4px;">
-                        {% elif schedule_list %}
-                        <table class="schedule-table" style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 5px; text-align: left;">
-                            <thead>
-                                <tr style="background: #f1f5f9; border-bottom: 1.5px solid #cbd5e1;">
-                                    <th style="padding: 4px 6px; font-weight: 600; color: #475569;">Date</th>
-                                    <th style="padding: 4px 6px; font-weight: 600; color: #475569;">Time</th>
-                                    <th style="padding: 4px 6px; font-weight: 600; color: #475569;">Subject</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for day in schedule_list %}
-                                <tr style="border-bottom: 1px solid #e2e8f0;">
-                                    <td style="padding: 4px 6px; color: #1e293b; font-weight: 500;">{{ day.date }}</td>
-                                    <td style="padding: 4px 6px; color: #475569;">{{ day.time }}</td>
-                                    <td style="padding: 4px 6px; color: var(--primary-color); font-weight: 600;">{{ day.subject }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% else %}
-                        <span class="no-schedule" style="font-size: 11px; color: #95a5a6; font-style: italic; display: block; text-align: center; padding: 10px 0;">Exam routine is not uploaded or configured.</span>
-                        {% endif %}
-                    </div>
+                        <div class="ac-header-title">AL-HIDAYET MISSION (BHOGRAM BRANCH)</div>
+                        
+                        <div class="ac-address-box">
+                            <p>A Renowned Day Residential, Non-Residential Campus<br>
+                            Bhogram, Hemtabad, Uttar Dinajpur - 733134</p>
+                        </div>
 
-                    <div style="margin-top: 30px; text-align: left; font-size: 13px;">
-                        <p style="margin-bottom: 5px;"><strong>Instructions:</strong></p>
-                        <ul style="padding-left: 20px; margin: 0;">
-                            <li>Bring this card to the exam hall.</li>
-                            <li>Electronic devices are strictly prohibited.</li>
-                        </ul>
-                    </div>
- 
-                    <div style="margin-top: 35px; display: flex; justify-content: space-between; font-size: 12px;">
-                        <div style="border-top: 1px solid #000; width: 120px; padding-top: 5px;">Student Signature</div>
-                        <div style="border-top: 1px solid #000; width: 120px; padding-top: 5px;">Headmaster Sign</div>
+                        <div class="ac-badge-container">
+                            <div class="ac-admit-badge"><span>ADMIT CARD</span></div>
+                        </div>
+                        
+                        <div class="ac-exam-name">
+                            {{ term_name|upper }} - {{ current_year }}
+                        </div>
+
+                        <div class="ac-student-details">
+                            <div style="margin-bottom: 5px;">STUDENT NAME : {{ (student.full_name or student.username)|upper }}</div>
+                            <div style="margin-bottom: 5px;">GUARDIAN'S NAME : {{ (student.guardian_name or '')|upper }}</div>
+                            <div style="display: flex; justify-content: space-between; padding-right: 20px;">
+                                <div>CLASS : {{ student.class or 'N/A' }}</div>
+                                <div>ROLL : {{ student.roll_number or 'N/A' }}</div>
+                                <div>SECTION : A</div>
+                            </div>
+                        </div>
+
+                        <div class="ac-subjects-box">
+                            <div style="margin-bottom: 8px; line-height: 2;">
+                                SUBJECTS : 
+                                {% if schedule_list %}
+                                    {% for day in schedule_list %}
+                                        <span style="display:inline-block; margin-right: 8px; white-space: nowrap;">
+                                            {{ day.subject|upper }}{% if not loop.last %},{% endif %}
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span style="font-style: italic; font-weight: normal; font-size: 13px; color: #555;">No subjects configured in the routine for this term yet.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="ac-schedule-box">
+                            <div class="ac-schedule-title">EXAM ROUTINE</div>
+                            {% if schedule_image %}
+                            <img src="/static/uploads/exam_schedules/{{ schedule_image }}" class="schedule-img" alt="Exam Routine" style="max-width: 100%; max-height: 120px; object-fit: contain; display: block; margin: 0 auto; border-radius: 4px;">
+                            {% elif schedule_list %}
+                            <table class="ac-schedule-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Subject</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day in schedule_list %}
+                                    <tr>
+                                        <td>{{ day.date }}</td>
+                                        <td>{{ day.time }}</td>
+                                        <td><strong>{{ day.subject }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <span style="font-size: 12px; color: #555; font-style: italic; display: block; text-align: center; padding: 5px 0;">Exam routine is not configured for this class/term yet.</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="ac-footer">
+                            <div class="ac-note">
+                                N: B: - THIS ADMIT CARD SHOULD BE CAREFULLY
+                            </div>
+                            <div class="ac-sig">
+                                SIGNATURE OF T.I.C.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button class="print-btn" onclick="window.print()" style="font-family: 'Outfit', sans-serif; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; background: var(--primary-color); border: none; padding: 10px 20px; border-radius: 6px; color: white; cursor: pointer;"><i data-lucide="printer"></i> Print Admit Card</button>

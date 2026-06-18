@@ -94,25 +94,67 @@
             background-color: var(--surface-soft) !important;
         }
         .marks-input {
-            width: 80px;
-            padding: 8px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            text-align: center;
-            font-weight: 600;
-            color: var(--text-dark);
+            width: 50px !important;
+            min-height: 32px !important;
+            height: 32px !important;
+            padding: 4px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            text-align: center !important;
+            font-weight: 600 !important;
+            color: var(--text-dark) !important;
             transition: border-color var(--transition), box-shadow var(--transition);
         }
         .marks-input:focus {
             border-color: var(--primary-color) !important;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(31, 111, 120, 0.15);
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(31, 111, 120, 0.15) !important;
         }
         .marks-input[readonly] {
-            background: #f1f5f9;
-            color: #94a3b8;
-            border-color: #e2e8f0;
-            cursor: not-allowed;
+            background: #f1f5f9 !important;
+            color: #94a3b8 !important;
+            border-color: #e2e8f0 !important;
+            cursor: not-allowed !important;
+        }
+        .header-inline-input {
+            width: 40px !important;
+            min-height: 24px !important;
+            height: 24px !important;
+            padding: 0 2px !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(255,255,255,0.6) !important;
+            border-radius: 0 !important;
+            color: white !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-family: inherit !important;
+            margin: 0 2px !important;
+        }
+        .header-inline-input:focus {
+            outline: none !important;
+            border-bottom: 1px solid white !important;
+            box-shadow: none !important;
+        }
+        .header-fm-input {
+            width: 50px !important;
+            min-height: 26px !important;
+            height: 26px !important;
+            padding: 2px 4px !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            border-radius: 4px !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            text-align: center !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+        }
+        .header-fm-input[readonly] {
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            cursor: not-allowed !important;
+        }
             box-shadow: none;
         }
         .ditto-cell {
@@ -307,10 +349,7 @@
                             {% endif %}
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label>F.M. (Full Marks) {% if is_class_test %}<span style="color: var(--success-color); font-size: 0.85em;">(Configured)</span>{% endif %}</label>
-                        <input type="number" name="full_marks" value="{{ full_marks }}" required min="1" max="500" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; height: 42px; {% if is_class_test %}background: #e2e8f0; cursor: not-allowed; opacity: 0.8;{% endif %}" {% if not is_class_test %}onchange="this.form.submit()"{% else %}readonly{% endif %}>
-                    </div>
+
                 </div>
                 {% if not allowed_subjects %}
                 <div style="color: var(--danger-color); display: flex; align-items: center; gap: 8px; margin-top: 15px; font-weight: 500; font-size: 0.9em;">
@@ -346,13 +385,125 @@
                             {% endif %}
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label>F.M. (Full Marks) {% if is_class_test %}<span style="color: var(--success-color); font-size: 0.85em;">(Configured)</span>{% endif %}</label>
-                        <input type="number" name="full_marks" value="{{ full_marks }}" required min="1" max="500" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; height: 42px; {% if is_class_test %}background: #e2e8f0; cursor: not-allowed; opacity: 0.8;{% endif %}" {% if not is_class_test %}onchange="this.form.submit()"{% else %}readonly{% endif %}>
-                    </div>
+
                 </div>
                 {% endif %}
             </form>
+
+            {% if role == 'admin' and selected_class %}
+            <!-- Manage Subjects & Full Marks Panel -->
+            <div style="margin-bottom: 25px;">
+                <button type="button" onclick="document.getElementById('manage-subjects-panel').style.display = document.getElementById('manage-subjects-panel').style.display === 'none' ? 'block' : 'none'" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: var(--radius); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="settings" style="width: 18px; height: 18px;"></i> Manage Subjects & Full Marks
+                </button>
+                <div id="manage-subjects-panel" style="display: none; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; margin-top: 15px; box-shadow: var(--shadow-sm);">
+                    <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Add New Subjects</h3>
+                    <form method="POST" action="/admin/bulk-marks" style="display: flex; gap: 15px; align-items: end; margin-bottom: 25px;">
+                        <input type="hidden" name="action_type" value="add_subject">
+                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                        <div class="input-group" style="flex: 1;">
+                            <label>Subject Name(s) (comma-separated)</label>
+                            <input type="text" name="new_subject" required placeholder="e.g. Computer Science, Geography" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; height: 42px;">
+                        </div>
+                        <button type="submit" style="background: var(--success-color); color: white; border: none; padding: 10px 20px; border-radius: var(--radius); height: 42px; cursor: pointer; font-weight: 600;">Add Subject(s)</button>
+                    </form>
+
+                    <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Manage Existing Subjects</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="responsive-table" style="width: 100%; border: 1px solid var(--border-color);">
+                            <thead style="background: var(--surface-soft);">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>FM 1st</th>
+                                    <th>OR 1st</th>
+                                    <th>WR 1st</th>
+                                    <th>FM 2nd</th>
+                                    <th>OR 2nd</th>
+                                    <th>WR 2nd</th>
+                                    <th>FM Ann</th>
+                                    <th>OR Ann</th>
+                                    <th>WR Ann</th>
+                                    <th>CT Ann</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub_row in db_subjects %}
+                                {% set is_special = (sub_row.name.lower() == 'art' or sub_row.name.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
+                                
+                                {% set fm_1 = sub_row.full_marks_1st if sub_row.full_marks_1st is not none and sub_row.full_marks_1st > -1 else 0 %}
+                                {% set or_1 = sub_row.oral_marks_1st if sub_row.oral_marks_1st is not none else (fm_1 * 0.2 if not is_special else '') %}
+                                {% set wr_1 = sub_row.written_marks_1st if sub_row.written_marks_1st is not none else (fm_1 - (fm_1 * 0.2) if not is_special else '') %}
+                                
+                                {% set fm_2 = sub_row.full_marks_2nd if sub_row.full_marks_2nd is not none and sub_row.full_marks_2nd > -1 else 0 %}
+                                {% set or_2 = sub_row.oral_marks_2nd if sub_row.oral_marks_2nd is not none else (fm_2 * 0.2 if not is_special else '') %}
+                                {% set wr_2 = sub_row.written_marks_2nd if sub_row.written_marks_2nd is not none else (fm_2 - (fm_2 * 0.2) if not is_special else '') %}
+                                
+                                {% set fm_a = sub_row.full_marks_annual if sub_row.full_marks_annual is not none and sub_row.full_marks_annual > -1 else 0 %}
+                                {% set or_a = sub_row.oral_marks_annual if sub_row.oral_marks_annual is not none else (fm_a * 0.2 if not is_special else '') %}
+                                {% set ct_a = sub_row.ct_marks_annual if sub_row.ct_marks_annual is not none else (fm_a * 0.1 if not is_special else '') %}
+                                {% set wr_a = sub_row.written_marks_annual if sub_row.written_marks_annual is not none else (fm_a - (fm_a * 0.2) - (fm_a * 0.1) if not is_special else '') %}
+
+                                {% set fm_1_calc = ((or_1 or 0)|float + (wr_1 or 0)|float) if not is_special else fm_1 %}
+                                {% set fm_1_str = fm_1_calc|round(1)|string|replace('.0', '') if fm_1_calc > 0 else '' %}
+                                {% set or_1_str = or_1|round(1)|string|replace('.0', '') if or_1 != '' else '' %}
+                                {% set wr_1_str = wr_1|round(1)|string|replace('.0', '') if wr_1 != '' else '' %}
+
+                                {% set fm_2_calc = ((or_2 or 0)|float + (wr_2 or 0)|float) if not is_special else fm_2 %}
+                                {% set fm_2_str = fm_2_calc|round(1)|string|replace('.0', '') if fm_2_calc > 0 else '' %}
+                                {% set or_2_str = or_2|round(1)|string|replace('.0', '') if or_2 != '' else '' %}
+                                {% set wr_2_str = wr_2|round(1)|string|replace('.0', '') if wr_2 != '' else '' %}
+
+                                {% set fm_a_calc = ((or_a or 0)|float + (wr_a or 0)|float + (ct_a or 0)|float) if not is_special else fm_a %}
+                                {% set fm_a_str = fm_a_calc|round(1)|string|replace('.0', '') if fm_a_calc > 0 else '' %}
+                                {% set or_a_str = or_a|round(1)|string|replace('.0', '') if or_a != '' else '' %}
+                                {% set wr_a_str = wr_a|round(1)|string|replace('.0', '') if wr_a != '' else '' %}
+                                {% set ct_a_str = ct_a|round(1)|string|replace('.0', '') if ct_a != '' else '' %}
+
+                                <tr>
+                                    <form method="POST" action="/admin/bulk-marks">
+                                        <input type="hidden" name="action_type" value="update_fm">
+                                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                                        <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
+                                        
+                                        <td style="font-weight: 600;">{{ sub_row.name }}</td>
+                                        <td><input type="number" name="full_marks_1st" value="{{ fm_1_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_1st" value="{{ or_1_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_1st.value = (parseFloat(this.form.oral_marks_1st.value) || 0) + (parseFloat(this.form.written_marks_1st.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_1st" value="{{ wr_1_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_1st.value = (parseFloat(this.form.oral_marks_1st.value) || 0) + (parseFloat(this.form.written_marks_1st.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td><input type="number" name="full_marks_2nd" value="{{ fm_2_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_2nd" value="{{ or_2_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_2nd.value = (parseFloat(this.form.oral_marks_2nd.value) || 0) + (parseFloat(this.form.written_marks_2nd.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_2nd" value="{{ wr_2_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_2nd.value = (parseFloat(this.form.oral_marks_2nd.value) || 0) + (parseFloat(this.form.written_marks_2nd.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td><input type="number" name="full_marks_annual" value="{{ fm_a_str }}" {% if not is_special %}readonly tabindex="-1"{% endif %} style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid {% if not is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if not is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="oral_marks_annual" value="{{ or_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="written_marks_annual" value="{{ wr_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        <td><input type="number" name="ct_marks_annual" value="{{ ct_a_str }}" {% if is_special %}readonly tabindex="-1"{% endif %} oninput="if(!{{ 'true' if is_special else 'false' }}) this.form.full_marks_annual.value = (parseFloat(this.form.oral_marks_annual.value) || 0) + (parseFloat(this.form.written_marks_annual.value) || 0) + (parseFloat(this.form.ct_marks_annual.value) || 0)" style="width: 50px; padding: 5px; border-radius: 4px; border: 1px solid {% if is_special %}#e2e8f0{% else %}#ccc{% endif %}; {% if is_special %}background: #f1f5f9; color: #94a3b8; cursor: not-allowed;{% endif %}"></td>
+                                        
+                                        <td style="display: flex; gap: 5px;">
+                                            <button type="submit" title="Save" style="background: var(--primary-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i data-lucide="save" style="width: 16px; height: 16px;"></i></button>
+                                    </form>
+                                    <form method="POST" action="/admin/bulk-marks" onsubmit="return confirm('Delete {{ sub_row.name }}?');" style="margin: 0;">
+                                        <input type="hidden" name="action_type" value="delete_subject">
+                                        <input type="hidden" name="class_name" value="{{ selected_class }}">
+                                        <input type="hidden" name="term_name" value="{{ selected_term }}">
+                                        <input type="hidden" name="branch" value="{{ selected_branch }}">
+                                        <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
+                                        <button type="submit" title="Delete" style="background: var(--danger-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
+                                    </form>
+                                        </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             {% if students %}
             <!-- Bulk Marks Entry Table Form -->
@@ -361,7 +512,7 @@
                 <input type="hidden" name="class" value="{{ selected_class }}">
                 <input type="hidden" name="branch" value="bhogram">
                 <input type="hidden" name="term" value="{{ selected_term }}">
-                <input type="hidden" name="full_marks" value="{{ full_marks }}">
+
                 {% if role == 'teacher' %}
                     <input type="hidden" name="assigned_class" value="{{ assigned_class }}">
                 {% else %}
@@ -379,9 +530,7 @@
                             {% endif %}
                         </span>
                     </div>
-                    <div style="font-weight: 600; color: var(--text-dark); background: var(--surface-soft); padding: 5px 12px; border-radius: var(--radius-pill); font-size: 0.95em;">
-                        F.M. Value: {% if is_class_test %}Configured per subject{% else %}{{ full_marks }}{% endif %}
-                    </div>
+
                 </div>
 
                 <div class="table-responsive">
@@ -393,7 +542,7 @@
                                 {% for sub in subjects %}
                                     {% set is_art = (sub.lower() == 'art') %}
                                     {% set is_additional = (sub.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
-                                    {% set is_sub_disabled = (is_class_test and configured_class_test_subjects and sub not in configured_class_test_subjects) %}
+                                    {% set is_sub_disabled = (is_class_test and sub not in configured_class_test_subjects) %}
                                     {% set sub_max_fm = subject_full_marks.get(sub, full_marks) %}
                                     
                                     {% if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] and not is_art and not is_additional %}
@@ -407,7 +556,7 @@
                                     {% else %}
                                         <th rowspan="2" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px; vertical-align: middle;">
                                             <div style="font-weight: 700; margin-bottom: 5px;">{{ sub }}</div>
-                                            <div style="font-weight: normal; font-size: 0.85em; display: flex; align-items: center; justify-content: center; gap: 6px; color: #ffeaa7;">
+                                            <div style="font-weight: normal; font-size: 0.85em; display: flex; align-items: center; justify-content: center; gap: 4px; color: #ffeaa7;">
                                                 <span>FM:</span>
                                                 <input type="number" 
                                                        name="fm_{{ sub }}" 
@@ -415,9 +564,13 @@
                                                        min="1" 
                                                        max="500" 
                                                        required
+                                                       class="header-fm-input"
+                                                       {% if role == 'admin' %}
+                                                       onchange="updateSubjectFMInline('{{ sub }}', 'full', this.value, '{{ selected_term }}')"
+                                                       {% else %}
                                                        readonly
                                                        tabindex="-1"
-                                                       style="width: 50px; padding: 3px 6px; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 4px; background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.4); text-align: center; font-weight: 700; cursor: not-allowed;">
+                                                       {% endif %}>
                                             </div>
                                         </th>
                                     {% endif %}
@@ -436,10 +589,14 @@
                                             {% set oral_limit = oral_val if (oral_val is not none and oral_val != '') else (sub_u_fm * 0.2) %}
                                             {% set oral_limit_str = oral_limit|round(1)|string|replace('.0', '') %}
                                             {% set written_val = subject_written_limit.get(sub) %}
-                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_u_fm - oral_limit) %}
+                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_u_fm - (sub_u_fm * 0.2)) %}
                                             {% set written_limit_str = written_limit|round(1)|string|replace('.0', '') %}
-                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1);">OR ({{ oral_limit_str }})</th>
-                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark);">WR ({{ written_limit_str }})</th>
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                OR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ oral_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'oral', this.value, '{{ selected_term }}')">{% else %}{{ oral_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark); min-width: 80px; white-space: nowrap;">
+                                                WR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ written_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'written', this.value, '{{ selected_term }}')">{% else %}{{ written_limit_str }}{% endif %})
+                                            </th>
                                         {% elif selected_term in ['Final Exam', 'Annual Exam', 'Annual'] %}
                                             {% set oral_val = subject_oral_limit.get(sub) %}
                                             {% set oral_limit = oral_val if (oral_val is not none and oral_val != '') else (sub_max_fm * 0.2) %}
@@ -448,11 +605,17 @@
                                             {% set ct_limit = ct_val if (ct_val is not none and ct_val != '') else (sub_max_fm * 0.1) %}
                                             {% set ct_limit_str = ct_limit|round(1)|string|replace('.0', '') %}
                                             {% set written_val = subject_written_limit.get(sub) %}
-                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_max_fm - oral_limit - ct_limit) %}
+                                            {% set written_limit = written_val if (written_val is not none and written_val != '') else (sub_max_fm - (sub_max_fm * 0.2) - (sub_max_fm * 0.1)) %}
                                             {% set written_limit_str = written_limit|round(1)|string|replace('.0', '') %}
-                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1);">OR ({{ oral_limit_str }})</th>
-                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1);">WR ({{ written_limit_str }})</th>
-                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark);">CT ({{ ct_limit_str }})</th>
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                OR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ oral_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'oral', this.value, '{{ selected_term }}')">{% else %}{{ oral_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
+                                                WR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ written_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'written', this.value, '{{ selected_term }}')">{% else %}{{ written_limit_str }}{% endif %})
+                                            </th>
+                                            <th style="padding: 6px; text-align: center; border-right: 2px solid var(--primary-dark); min-width: 80px; white-space: nowrap;">
+                                                CT ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ ct_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'ct', this.value, '{{ selected_term }}')">{% else %}{{ ct_limit_str }}{% endif %})
+                                            </th>
                                         {% endif %}
                                     {% endif %}
                                 {% endfor %}
@@ -466,12 +629,19 @@
                                     {{ student.roll_number }}
                                 </td>
                                 <td class="sticky-col-name" style="font-weight: 500; color: var(--text-dark);">
-                                    {{ student.full_name or student.username }}
+                                    <div>{{ student.full_name or student.username }}</div>
+                                    {% if student.whatsapp_no %}
+                                    <div style="font-size: 0.8em; margin-top: 4px;">
+                                        <a href="https://wa.me/91{{ student.whatsapp_no }}" target="_blank" style="color: #25D366; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Message Guardian on WhatsApp">
+                                            <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i> {{ student.whatsapp_no }}
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                 </td>
                                 {% for sub in subjects %}
                                     {% set is_art = (sub.lower() == 'art') %}
                                     {% set is_additional = (sub.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']) %}
-                                    {% set is_disabled = (role == 'teacher' and sub != selected_subject) or (is_class_test and configured_class_test_subjects and sub not in configured_class_test_subjects) %}
+                                    {% set is_disabled = (role == 'teacher' and sub != selected_subject) or (is_class_test and sub not in configured_class_test_subjects) %}
                                     {% set student_marks = marks_dict.get(student.id, {}).get(sub, {}) %}
                                     {% set sub_max_fm = subject_full_marks.get(sub, full_marks) %}
                                     
@@ -581,7 +751,7 @@
                                                        max="{{ max_fm_val }}" 
                                                        class="marks-input"
                                                        data-subject="{{ sub }}"
-                                                       style="width: 100px; padding: 10px; font-size: 1.1em;"
+                                                       style="width: 100px; padding: 10px; font-size: 1.1em; border-radius: 4px !important;"
                                                        {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
                                                 {% if is_disabled or is_locked %}
                                                     <i data-lucide="lock" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; color: #cbd5e1;"></i>
@@ -762,6 +932,34 @@
                 });
             }
         });
+
+        function updateSubjectFMInline(subject, field, value, term) {
+            const formData = new FormData();
+            formData.append('action_type', 'update_fm_inline');
+            formData.append('subject_name', subject);
+            formData.append('field', field);
+            formData.append('value', value);
+            formData.append('term_name', term);
+            formData.append('class_name', '{{ selected_class }}');
+
+            fetch('/admin/bulk-marks', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status !== 'success') {
+                    alert('Failed to update: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error updating marks.');
+            });
+        }
     </script>
 </body>
 </html>

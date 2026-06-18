@@ -34,6 +34,7 @@
                 <div class="sidebar-label">Cash Manager</div>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
                 <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
                 <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
@@ -220,13 +221,14 @@
                                     <label style="font-weight: 600;">Monthly Fee (INR):</label>
                                     <input type="number" name="amount" id="student_monthly_fee" required step="1" min="0" placeholder="e.g. 1200" style="padding: 10px;">
                                 </div>
-                                <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="font-weight: 600;">Admission Fee (INR):</label>
-                                    <input type="number" name="admission_fee" id="student_admission_fee" required step="1" min="0" placeholder="e.g. 3500" style="padding: 10px;">
-                                </div>
+                                <input type="hidden" name="admission_fee" id="student_admission_fee" value="0">
                                 <div class="input-group" style="margin-bottom: 0;">
                                     <label style="font-weight: 600;">Re-admission Fee (INR):</label>
                                     <input type="number" name="readmission_fee" id="student_readmission_fee" required step="1" min="0" placeholder="e.g. 1500" style="padding: 10px;">
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Remaining Fee / Dues (INR):</label>
+                                    <input type="number" name="remaining_fee" id="student_remaining_fee" required step="0.01" placeholder="e.g. 1500" style="padding: 10px;">
                                 </div>
                             </div>
                             
@@ -250,7 +252,12 @@
                                 <input type="hidden" name="create_class" value="1">
                                 <div class="input-group" style="margin-bottom: 10px;">
                                     <label style="font-size: 12px; font-weight: 600;">Class Name</label>
-                                    <input type="text" name="class_name" placeholder="e.g. Nursery, U/N, One" required style="padding: 6px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-size: 13px;">
+                                    <select name="class_name" required style="padding: 6px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-size: 13px;" class="search-select">
+                                        <option value="" disabled selected>Select a Class</option>
+                                        {% for c in classes %}
+                                        <option value="{{ c }}">{{ c }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                                 <input type="hidden" name="branch" id="class-branch-select" value="bhogram">
                                 
@@ -469,6 +476,7 @@
             const inputAmount = document.getElementById('student_monthly_fee');
             const inputAdmission = document.getElementById('student_admission_fee');
             const inputReadmission = document.getElementById('student_readmission_fee');
+            const inputRemaining = document.getElementById('student_remaining_fee');
 
             function getSelectedStudentClass() {
                 if (!studentSelectEl) return null;
@@ -493,6 +501,7 @@
                     inputAmount.value = parseFloat(selectedOpt.getAttribute('data-monthly-fee')) || 0;
                     inputAdmission.value = parseFloat(selectedOpt.getAttribute('data-admission-fee')) || 0;
                     inputReadmission.value = parseFloat(selectedOpt.getAttribute('data-readmission-fee')) || 0;
+                    inputRemaining.value = parseFloat(selectedOpt.getAttribute('data-remaining-fee')) || 0;
                 }
             }
 

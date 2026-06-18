@@ -294,8 +294,10 @@
             <form id="changePasswordForm" method="POST" action="">
                 <input type="hidden" name="next" value="teacher_list">
                 <div style="margin-bottom: 20px; text-align: left;">
-                    <label for="new_password" style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-dark); font-size: 14px;">New Password</label>
-                    <input type="password" id="new_password" name="new_password" required minlength="6" placeholder="Enter new password (min 6 chars)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;">
+                    <input type="password" id="new_password" name="new_password" required minlength="6" maxlength="32" placeholder="Enter strong password (6-32 chars)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;">
+                    <p style="font-size: 11px; color: #7f8c8d; margin-top: 5px; line-height: 1.4;">
+                        Must be 6-32 characters long, containing at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g. !@#$%^&*).
+                    </p>
                 </div>
 
                 {% if role != 'admin' %}

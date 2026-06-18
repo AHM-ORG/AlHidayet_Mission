@@ -126,7 +126,8 @@
                             <select name="term_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                                 <option value="1st Unit">1st Unit</option>
                                 <option value="2nd Unit">2nd Unit</option>
-                                <option value="Final Exam">Final Exam</option>
+                                <option value="3rd Unit">3rd Unit</option>
+                                <option value="Annual Exam">Annual Exam</option>
                             </select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
@@ -184,6 +185,51 @@
                         </div>
                     </form>
                 </div>
+
+                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0 0 30px 0; border-top: 4px solid var(--secondary-color);">
+                    <h3 style="margin: 0 0 15px 0; color: var(--secondary-color); display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="calendar-check"></i> Bulk Print Exam Routines
+                    </h3>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Generate and print the exam schedule for all students in a class. You can choose a layout of 1, 2, or 4 routines per A4 page.</p>
+                    
+                    <form action="/admin/exam-routine/bulk" method="POST" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: flex-end;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Class:</label>
+                            <select name="class_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Select Class</option>
+                                <option value="Nursery">Nursery</option>
+                                <option value="Upper Nursery">Upper Nursery</option>
+                                <option value="I">I</option>
+                                <option value="II">II</option>
+                                <option value="III">III</option>
+                                <option value="IV">IV</option>
+                                <option value="V">V</option>
+                                <option value="VI">VI</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Term / Exam:</label>
+                            <select name="term_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="1st Unit">1st Unit</option>
+                                <option value="2nd Unit">2nd Unit</option>
+                                <option value="3rd Unit">3rd Unit</option>
+                                <option value="Annual Exam">Annual Exam</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Routines per A4 Page:</label>
+                            <select name="cards_per_page" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="1">1 Routine</option>
+                                <option value="2">2 Routines</option>
+                                <option value="4">4 Routines</option>
+                            </select>
+                        </div>
+                        
+                        <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 15px;">
+                            <button type="submit" class="auth-btn" style="margin: 0; padding: 10px 25px; background: var(--secondary-color); height: 42px; font-weight: 600; font-family: 'Outfit', sans-serif;">Print Exam Routines</button>
+                        </div>
+                    </form>
+                </div>
                 {% endif %}
 
                 {% if role in ['admin', 'teacher'] and action == 'marksheet' %}
@@ -216,7 +262,8 @@
                                 <select name="term_name" required style="width: 100%;">
                                     <option value="1st Unit">1st Unit</option>
                                     <option value="2nd Unit">2nd Unit</option>
-                                    <option value="Final Exam">Final Exam</option>
+                                    <option value="3rd Unit">3rd Unit</option>
+                                    <option value="Annual Exam">Annual Exam</option>
                                 </select>
                             </div>
                             <button type="submit" class="auth-btn" style="margin: 0; background: var(--primary-color);">Print Class Marksheets (A4)</button>
@@ -244,7 +291,8 @@
                                 <select name="term_name" required style="width: 100%;">
                                     <option value="1st Unit">1st Unit</option>
                                     <option value="2nd Unit">2nd Unit</option>
-                                    <option value="Final Exam">Final Exam</option>
+                                    <option value="3rd Unit">3rd Unit</option>
+                                    <option value="Annual Exam">Annual Exam</option>
                                 </select>
                             </div>
                             <button type="submit" class="auth-btn" style="margin: 0; background: var(--secondary-color);">Generate Tabulation Sheet</button>

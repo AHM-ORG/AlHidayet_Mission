@@ -37,6 +37,7 @@
                 <div class="sidebar-label">Cash Manager</div>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
                 <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
                 <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
@@ -134,9 +135,13 @@
                                 <input type="number" name="amount" id="collect-amount" required step="1" min="1">
                             </div>
                             <div id="collect-fee-breakdown" style="display: none; background: #f8f9fa; border: 1px dashed #ccc; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
-                                <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px;">
                                     <span>Total Monthly Fee:</span>
                                     <span id="breakdown-total">₹0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; color: #ff7675;">
+                                    <span>Remaining Dues / Balance:</span>
+                                    <span id="breakdown-remaining">₹0.00</span>
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -192,12 +197,16 @@
                         </div>
                         <div class="input-group">
                              <label>Enter Amount (INR):</label>
-                             <input type="number" id="pay-amount" value="{{ student_info.monthly_fee if student_info else 0.0 }}" min="10" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                             <input type="number" id="pay-amount" value="{{ student_info.remaining_fee if student_info and student_info.remaining_fee > 0 else (student_info.monthly_fee if student_info else 0.0) }}" min="10" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
                         </div>
                         <div style="background: #f8f9fa; border: 1px dashed #ccc; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
-                            <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px;">
                                 <span>Total Dues (Monthly Fee):</span>
                                 <span>₹{{ "%.2f"|format(student_info.monthly_fee if student_info else 0.0) }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #ff7675;">
+                                <span>Remaining Dues / Balance:</span>
+                                <span>₹{{ "%.2f"|format(student_info.remaining_fee if student_info else 0.0) }}</span>
                             </div>
                         </div>
 
@@ -370,13 +379,19 @@
                 const selectedOpt = studentSelectEl.options[studentSelectEl.selectedIndex];
                 if (selectedOpt) {
                     const monthlyFee = parseFloat(selectedOpt.getAttribute('data-monthly-fee')) || 0.0;
+                    const remainingFee = parseFloat(selectedOpt.getAttribute('data-remaining-fee')) || 0.0;
                     
                     if (breakdownTotal) {
                         breakdownTotal.textContent = '₹' + monthlyFee.toFixed(2);
                     }
                     
+                    const breakdownRemaining = document.getElementById('breakdown-remaining');
+                    if (breakdownRemaining) {
+                        breakdownRemaining.textContent = '₹' + remainingFee.toFixed(2);
+                    }
+                    
                     if (collectAmountInput) {
-                        collectAmountInput.value = monthlyFee;
+                        collectAmountInput.value = remainingFee > 0 ? remainingFee : monthlyFee;
                     }
                     collectBreakdown.style.display = 'block';
                 } else {

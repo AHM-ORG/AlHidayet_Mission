@@ -121,8 +121,11 @@
                     </div>
                     <div class="input-group" style="margin-bottom: 20px;">
                         <label style="font-size: 14px; color: #666;">New Password</label>
-                        <input type="password" name="new_password" required
+                        <input type="password" name="new_password" required minlength="6" maxlength="32"
                             style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-top: 5px;">
+                        <p style="font-size: 11px; color: #7f8c8d; margin-top: 5px; line-height: 1.4;">
+                            Must be 6-32 characters long, containing at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g. !@#$%^&*).
+                        </p>
                     </div>
                     <button type="submit" class="auth-btn" style="width: 100%;">Update Password</button>
                 </form>

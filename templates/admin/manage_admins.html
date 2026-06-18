@@ -165,7 +165,10 @@
 
                             <div class="input-group" style="margin-bottom: 0;">
                                 <label id="password-label" style="font-weight: 500; margin-bottom: 5px; display: block; font-size: 14px;">Password:</label>
-                                <input type="password" name="password" id="admin-password" required placeholder="Enter login password" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit;">
+                                <input type="password" name="password" id="admin-password" required placeholder="Enter login password" minlength="6" maxlength="32" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit;">
+                                <p style="font-size: 11px; color: #888; margin-top: 5px; line-height: 1.4;">
+                                    Must be 6-32 characters long, containing at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g. !@#$%^&*).
+                                </p>
                                 <small id="password-hint" style="color: #888; font-size: 11.5px; display: none; margin-top: 4px;">Leave blank to keep current password.</small>
                             </div>
 

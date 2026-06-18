@@ -35,6 +35,7 @@
                 <div class="sidebar-label">Cash Manager</div>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
                 <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
                 <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
@@ -100,8 +101,23 @@
                 <div class="top-bar-title">Financial Audit Report</div>
             </header>
             <div class="content-wrapper">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; color: var(--primary-color);">Audit Overview</h2>
+                    <a href="/admin/print-audit" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">
+                        <i data-lucide="printer" style="width: 18px; height: 18px;"></i> Print Detailed Report
+                    </a>
+                </div>
+                <!-- ALERTS -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
                 <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; margin-bottom: 30px;">
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px; margin-bottom: 30px;">
                     <div class="auth-container" style="max-width: 100%; border-top-color: #2ecc71;">
                         <p style="color: #7f8c8d; font-size: 14px;">Total Fees Collected</p>
                         <h2 style="color: #2ecc71;">₹{{ fees }}</h2>
@@ -114,11 +130,62 @@
                         <p style="color: #7f8c8d; font-size: 14px;">Net Balance</p>
                         <h2 style="color: var(--primary-color);">₹{{ balance }}</h2>
                     </div>
+                    <div class="auth-container" style="max-width: 100%; border-top-color: #fdcb6e;">
+                        <p style="color: #7f8c8d; font-size: 14px;">Total Remaining Dues (Fees)</p>
+                        <h2 style="color: #fdcb6e;">₹{{ remaining_fees }}</h2>
+                    </div>
                 </div>
 
-                <div class="auth-container" style="max-width: 600px; margin: 0 auto;">
+                <div class="auth-container" style="max-width: 600px; margin: 0 auto 25px auto;">
                     <h3>Revenue vs Expense Analysis</h3>
                     <canvas id="auditChart"></canvas>
+                </div>
+
+                <div class="auth-container" style="max-width: 800px; margin: 0 auto 25px auto; overflow-x: auto;">
+                    <h3>Remaining Fees Description</h3>
+                    <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Detailed breakdown of unpaid fees by student.</p>
+                    {% if remaining_fees_details %}
+                    <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 14px;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #eee; background: #f8f9fa;">
+                                <th style="padding: 12px; font-weight: 600;">Class</th>
+                                <th style="padding: 12px; font-weight: 600;">Roll No.</th>
+                                <th style="padding: 12px; font-weight: 600;">Student Name</th>
+                                <th style="padding: 12px; font-weight: 600;">Username</th>
+                                <th style="padding: 12px; font-weight: 600; text-align: right;">Remaining Dues (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in remaining_fees_details %}
+                            <tr style="border-bottom: 1px solid #eee; transition: background 0.2s;">
+                                <td style="padding: 12px;">Class {{ row.class }}</td>
+                                <td style="padding: 12px;">{{ row.roll_number }}</td>
+                                <td style="padding: 12px;">{{ row.full_name or 'N/A' }}</td>
+                                <td style="padding: 12px; color: #7f8c8d;">{{ row.username }}</td>
+                                <td style="padding: 12px; text-align: right; color: #e74c3c; font-weight: 500;">₹{{ row.remaining_fee }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background-color: #fffaf0; font-weight: bold; border-top: 2px solid #eee;">
+                                <td colspan="4" style="padding: 12px; text-align: right;">Total Remaining Dues:</td>
+                                <td style="padding: 12px; text-align: right; color: #e74c3c; font-size: 16px;">₹{{ remaining_fees }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    {% else %}
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; color: #7f8c8d; border: 1px solid #eee;">
+                        No remaining fees pending from active students.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="auth-container" style="max-width: 600px; margin: 0 auto; border-top-color: #9b59b6; text-align: center;">
+                    <h3>Update Student Dues</h3>
+                    <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Add monthly fees of all active students to their remaining dues balance.</p>
+                    <form action="/admin/post-monthly-fees" method="POST" onsubmit="return confirm('Are you sure you want to add monthly fees of all students to their remaining dues?');">
+                        <button type="submit" class="auth-btn" style="background-color: #9b59b6; border-color: #9b59b6; color: white;">Post Monthly Fees to Dues</button>
+                    </form>
                 </div>
             </div>
         </main>
@@ -129,10 +196,10 @@
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Fees Collected', 'Expenses'],
+                labels: ['Fees Collected', 'Expenses', 'Remaining Dues'],
                 datasets: [{
-                    data: [Number("{{ fees }}"), Number("{{ expenses }}")],
-                    backgroundColor: ['#2ecc71', '#e74c3c'],
+                    data: [Number("{{ fees }}"), Number("{{ expenses }}"), Number("{{ remaining_fees }}")],
+                    backgroundColor: ['#2ecc71', '#e74c3c', '#fdcb6e'],
                 }]
             },
             options: {

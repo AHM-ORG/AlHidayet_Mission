@@ -35,6 +35,7 @@
                 <div class="sidebar-label">Cash Manager</div>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
                 <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
                 <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
@@ -112,20 +113,40 @@
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
                     <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3 style="color: #6c5ce7;"><i data-lucide="users"></i> Configure Teacher Salary</h3>
-                        <p style="color: #666; font-size: 14px;">Set the monthly salary for a teacher.</p>
+                        <h3 style="color: #6c5ce7;"><i data-lucide="users"></i> Configure Salary</h3>
+                        <p style="color: #666; font-size: 14px;">Set the monthly salary and dues for a teacher or staff member.</p>
                         <form action="/admin/set-salary" method="post" style="margin-top: 20px;">
                             <div class="input-group">
+                                <label>Recipient Type:</label>
+                                <select name="recipient_type" id="set_recipient_type" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="teacher">Teacher</option>
+                                    <option value="staff">Staff</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="teacher-select-group">
                                 <label>Teacher:</label>
-                                <select name="teacher_id" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                                <select name="teacher_recipient_id" id="teacher_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
                                     {% for t in teachers %}
-                                    <option value="{{ t.id }}">{{ t.full_name or (t.username | clean_name) }} (Current: ₹{{ t.salary }})</option>
+                                    <option value="{{ t.id }}" data-salary="{{ t.salary or 0.0 }}" data-remaining="{{ t.remaining_salary or 0.0 }}">{{ t.full_name or (t.username | clean_name) }} (Current: ₹{{ t.salary }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
+                            <div class="input-group" id="staff-select-group" style="display: none;">
+                                <label>Staff Member:</label>
+                                <select name="staff_recipient_id" id="staff_recipient_id" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                                    {% for s in staff_list %}
+                                    <option value="{{ s.id }}" data-salary="{{ s.salary or 0.0 }}" data-remaining="{{ s.remaining_salary or 0.0 }}">{{ s.full_name }} ({{ s.staff_type }}) (Current: ₹{{ s.salary }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <input type="hidden" name="recipient_id" id="set_recipient_id_hidden">
                             <div class="input-group">
                                 <label>Salary Amount (INR):</label>
-                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 15000">
+                                <input type="number" id="teacher_salary_amount" name="amount" required step="1" min="0" placeholder="e.g. 15000">
+                            </div>
+                            <div class="input-group">
+                                <label>Remaining Salary / Dues (INR):</label>
+                                <input type="number" id="teacher_remaining_salary" name="remaining_salary" required step="0.01" placeholder="e.g. 5000">
                             </div>
                             
                             <button type="submit" class="auth-btn" style="background: #6c5ce7;">Set Salary</button>
@@ -151,6 +172,42 @@
                     }
                 });
             });
+            
+            const recipientTypeSelect = document.getElementById('set_recipient_type');
+            const teacherSelectGroup = document.getElementById('teacher-select-group');
+            const staffSelectGroup = document.getElementById('staff-select-group');
+            const teacherSelectEl = document.getElementById('teacher_recipient_id');
+            const staffSelectEl = document.getElementById('staff_recipient_id');
+            const hiddenIdInput = document.getElementById('set_recipient_id_hidden');
+            const salaryInput = document.getElementById('teacher_salary_amount');
+            const remainingInput = document.getElementById('teacher_remaining_salary');
+
+            function updateSetSalaryFields() {
+                const type = recipientTypeSelect.value;
+                let selectedOpt = null;
+                if (type === 'teacher') {
+                    teacherSelectGroup.style.display = 'block';
+                    staffSelectGroup.style.display = 'none';
+                    selectedOpt = teacherSelectEl.options[teacherSelectEl.selectedIndex];
+                    hiddenIdInput.value = teacherSelectEl.value;
+                } else {
+                    staffSelectGroup.style.display = 'block';
+                    teacherSelectGroup.style.display = 'none';
+                    selectedOpt = staffSelectEl.options[staffSelectEl.selectedIndex];
+                    hiddenIdInput.value = staffSelectEl.value;
+                }
+                if (selectedOpt) {
+                    const sal = parseFloat(selectedOpt.getAttribute('data-salary')) || 0.0;
+                    const rem = parseFloat(selectedOpt.getAttribute('data-remaining')) || 0.0;
+                    if (salaryInput) salaryInput.value = sal;
+                    if (remainingInput) remainingInput.value = rem;
+                }
+            }
+
+            if (recipientTypeSelect) recipientTypeSelect.addEventListener('change', updateSetSalaryFields);
+            if (teacherSelectEl) teacherSelectEl.addEventListener('change', updateSetSalaryFields);
+            if (staffSelectEl) staffSelectEl.addEventListener('change', updateSetSalaryFields);
+            setTimeout(updateSetSalaryFields, 300);
         });
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

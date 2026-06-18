@@ -160,7 +160,17 @@
                                         {% set wa_num = ns.num %}
                                     {% endif %}
                                     {% if wa_num %}
-                                     <a href="https://wa.me/{{ wa_num }}?text=Dear Guardian, please pay the fees for {{ s.full_name or s.username }} for {{ month }}."
+                                     {% set prev_due = (s.remaining_fee or 0)|float %}
+                                     {% set current_due = (s.monthly_fee or 0)|float + (s.hostel_fee or 0)|float %}
+                                     {% set total_due = prev_due + current_due %}
+                                     {% set msg_text %}প্রিয় অভিভাবক, আল হিদায়েত মিশনের পক্ষ থেকে জানানো যাচ্ছে যে, এই মাসের বেতন পরিশোধের সময় হয়েছে। অনুগ্রহ করে নির্ধারিত সময়ের মধ্যে বেতন পরিশোধ করার জন্য অনুরোধ করা হলো। ধন্যবাদ।
+
+আগের বাকি:- {{ prev_due|int }}
+মাসের বাকি :- {{ current_due|int }}
+*মোট* :- {{ total_due|int }}
+
+প্রত্যেক মাসের 10 তারিখের মধ্যে বেতন পরিশোধ করতে হবে।{% endset %}
+                                     <a href="https://wa.me/{{ wa_num }}?text={{ msg_text|urlencode }}"
                                          target="_blank" class="badge badge-warning">Send WhatsApp</a>
                                     {% else %}
                                      <span style="color: #ccc; font-size: 12px;">No Number</span>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Give Salary - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/staff" class="sidebar-item {% if request.path == '/admin/staff' %}active{% endif %}"><i data-lucide="contact"></i> Staff Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                <a href="/admin/leaves" class="sidebar-item {% if request.path == '/admin/leaves' %}active{% endif %}"><i data-lucide="plane-takeoff"></i> Leave Manager</a>
+                <a href="/admin/attendance-charts" class="sidebar-item {% if request.path == '/admin/attendance-charts' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Attendance Charts</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <a href="{{ url_for('home') }}" class="top-bar-brand" aria-label="Go to home page">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al Hidayet Mission" class="top-bar-logo">
+                        <span>Al Hidayet Mission</span>
+                    </a>
+                    <div class="top-bar-title">Give Salary</div>
+                </div>
+            </header>
+            <div class="content-wrapper">
+                
+                <!-- ALERTS -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    {{ messages[0] }}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                    
+                    <!-- Give Salary Form -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                        <h3 style="color: var(--secondary-color);"><i data-lucide="coins"></i> Disburse Salary</h3>
+                        <p style="color: #666; font-size: 14px;">Record a manual salary payment to a teacher or staff member.</p>
+                        <form action="/admin/give-salary" method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+                            <div class="input-group">
+                                <label>Recipient Type:</label>
+                                <select name="recipient_type" id="salary_recipient_type" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                    <option value="teacher">Teacher</option>
+                                    <option value="staff">Staff</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group" id="teacher-select-group">
+                                <label>Teacher:</label>
+                                <select name="teacher_recipient_id" id="teacherSelect_salary" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                                    {% for t in teachers %}
+                                    <option value="{{ t.id }}" data-salary="{{ t.salary or 0.0 }}" data-remaining="{{ t.remaining_salary or 0.0 }}">
+                                        {{ t.full_name or (t.username | clean_name) }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="input-group" id="staff-select-group" style="display: none;">
+                                <label>Staff Member:</label>
+                                <select name="staff_recipient_id" id="staffSelect_salary" style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                                    {% for s in staff_list %}
+                                    <option value="{{ s.id }}" data-salary="{{ s.salary or 0.0 }}" data-remaining="{{ s.remaining_salary or 0.0 }}">
+                                        {{ s.full_name }} ({{ s.staff_type }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <input type="hidden" name="recipient_id" id="give_recipient_id_hidden">
+                            
+                            <div class="input-group">
+                                <label>Amount to Pay (INR):</label>
+                                <input type="number" name="amount" id="payout-amount" required step="1" min="1" placeholder="e.g. 5000">
+                            </div>
+
+                            <div id="salary-breakdown" style="display: none; background: #f8f9fa; border: 1px dashed #ccc; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px;">
+                                    <span>Monthly Salary:</span>
+                                    <span id="breakdown-salary">₹0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; color: #ff7675;">
+                                    <span>Remaining Unpaid Dues:</span>
+                                    <span id="breakdown-remaining">₹0.00</span>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div class="input-group">
+                                    <label>Month:</label>
+                                    <select name="month" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                                        <option value="January">January</option>
+                                        <option value="February">February</option>
+                                        <option value="March">March</option>
+                                        <option value="April">April</option>
+                                        <option value="May">May</option>
+                                        <option value="June">June</option>
+                                        <option value="July">July</option>
+                                        <option value="August">August</option>
+                                        <option value="September">September</option>
+                                        <option value="October">October</option>
+                                        <option value="November">November</option>
+                                        <option value="December">December</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Year:</label>
+                                    <input type="text" name="year" value="2026" required>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <label>Payment Reference / Notes:</label>
+                                <input type="text" name="description" placeholder="e.g. Paid in Cash / Bank transfer ref #12345" required>
+                            </div>
+
+                            <div class="input-group">
+                                <label>Upload Proof of Payment (optional):</label>
+                                <input type="file" name="proof" accept="image/*,application/pdf" style="padding: 5px;">
+                            </div>
+
+                            <button type="submit" class="auth-btn" style="background: var(--success-color);">Disburse Salary</button>
+                        </form>
+                    </div>
+
+                    <!-- Payout History -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="margin: 0;">Recent Salary Disbursements</h3>
+                            <input type="text" id="salarySearch" placeholder="Search disbursements..." style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 100%; max-width: 400px;">
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;" id="salaryTable">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #eee;">
+                                        <th style="padding: 10px; text-align: left;">Recipient</th>
+                                        <th style="padding: 10px; text-align: left;">Amount</th>
+                                        <th style="padding: 10px; text-align: left;">Description / Period</th>
+                                        <th style="padding: 10px; text-align: left;">Date</th>
+                                        <th style="padding: 10px; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in recent_salaries %}
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 10px;">
+                                            {{ s.recipient_name }}
+                                            <span style="font-size: 11px; color: #888; display: block;">{{ s.recipient_type | capitalize }}</span>
+                                        </td>
+                                        <td style="padding: 10px; font-weight: bold; color: var(--success-color);">₹{{ s.amount }}</td>
+                                        <td style="padding: 10px;">{{ s.description }}</td>
+                                        <td style="padding: 10px; color: #636e72; font-size: 12px;">{{ s.date }}</td>
+                                        <td style="padding: 10px; text-align: center;">
+                                            <form action="{{ url_for('delete_expense', expense_id=s.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this salary disbursement? This will add the amount back to teacher\'s remaining salary.');">
+                                                <button type="submit" style="background: none; border: none; color: #ff7675; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
+                                                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No disbursements found.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>lucide.createIcons();</script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+            
+            const recipientTypeSelect = document.getElementById('salary_recipient_type');
+            const teacherSelectGroup = document.getElementById('teacher-select-group');
+            const staffSelectGroup = document.getElementById('staff-select-group');
+            const teacherSelectEl = document.getElementById('teacherSelect_salary');
+            const staffSelectEl = document.getElementById('staffSelect_salary');
+            const hiddenIdInput = document.getElementById('give_recipient_id_hidden');
+            const payoutAmountInput = document.getElementById('payout-amount');
+            const breakdownCard = document.getElementById('salary-breakdown');
+            const breakdownSalary = document.getElementById('breakdown-salary');
+            const breakdownRemaining = document.getElementById('breakdown-remaining');
+
+            function updateSalaryBreakdown() {
+                const type = recipientTypeSelect.value;
+                let selectedOpt = null;
+                if (type === 'teacher') {
+                    teacherSelectGroup.style.display = 'block';
+                    staffSelectGroup.style.display = 'none';
+                    selectedOpt = teacherSelectEl.options[teacherSelectEl.selectedIndex];
+                    hiddenIdInput.value = teacherSelectEl.value;
+                } else {
+                    staffSelectGroup.style.display = 'block';
+                    teacherSelectGroup.style.display = 'none';
+                    selectedOpt = staffSelectEl.options[staffSelectEl.selectedIndex];
+                    hiddenIdInput.value = staffSelectEl.value;
+                }
+                
+                if (selectedOpt) {
+                    const salary = parseFloat(selectedOpt.getAttribute('data-salary')) || 0.0;
+                    const remaining = parseFloat(selectedOpt.getAttribute('data-remaining')) || 0.0;
+                    
+                    if (breakdownSalary) {
+                        breakdownSalary.textContent = '₹' + salary.toFixed(2);
+                    }
+                    if (breakdownRemaining) {
+                        breakdownRemaining.textContent = '₹' + remaining.toFixed(2);
+                    }
+                    
+                    if (payoutAmountInput) {
+                        payoutAmountInput.value = remaining > 0 ? remaining : salary;
+                    }
+                    breakdownCard.style.display = 'block';
+                } else {
+                    breakdownCard.style.display = 'none';
+                }
+            }
+
+            if (recipientTypeSelect) recipientTypeSelect.addEventListener('change', updateSalaryBreakdown);
+            if (teacherSelectEl) teacherSelectEl.addEventListener('change', updateSalaryBreakdown);
+            if (staffSelectEl) staffSelectEl.addEventListener('change', updateSalaryBreakdown);
+            setTimeout(updateSalaryBreakdown, 300);
+            
+            let searchInput = document.getElementById('salarySearch');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function() {
+                    let filter = this.value.toLowerCase();
+                    let rows = document.querySelectorAll('#salaryTable tbody tr');
+                    rows.forEach(row => {
+                        let text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(filter) ? '' : 'none';
+                    });
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

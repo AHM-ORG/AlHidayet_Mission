@@ -372,7 +372,10 @@
 
                         <div class="input-group" style="margin-bottom: 30px;">
                             <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Password *</label>
-                            <input type="password" name="password" required placeholder="Create Password">
+                            <input type="password" name="password" required placeholder="Create Password" minlength="6" maxlength="32">
+                            <p style="font-size: 11px; color: #888; margin-top: 5px; line-height: 1.4;">
+                                Password must be 6-32 characters long, containing at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g. !@#$%^&*).
+                            </p>
                         </div>
 
                         <button type="submit" class="auth-btn">Save Student</button>

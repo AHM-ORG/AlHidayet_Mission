@@ -67,7 +67,14 @@ DB_NAME = os.getenv('DATABASE_PATH', os.path.join(INSTANCE_DIR, 'users.db'))
 DATABASE_URL = os.getenv('DATABASE_URL')
 DATABASE_AUTH_TOKEN = os.getenv('DATABASE_AUTH_TOKEN')
 
+# Create persistent session for Turso cloud DB to keep TCP/TLS connections alive
+import requests
+turso_session = requests.Session()
+
 def consolidate_databases():
+    if DATABASE_URL and (DATABASE_URL.startswith("libsql://") or DATABASE_URL.startswith("https://") or DATABASE_URL.startswith("http://")):
+        print(" [DB CONSOLIDATION] Skipping local database consolidation for cloud database.")
+        return
     import shutil
     base_users_db = os.path.join(BASE_DIR, 'users.db')
     
@@ -149,10 +156,10 @@ def consolidate_databases():
                 print(f" [DB CONSOLIDATION ERROR] Failed to merge {old_db_name}: {merge_err}")
 
 # Execute database migration and consolidation
-consolidate_databases()
+# consolidate_databases() # Moved to bottom to prevent WSGI hangs
 
 def migrate_student_info_schema():
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_db_connection()
     c = conn.cursor()
     new_cols = [
         ("unique_code", "TEXT"),
@@ -182,7 +189,8 @@ def migrate_student_info_schema():
         ("take_day_hostel", "INTEGER DEFAULT 0"),
         ("take_car", "INTEGER DEFAULT 0"),
         ("admission_fee", "REAL DEFAULT 0.0"),
-        ("readmission_fee", "REAL DEFAULT 0.0")
+        ("readmission_fee", "REAL DEFAULT 0.0"),
+        ("is_custom_fee", "INTEGER DEFAULT 0")
     ]
     for col_name, col_type in new_cols:
         try:
@@ -195,7 +203,7 @@ def migrate_student_info_schema():
 
 def migrate_staff_and_expense_recipient_schema():
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute('''
             CREATE TABLE IF NOT EXISTS staff (
@@ -227,7 +235,7 @@ def migrate_staff_and_expense_recipient_schema():
 
 def update_bhogram_class_fees():
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         
         # Exact values for bhogram classes from poster:
@@ -268,12 +276,12 @@ def update_bhogram_class_fees():
     except Exception as e:
         print(f" [DB INIT ERROR] Failed to update Bhogram class fees: {e}")
 
-update_bhogram_class_fees()
+# update_bhogram_class_fees() # Moved to bottom
 
 
 def migrate_class_teachers_and_complaints_schema():
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute('''
             CREATE TABLE IF NOT EXISTS class_teachers (
@@ -298,7 +306,7 @@ def migrate_class_teachers_and_complaints_schema():
     except Exception as e:
         print(f" [DB MIGRATE ERROR] Class teachers/complaints migration failed: {e}")
 
-migrate_class_teachers_and_complaints_schema()
+# migrate_class_teachers_and_complaints_schema() # Moved to bottom
 
 def normalize_class_name(name):
     if not name:
@@ -560,7 +568,7 @@ def _send_activity_email_sync(subject, body):
         
         # Flush any previously failed pending logs
         try:
-            conn = sqlite3.connect(DB_NAME)
+            conn = get_db_connection()
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS pending_activity_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -588,7 +596,7 @@ def _send_activity_email_sync(subject, body):
     else:
         # Save to database to retry later
         try:
-            conn = sqlite3.connect(DB_NAME)
+            conn = get_db_connection()
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS pending_activity_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -796,65 +804,314 @@ def generate_unique_student_code(c):
             return code
 
 def get_db_connection():
-    if DATABASE_URL and DATABASE_URL.startswith("libsql://"):
-        try:
-            import libsql_experimental as libsql
-            
-            class CustomRow(tuple):
-                def __new__(cls, cursor, row):
-                    return super().__new__(cls, row)
-                def __init__(self, cursor, row):
-                    self._columns = [col[0] for col in cursor.description]
-                def __getitem__(self, key):
-                    if isinstance(key, str):
-                        try:
-                            return super().__getitem__(self._columns.index(key))
-                        except ValueError:
-                            raise KeyError(key)
-                    return super().__getitem__(key)
-                def keys(self):
-                    return self._columns
+    from flask import g, has_request_context
+    if has_request_context() and 'db_conn' in g:
+        return g.db_conn
 
-            class LibsqlCursorWrapper:
-                def __init__(self, cursor):
-                    self._cursor = cursor
-                @property
-                def description(self):
-                    return self._cursor.description
-                @property
-                def lastrowid(self):
-                    return self._cursor.lastrowid
-                def execute(self, sql, parameters=()):
-                    self._cursor.execute(sql, parameters)
-                    return self
-                def fetchone(self):
-                    row = self._cursor.fetchone()
-                    if row is None: return None
-                    return CustomRow(self._cursor, row)
-                def fetchall(self):
-                    return [CustomRow(self._cursor, row) for row in self._cursor.fetchall()]
+    if DATABASE_URL and (DATABASE_URL.startswith("libsql://") or DATABASE_URL.startswith("https://") or DATABASE_URL.startswith("http://")):
+        import base64
+        import requests
+        
+        class HttpLibsqlRow:
+            def __init__(self, cols, row_values):
+                self._row = tuple(row_values)
+                self._columns = cols
+            def __getitem__(self, key):
+                if isinstance(key, str):
+                    try:
+                        return self._row[self._columns.index(key)]
+                    except ValueError:
+                        raise KeyError(key)
+                return self._row[key]
+            def keys(self):
+                return self._columns
+            def __iter__(self):
+                return iter(self._row)
+            def __len__(self):
+                return len(self._row)
 
-            class LibsqlConnectionWrapper:
-                def __init__(self, conn):
-                    self._conn = conn
-                def execute(self, sql, parameters=()):
-                    cursor = self._conn.cursor()
-                    cursor.execute(sql, parameters)
-                    return LibsqlCursorWrapper(cursor)
-                def cursor(self):
-                    return LibsqlCursorWrapper(self._conn.cursor())
-                def commit(self):
-                    self._conn.commit()
-                def close(self):
-                    self._conn.close()
+        class HttpLibsqlCursor:
+            def __init__(self, connection):
+                self._connection = connection
+                self._results = []
+                self._idx = 0
+                self.description = None
+                self.lastrowid = None
+                self.rowcount = -1
 
-            raw_conn = libsql.connect(database=DATABASE_URL, auth_token=DATABASE_AUTH_TOKEN)
-            conn = LibsqlConnectionWrapper(raw_conn)
-        except ImportError:
-            # Fallback if libsql_experimental is not installed
-            conn = sqlite3.connect(DB_NAME, timeout=30)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA busy_timeout = 30000")
+            def execute(self, sql, parameters=()):
+                self._results, self.description, self.lastrowid, self.rowcount = self._connection._execute_http(sql, parameters)
+                self._idx = 0
+                return self
+
+            def executemany(self, sql, seq_of_parameters):
+                for parameters in seq_of_parameters:
+                    self.execute(sql, parameters)
+                return self
+
+            def fetchone(self):
+                if self._idx < len(self._results):
+                    row = self._results[self._idx]
+                    self._idx += 1
+                    return row
+                return None
+
+            def fetchall(self):
+                res = self._results[self._idx:]
+                self._idx = len(self._results)
+                return res
+
+            def close(self):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                self.close()
+
+            def __iter__(self):
+                while True:
+                    row = self.fetchone()
+                    if row is None:
+                        break
+                    yield row
+
+        class HttpLibsqlConnection:
+            def __init__(self, database_url, auth_token):
+                self.database_url = database_url
+                self.auth_token = auth_token
+                self.row_factory = None
+                self.http_url = database_url.replace("libsql://", "https://")
+                if not self.http_url.startswith("https://") and not self.http_url.startswith("http://"):
+                    self.http_url = "https://" + self.http_url
+                self.baton = None
+                self.in_transaction = False
+
+            def cursor(self):
+                return HttpLibsqlCursor(self)
+
+            def execute(self, sql, parameters=()):
+                sql_upper = sql.strip().upper()
+                is_write = any(sql_upper.startswith(prefix) for prefix in ["INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER"])
+                if is_write and not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+
+                cursor = self.cursor()
+                cursor.execute(sql, parameters)
+                return cursor
+
+            def executemany(self, sql, seq_of_parameters):
+                sql_upper = sql.strip().upper()
+                is_write = any(sql_upper.startswith(prefix) for prefix in ["INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER"])
+                if is_write and not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+
+                cursor = self.cursor()
+                cursor.executemany(sql, seq_of_parameters)
+                return cursor
+
+            def executescript(self, sql_script):
+                if not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+                cursor = self.cursor()
+                for statement in sql_script.split(';'):
+                    if statement.strip():
+                        cursor.execute(statement)
+                return cursor
+
+            def commit(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("COMMIT")
+                    finally:
+                        self.in_transaction = False
+
+            def rollback(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("ROLLBACK")
+                    finally:
+                        self.in_transaction = False
+
+            def close(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("ROLLBACK")
+                    except Exception:
+                        pass
+                    self.in_transaction = False
+                
+                if self.baton:
+                    try:
+                        headers = {
+                            "Authorization": f"Bearer {self.auth_token}",
+                            "Content-Type": "application/json"
+                        }
+                        url = f"{self.http_url.rstrip('/')}/v2/pipeline"
+                        payload = {
+                            "baton": self.baton,
+                            "requests": [{"type": "close"}]
+                        }
+                        turso_session.post(url, json=payload, headers=headers, timeout=5)
+                    except Exception:
+                        pass
+                    self.baton = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if exc_type is not None:
+                    self.rollback()
+                else:
+                    self.commit()
+                self.close()
+
+            def _execute_http(self, sql, parameters=()):
+                def _make_value(val):
+                    if val is None:
+                        return {"type": "null"}
+                    elif isinstance(val, bool):
+                        return {"type": "integer", "value": "1" if val else "0"}
+                    elif isinstance(val, int):
+                        return {"type": "integer", "value": str(val)}
+                    elif isinstance(val, float):
+                        return {"type": "float", "value": val}
+                    elif isinstance(val, (bytes, bytearray)):
+                        return {"type": "blob", "value": base64.b64encode(val).decode('utf-8')}
+                    else:
+                        return {"type": "text", "value": str(val)}
+                
+                stmt = {"sql": sql}
+                if isinstance(parameters, dict):
+                    named_args = []
+                    for name, val in parameters.items():
+                        clean_name = str(name).lstrip(':@$')
+                        named_args.append({
+                            "name": clean_name,
+                            "value": _make_value(val)
+                        })
+                    stmt["named_args"] = named_args
+                else:
+                    args = [_make_value(val) for val in parameters]
+                    stmt["args"] = args
+
+                payload = {
+                    "requests": [
+                        {
+                            "type": "execute",
+                            "stmt": stmt
+                        }
+                    ]
+                }
+                if self.baton:
+                    payload["baton"] = self.baton
+                
+                headers = {
+                    "Authorization": f"Bearer {self.auth_token}",
+                    "Content-Type": "application/json"
+                }
+                
+                proxies = {
+                    "http": os.environ.get("http_proxy"),
+                    "https": os.environ.get("https_proxy")
+                }
+                
+                url = f"{self.http_url.rstrip('/')}/v2/pipeline"
+                
+                max_retries = 3
+                retry_delay = 1.0
+                response = None
+                
+                import time
+                import requests
+                for attempt in range(max_retries):
+                    try:
+                        response = turso_session.post(url, json=payload, headers=headers, proxies=proxies, timeout=15)
+                        if response.status_code in [429, 500, 502, 503, 504]:
+                            if attempt < max_retries - 1:
+                                time.sleep(retry_delay)
+                                retry_delay *= 2
+                                continue
+                        break
+                    except requests.exceptions.RequestException as e:
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                        else:
+                            raise sqlite3.DatabaseError(f"Turso HTTP connection failed after {max_retries} retries: {str(e)}")
+                            
+                if response.status_code != 200:
+                    raise sqlite3.DatabaseError(f"Turso HTTP error {response.status_code}: {response.text}")
+                    
+                data = response.json()
+                self.baton = data.get("baton")
+                
+                results = data.get("results", [])
+                if not results:
+                    raise sqlite3.DatabaseError(f"Turso response missing results: {data}")
+                    
+                first_res = results[0]
+                if first_res.get("type") == "error":
+                    err_msg = first_res.get("error", {}).get("message", "Unknown database error")
+                    raise sqlite3.OperationalError(f"Database error: {err_msg}")
+                    
+                response_obj = first_res.get("response", {})
+                if response_obj.get("type") == "error":
+                    err_msg = response_obj.get("error", {}).get("message", "Unknown query error")
+                    raise sqlite3.OperationalError(f"Query error: {err_msg}")
+                    
+                result_obj = response_obj.get("result", {})
+                
+                raw_cols = result_obj.get("cols", [])
+                cols = []
+                for c in raw_cols:
+                    if isinstance(c, dict):
+                        cols.append(c.get("name", ""))
+                    else:
+                        cols.append(str(c))
+                        
+                description = [(name, None, None, None, None, None, None) for name in cols] if cols else None
+                
+                raw_rows = result_obj.get("rows", [])
+                rows = []
+                for row in raw_rows:
+                    parsed_row_values = []
+                    for cell in row:
+                        if isinstance(cell, dict):
+                            t = cell.get("type")
+                            v = cell.get("value")
+                            if t == "null":
+                                parsed_row_values.append(None)
+                            elif t == "integer":
+                                parsed_row_values.append(int(v) if v is not None else None)
+                            elif t == "float":
+                                parsed_row_values.append(float(v) if v is not None else None)
+                            elif t == "text":
+                                parsed_row_values.append(str(v) if v is not None else None)
+                            elif t == "blob":
+                                parsed_row_values.append(base64.b64decode(v) if v is not None else None)
+                            else:
+                                parsed_row_values.append(v)
+                        else:
+                            parsed_row_values.append(cell)
+                    rows.append(HttpLibsqlRow(cols, parsed_row_values))
+                    
+                affected_row_count = result_obj.get("affected_row_count", -1)
+                last_insert_rowid = result_obj.get("last_insert_rowid")
+                if last_insert_rowid is not None:
+                    try:
+                        last_insert_rowid = int(last_insert_rowid)
+                    except ValueError:
+                        pass
+                        
+                return rows, description, last_insert_rowid, affected_row_count
+
+        conn = HttpLibsqlConnection(DATABASE_URL, DATABASE_AUTH_TOKEN)
     else:
         conn = sqlite3.connect(DB_NAME, timeout=30)
         conn.row_factory = sqlite3.Row
@@ -862,11 +1119,13 @@ def get_db_connection():
     
     from flask import g, has_request_context
     if has_request_context():
+        g.db_conn = conn
         if 'db_connections' not in g:
             g.db_connections = []
         g.db_connections.append(conn)
         
     return conn
+
 
 @app.teardown_appcontext
 def teardown_db_connections(exception):
@@ -899,7 +1158,54 @@ def sync_teacher_assigned_classes_string_from_db(conn, teacher_id):
     conn.execute("UPDATE teacher_info SET assigned_classes = ? WHERE user_id = ?", (new_val, teacher_id))
 
 def sync_teacher_subjects_from_string(conn, teacher_id, assigned_classes_str):
-    pass
+    teacher_row = conn.execute("SELECT username FROM users WHERE id = ?", (teacher_id,)).fetchone()
+    if not teacher_row:
+        return
+    teacher_username = teacher_row['username']
+    
+    import re
+    valid_assignments = set()
+    if assigned_classes_str:
+        parts = [p.strip() for p in assigned_classes_str.split(',')]
+        for part in parts:
+            match = re.match(r'^Class\s+(.*?):\s+(.*)$', part, re.IGNORECASE)
+            if match:
+                class_name = match.group(1).strip()
+                subject_name = match.group(2).strip()
+                valid_assignments.add((class_name.lower(), subject_name.lower(), class_name, subject_name))
+
+    # Update teacher_subjects
+    conn.execute("DELETE FROM teacher_subjects WHERE teacher_id = ?", (teacher_id,))
+    for c_lower, s_lower, orig_c, orig_s in valid_assignments:
+        subj_row = conn.execute("SELECT id FROM subjects WHERE LOWER(class) = ? AND LOWER(name) = ?", (c_lower, s_lower)).fetchone()
+        if subj_row:
+            try:
+                conn.execute("INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)", (teacher_id, subj_row['id']))
+            except Exception:
+                pass
+        
+    # Cascade to class_routine
+    teacher_name_row = conn.execute('''
+        SELECT COALESCE(ti.full_name, u.username) as name
+        FROM users u
+        LEFT JOIN teacher_info ti ON u.id = ti.user_id
+        WHERE u.id = ?
+    ''', (teacher_id,)).fetchone()
+    
+    if teacher_name_row:
+        t_name = teacher_name_row['name']
+        routines = conn.execute("SELECT id, class_name, subject FROM class_routine WHERE LOWER(teacher_name) = LOWER(?)", (t_name,)).fetchall()
+        for r in routines:
+            rc = r['class_name'].strip().lower() if r['class_name'] else ''
+            rs = r['subject'].strip().lower() if r['subject'] else ''
+            
+            found = False
+            for vc, vs, _, _ in valid_assignments:
+                if vc == rc and vs == rs:
+                    found = True
+                    break
+            if not found:
+                conn.execute("DELETE FROM class_routine WHERE id = ?", (r['id'],))
 
 def add_teacher_assigned_classes_string(conn, teacher_id, class_name, subject_name):
     sync_teacher_assigned_classes_string_from_db(conn, teacher_id)
@@ -1021,6 +1327,22 @@ def get_razorpay_client():
     if not razorpay or not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
         return None
     return razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+def check_password_strength(password):
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long."
+    if len(password) > 32:
+        return False, "Password cannot be longer than 32 characters."
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter."
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter."
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one number."
+    special_chars = "!@#$%^&*(),.?\":{}|<>"
+    if not any(c in special_chars for c in password):
+        return False, f"Password must contain at least one special character (e.g. {special_chars})."
+    return True, ""
 
 def is_password_hash(value):
     return bool(value) and value.startswith(PASSWORD_HASH_PREFIXES)
@@ -1543,8 +1865,7 @@ def seed_default_subjects(conn):
 
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
+    conn = get_db_connection()
     c = conn.cursor()
     
     # Tables creation
@@ -2039,6 +2360,18 @@ def init_db():
         pass
 
     try:
+        c.execute("ALTER TABLE teacher_info ADD COLUMN remaining_salary REAL DEFAULT 0.0")
+        print(" [DB MIGRATE] Added remaining_salary column to teacher_info")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE student_info ADD COLUMN remaining_fee REAL DEFAULT 0.0")
+        print(" [DB MIGRATE] Added remaining_fee column to student_info")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
         c.execute("ALTER TABLE teacher_info ADD COLUMN teacher_type TEXT DEFAULT 'Regular Class'")
         print(" [DB MIGRATE] Added teacher_type column to teacher_info")
     except sqlite3.OperationalError:
@@ -2182,14 +2515,31 @@ def init_db():
 
     migrate_plaintext_passwords(c)
     seed_default_subjects(conn)
+
+    # Normalize existing branch values to lowercase
+    for table in ['users', 'student_info', 'expenses', 'notices', 'applications', 'pending_media', 'staff', 'certificates']:
+        try:
+            c.execute(f"UPDATE {table} SET branch = LOWER(branch) WHERE branch IS NOT NULL")
+        except Exception:
+            pass
     
     conn.commit()
     conn.close()
 
+# Global cache for settings and committee info to minimize cloud DB roundtrips
+_settings_cache = {}
+_cache_expiry = 0.0
+_committee_cache = None
+_committee_cache_expiry = 0.0
+
 def get_school_setting(key, default_value):
-    conn = sqlite3.connect(DB_NAME, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.row_factory = sqlite3.Row
+    import time
+    global _settings_cache, _cache_expiry
+    now = time.time()
+    if now < _cache_expiry and key in _settings_cache:
+        return _settings_cache[key]
+        
+    conn = get_db_connection()
     c = conn.cursor()
     try:
         row = c.execute("SELECT setting_value FROM school_settings WHERE setting_key = ?", (key,)).fetchone()
@@ -2197,11 +2547,16 @@ def get_school_setting(key, default_value):
     except Exception:
         val = default_value
     conn.close()
+    
+    _settings_cache[key] = val
+    if now >= _cache_expiry:
+        _cache_expiry = now + 60.0  # Keep cached items for up to 60 seconds
     return val
 
 def set_school_setting(key, value):
-    conn = sqlite3.connect(DB_NAME, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
+    global _settings_cache
+    _settings_cache[key] = value
+    conn = get_db_connection()
     c = conn.cursor()
     try:
         c.execute("INSERT OR REPLACE INTO school_settings (setting_key, setting_value) VALUES (?, ?)", (key, value))
@@ -2211,7 +2566,7 @@ def set_school_setting(key, value):
     conn.close()
 
 def migrate_pending_media_drive_id():
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_db_connection()
     c = conn.cursor()
     # 1. Add drive_file_id to pending_media for existing dbs
     try:
@@ -2281,32 +2636,63 @@ def migrate_question_papers_to_drive():
                 except Exception:
                     break
 
-# Google Drive API Client Helpers
+# Cache variables for Google Drive access token
+cached_drive_access_token = None
+cached_drive_token_expiry = None
+
+import threading
+_drive_token_lock = threading.Lock()
+
 def get_drive_access_token():
-    client_id = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
-    client_secret = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
-    refresh_token = os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')
+    global cached_drive_access_token, cached_drive_token_expiry
     
-    if not client_id or not client_secret or not refresh_token:
-        return None
+    # Check if cached token is still valid (fast exit without lock)
+    if cached_drive_access_token and cached_drive_token_expiry:
+        if datetime.now(timezone.utc) < cached_drive_token_expiry:
+            return None if cached_drive_access_token == "FAILED" else cached_drive_access_token
+            
+    with _drive_token_lock:
+        # Re-check under lock in case another thread updated it while we were waiting
+        if cached_drive_access_token and cached_drive_token_expiry:
+            if datetime.now(timezone.utc) < cached_drive_token_expiry:
+                return None if cached_drive_access_token == "FAILED" else cached_drive_access_token
+                
+        client_id = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
+        client_secret = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
+        refresh_token = os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')
         
-    url = "https://oauth2.googleapis.com/token"
-    payload = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "refresh_token": refresh_token,
-        "grant_type": "refresh_token"
-    }
-    try:
-        import requests
-        res = requests.post(url, data=payload, timeout=10)
-        if res.status_code == 200:
-            return res.json().get('access_token')
-        else:
-            print(f" [GOOGLE DRIVE AUTH ERROR] {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f" [GOOGLE DRIVE AUTH EXCEPTION] {e}")
-    return None
+        if not client_id or not client_secret or not refresh_token:
+            return None
+            
+        url = "https://oauth2.googleapis.com/token"
+        payload = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token"
+        }
+        try:
+            import requests
+            res = requests.post(url, data=payload, timeout=10)
+            if res.status_code == 200:
+                token_data = res.json()
+                cached_drive_access_token = token_data.get('access_token')
+                expires_in = token_data.get('expires_in', 3600)
+                # 60 seconds buffer before expiration
+                cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+                return cached_drive_access_token
+            else:
+                print(f" [GOOGLE DRIVE AUTH ERROR] {res.status_code}: {res.text}")
+                # Cache failure for 5 minutes to prevent network spam and slow loads
+                cached_drive_access_token = "FAILED"
+                cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+        except Exception as e:
+            print(f" [GOOGLE DRIVE AUTH EXCEPTION] {e}")
+            # Cache failure for 5 minutes to prevent network spam and slow loads
+            cached_drive_access_token = "FAILED"
+            cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+        return None
+
 
 def upload_to_google_drive(file_bytes, file_name, mime_type, folder_id=None):
     access_token = get_drive_access_token()
@@ -2519,16 +2905,30 @@ def drive_view(file_id):
     except Exception as e:
         return f"Error streaming file from Google Drive: {str(e)}", 500
 
+# Cache for missing files in Google Drive to prevent repeat slow lookups
+missing_drive_files = set()
+
 @app.route('/static/uploads/<path:filepath>')
 def serve_static_upload(filepath):
+    filename = os.path.basename(filepath)
+    if filename in missing_drive_files:
+        return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+
     # 1. Fast path: check if local file exists
     local_path = os.path.join(app.root_path, 'static', 'uploads', filepath)
     if os.path.exists(local_path):
         return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
         
+    # Check if Google Drive is configured and authenticated
+    access_token_available = (get_drive_access_token() is not None)
+    if not access_token_available:
+        # Graceful fallback: return local directory send which will return 404
+        missing_drive_files.add(filename)
+        return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+
     # 2. Local file missing: check DB mapping
-    filename = os.path.basename(filepath)
     drive_file_id = None
+
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -2547,7 +2947,12 @@ def serve_static_upload(filepath):
         print(f"Error checking drive mapping for {filename}: {e}")
 
     if drive_file_id:
-        return drive_view(drive_file_id)
+        res = drive_view(drive_file_id)
+        if isinstance(res, tuple) and len(res) > 1 and res[1] >= 400:
+            # If Google Drive view fails (due to auth/revoked token or deleted file on Drive), fall through to 404
+            pass
+        else:
+            return res
         
     # 3. Dynamic Google Drive lookup fallback
     drive_file_id = find_file_in_google_drive(filename)
@@ -2569,15 +2974,20 @@ def serve_static_upload(filepath):
                     break
             except Exception:
                 break
-        return drive_view(drive_file_id)
+        res = drive_view(drive_file_id)
+        if isinstance(res, tuple) and len(res) > 1 and res[1] >= 400:
+            pass
+        else:
+            return res
         
     # 4. Fallback to send_from_directory (returns 404 since file does not exist)
+    missing_drive_files.add(filename)
     return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+
 
 def migrate_and_normalize_database_classes():
     try:
-        conn = sqlite3.connect(DB_NAME, timeout=30)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
         c = conn.cursor()
         
         # 1. Migrate the 'classes' table.
@@ -2654,13 +3064,62 @@ def migrate_and_normalize_database_classes():
     except Exception as e:
         print(f" [DB MIGRATE ERROR] Database normalization failed: {e}")
 
-# Initialize DB and run absolute path sidebar updater
-init_db()
-migrate_student_info_schema()
-migrate_staff_and_expense_recipient_schema()
-migrate_and_normalize_database_classes()
-migrate_pending_media_drive_id()
-migrate_question_papers_to_drive()
+def is_db_initialized(conn):
+    try:
+        c = conn.cursor()
+        res = c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        return res is not None
+    except Exception:
+        return False
+
+# Initialize DB and run migrations if not already initialized or forced
+run_migrations_env = os.getenv('RUN_MIGRATIONS', 'false').lower() == 'true'
+db_exists = False
+try:
+    conn = get_db_connection()
+    db_exists = is_db_initialized(conn)
+    conn.close()
+except Exception as e:
+    print(f" [DB CHECK ERROR] Failed to inspect database on startup: {e}")
+
+if not db_exists or run_migrations_env:
+    print(" [DB INIT] Database not initialized or migrations forced. Running migrations...")
+    init_db()
+    migrate_student_info_schema()
+    migrate_staff_and_expense_recipient_schema()
+    migrate_and_normalize_database_classes()
+    migrate_pending_media_drive_id()
+    migrate_question_papers_to_drive()
+else:
+    print(" [DB INIT] Database already initialized. Running safe migrations anyway...")
+    migrate_student_info_schema()
+    migrate_staff_and_expense_recipient_schema()
+
+def migrate_manual_financial_schema():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE student_info ADD COLUMN remaining_fee REAL DEFAULT 0.0")
+            print(" [DB MIGRATE] Added remaining_fee column to student_info")
+        except Exception as ex:
+            print(f" [DB MIGRATE] remaining_fee column check: {ex}")
+        try:
+            c.execute("ALTER TABLE teacher_info ADD COLUMN remaining_salary REAL DEFAULT 0.0")
+            print(" [DB MIGRATE] Added remaining_salary column to teacher_info")
+        except Exception as ex:
+            print(f" [DB MIGRATE] remaining_salary column check: {ex}")
+        try:
+            c.execute("ALTER TABLE staff ADD COLUMN remaining_salary REAL DEFAULT 0.0")
+            print(" [DB MIGRATE] Added remaining_salary column to staff")
+        except Exception as ex:
+            print(f" [DB MIGRATE] remaining_salary column check on staff: {ex}")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] Failed to run migrate_manual_financial_schema: {e}")
+
+migrate_manual_financial_schema()
 
 
 
@@ -2713,12 +3172,21 @@ def inject_branding():
             pass
         return {'bank_name': bank_details_str, 'branch_name': '', 'account_no': '', 'ifsc_code': ''}
 
-    conn = get_db_connection()
-    try:
-        committee = [dict(row) for row in conn.execute("SELECT * FROM managing_committee ORDER BY order_num ASC, id ASC").fetchall()]
-    except sqlite3.OperationalError:
-        committee = []
-    conn.close()
+    global _committee_cache, _committee_cache_expiry
+    import time
+    now = time.time()
+
+    if _committee_cache is None or now >= _committee_cache_expiry:
+        conn = get_db_connection()
+        try:
+            committee = [dict(row) for row in conn.execute("SELECT * FROM managing_committee ORDER BY order_num ASC, id ASC").fetchall()]
+        except sqlite3.OperationalError:
+            committee = []
+        conn.close()
+        _committee_cache = committee
+        _committee_cache_expiry = now + 60.0  # Cache for 60 seconds
+    else:
+        committee = _committee_cache
 
     coaching_time = get_school_setting('coaching_class_time', '3:00 PM - 5:00 PM')
 
@@ -3148,6 +3616,8 @@ def login(user_type):
                     student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (user['id'],)).fetchone()
                     if student:
                         branch = student['branch']
+                if branch:
+                    branch = branch.lower()
                 conn.close()
                 
                 # Turn on two-factor authentication ONLY for Admin (if not disabled by env)
@@ -3284,6 +3754,8 @@ def verify_otp(context):
                             student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (user['id'],)).fetchone()
                             if student:
                                 branch = student['branch']
+                    if branch:
+                        branch = branch.lower()
                     conn.close()
                     
                     session.clear()
@@ -3323,6 +3795,11 @@ def register():
         role = request.form['role']
         security_key = request.form['security_key']
 
+        is_strong, error_msg = check_password_strength(password)
+        if not is_strong:
+            flash(error_msg)
+            return render_template('register.html')
+
         if role not in {'student', 'teacher'}:
             flash('Invalid account type.')
             return render_template('register.html')
@@ -3335,7 +3812,7 @@ def register():
             flash('Invalid security key.')
             return render_template('register.html')
 
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         try:
             c.execute("INSERT INTO users (username, email, password, role, security_key) VALUES (?, ?, ?, ?, ?)",
@@ -3390,24 +3867,40 @@ def forgot_password():
         
         if user:
             if user['role'] == 'student':
-                # If mobile and dob are provided, this is the verification step
-                if mobile and dob:
-                    student = conn.execute(
-                        "SELECT * FROM student_info WHERE user_id = ? AND phone_number = ? AND dob = ?",
-                        (user['id'], mobile, dob)
-                    ).fetchone()
-                    conn.close()
-                    if student:
-                        session['reset_verified'] = True
+                email = user['email']
+                if email and email.strip() and '@' in email and not (mobile and dob):
+                    # Student has an email, send Email OTP
+                    otp = generate_otp()
+                    if send_otp_email(email, otp):
+                        session['otp'] = otp
+                        session['otp_method'] = 'email'
+                        session['otp_email'] = email
                         session['reset_user_id'] = user['id']
-                        return redirect(url_for('reset_new_password'))
+                        conn.close()
+                        return render_template('verify_otp.html', email=email, context='forgot_password')
                     else:
-                        flash('Mobile number or Date of Birth does not match our records!')
-                        return render_template('forgot_password.html', is_student=True, username=username)
+                        flash('Failed to send OTP. Check system logs.')
+                        conn.close()
+                        return render_template('forgot_password.html')
                 else:
-                    # Render mobile and dob input form for student
-                    conn.close()
-                    return render_template('forgot_password.html', is_student=True, username=username)
+                    # Fallback to Mobile & DOB verification for students without email
+                    if mobile and dob:
+                        student = conn.execute(
+                            "SELECT * FROM student_info WHERE user_id = ? AND phone_number = ? AND dob = ?",
+                            (user['id'], mobile, dob)
+                        ).fetchone()
+                        conn.close()
+                        if student:
+                            session['reset_verified'] = True
+                            session['reset_user_id'] = user['id']
+                            return redirect(url_for('reset_new_password'))
+                        else:
+                            flash('Mobile number or Date of Birth does not match our records!')
+                            return render_template('forgot_password.html', is_student=True, username=username)
+                    else:
+                        # Render mobile and dob input form for student
+                        conn.close()
+                        return render_template('forgot_password.html', is_student=True, username=username)
             else:
                 # Teachers/Admins: Send Email OTP
                 email = user['email']
@@ -3419,6 +3912,7 @@ def forgot_password():
                 otp = generate_otp()
                 if send_otp_email(email, otp):
                     session['otp'] = otp
+                    session['otp_method'] = 'email'
                     session['otp_email'] = email
                     session['reset_user_id'] = user['id']
                     conn.close()
@@ -3472,9 +3966,14 @@ def reset_new_password():
 
     if request.method == 'POST':
         new_password = request.form['new_password']
+        is_strong, error_msg = check_password_strength(new_password)
+        if not is_strong:
+            flash(error_msg)
+            return render_template('reset_password.html')
+            
         user_id = session.get('reset_user_id')
         
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute("UPDATE users SET password = ? WHERE id = ?", (hash_password(new_password), user_id))
         conn.commit()
@@ -3490,12 +3989,6 @@ def reset_new_password():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    try:
-        import update_sidebars_mc
-        update_sidebars_mc.run_update()
-    except Exception as e:
-        app.logger.error(f"Error updating sidebars on dashboard load: {e}")
-
     if 'user' in session:
         role = session['role']
         username = session['user']
@@ -3522,12 +4015,12 @@ def dashboard():
                     SELECT u.id, u.username, u.email, u.role 
                     FROM users u
                     LEFT JOIN student_info si ON u.id = si.user_id
-                    WHERE si.branch = ? OR u.role = 'teacher' OR u.username = ?
+                    WHERE si.branch = ? COLLATE NOCASE OR u.role = 'teacher' OR u.username = ?
                 ''', (session['branch'], username)).fetchall()
                 
                 all_notices = c.execute('''
                     SELECT * FROM notices 
-                    WHERE branch IS NULL OR branch = ? 
+                    WHERE branch IS NULL OR branch = ? COLLATE NOCASE
                     ORDER BY created_at DESC
                 ''', (session['branch'],)).fetchall()
                 
@@ -3535,7 +4028,7 @@ def dashboard():
                     SELECT a.id, a.type, a.status, a.submitted_at, u.username 
                     FROM applications a 
                     LEFT JOIN users u ON a.user_id = u.id 
-                    WHERE a.branch = ? AND a.type NOT IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
+                    WHERE a.branch = ? COLLATE NOCASE AND a.type NOT IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
                     ORDER BY a.submitted_at DESC
                 ''', (session['branch'],)).fetchall()
                 
@@ -3543,7 +4036,7 @@ def dashboard():
                     SELECT a.id, a.type, a.status, a.submitted_at, u.username 
                     FROM applications a 
                     LEFT JOIN users u ON a.user_id = u.id 
-                    WHERE a.branch = ? AND a.type IN ('student_info_edit', 'teacher_info_edit', 'student_password_change') AND a.status = 'Pending'
+                    WHERE a.branch = ? COLLATE NOCASE AND a.type IN ('student_info_edit', 'teacher_info_edit', 'student_password_change') AND a.status = 'Pending'
                     ORDER BY a.submitted_at DESC
                 ''', (session['branch'],)).fetchall()
                 
@@ -3551,7 +4044,7 @@ def dashboard():
                     SELECT pm.*, u.username 
                     FROM pending_media pm 
                     JOIN users u ON pm.user_id = u.id 
-                    WHERE pm.status = 'Pending' AND pm.branch = ?
+                    WHERE pm.status = 'Pending' AND pm.branch = ? COLLATE NOCASE
                     ORDER BY pm.submitted_at DESC
                 ''', (session['branch'],)).fetchall()
 
@@ -3564,7 +4057,7 @@ def dashboard():
                     JOIN users u_t ON c.teacher_id = u_t.id
                     LEFT JOIN student_info si ON u_s.id = si.user_id
                     LEFT JOIN teacher_info ti ON u_t.id = ti.user_id
-                    WHERE si.branch = ?
+                    WHERE si.branch = ? COLLATE NOCASE
                     ORDER BY c.created_at DESC
                 ''', (session['branch'],)).fetchall()
             else:
@@ -3716,9 +4209,10 @@ def update_profile_security():
 
     if action == 'change_password':
         new_password = request.form.get('new_password', '')
-        if len(new_password) < 6:
+        is_strong, error_msg = check_password_strength(new_password)
+        if not is_strong:
             conn.close()
-            flash('New password must be at least 6 characters.')
+            flash(error_msg)
             return redirect(url_for('profile'))
         conn.execute("UPDATE users SET password = ? WHERE id = ?", (hash_password(new_password), user['id']))
         flash('Password updated successfully.')
@@ -3834,7 +4328,7 @@ def submit_application():
     # Extract and normalize branch from form data
     branch = 'bhogram'
 
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
         INSERT INTO applications (user_id, type, data, branch)
@@ -3855,7 +4349,7 @@ def admin_applications():
                 SELECT a.id, a.type, a.status, a.submitted_at, u.username 
                 FROM applications a 
                 LEFT JOIN users u ON a.user_id = u.id 
-                WHERE a.branch = ? AND a.type NOT IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
+                WHERE a.branch = ? COLLATE NOCASE AND a.type NOT IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
                 ORDER BY a.submitted_at DESC
             ''', (session['branch'],)).fetchall()
         else:
@@ -3881,7 +4375,7 @@ def admin_profile_edits():
                 SELECT a.id, a.type, a.status, a.submitted_at, u.username 
                 FROM applications a 
                 LEFT JOIN users u ON a.user_id = u.id 
-                WHERE a.branch = ? AND a.type IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
+                WHERE a.branch = ? COLLATE NOCASE AND a.type IN ('student_info_edit', 'teacher_info_edit', 'student_password_change')
                 ORDER BY a.submitted_at DESC
             ''', (session['branch'],)).fetchall()
         else:
@@ -3903,7 +4397,7 @@ def view_form(form_id):
         form = conn.execute("SELECT * FROM applications WHERE id = ?", (form_id,)).fetchone()
         
         if form:
-            if session.get('branch') and form['branch'] != session['branch']:
+            if session.get('branch') and (form['branch'] or '').lower() != session['branch'].lower():
                 conn.close()
                 flash('Permission denied: This application belongs to another campus.')
                 return redirect(url_for('dashboard'))
@@ -3926,8 +4420,7 @@ def view_form(form_id):
 def form_action(form_id, action):
     if 'user' in session and session['role'] == 'admin':
         status = 'Accepted' if action == 'approve' else 'Rejected'
-        conn = sqlite3.connect(DB_NAME)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection()
         
         # Initialize variables for email notification
         email_username = None
@@ -3942,7 +4435,7 @@ def form_action(form_id, action):
             return redirect(url_for('admin_applications'))
             
         # Check permissions for Branch Admin
-        if session.get('branch') and form['branch'] != session['branch']:
+        if session.get('branch') and (form['branch'] or '').lower() != session['branch'].lower():
             conn.close()
             flash('Permission denied: This application belongs to another campus.')
             return redirect(url_for('dashboard'))
@@ -4353,7 +4846,7 @@ def delete_application(form_id):
         # Check permissions and retrieve data for file deletion
         form = conn.execute("SELECT branch, data FROM applications WHERE id = ?", (form_id,)).fetchone()
         if session.get('branch'):
-            if not form or form['branch'] != session['branch']:
+            if not form or (form['branch'] or '').lower() != session['branch'].lower():
                 conn.close()
                 flash('Permission denied: This application belongs to another campus.')
                 return redirect(url_for('admin_applications'))
@@ -4429,7 +4922,7 @@ def delete_notice(notice_id):
 @app.route('/admin/delete-user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
     if 'user' in session and session['role'] == 'admin':
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         c = conn.cursor()
         user_row = c.execute("SELECT username, role FROM users WHERE id = ?", (user_id,)).fetchone()
         c.execute("DELETE FROM users WHERE id = ?", (user_id,))
@@ -4450,7 +4943,7 @@ def delete_user(user_id):
 def reset_password(user_id):
     if 'user' in session and session['role'] == 'admin':
         new_password = 'mission' + ''.join(random.choices(string.digits, k=6))
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         user_row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
         conn.execute("UPDATE users SET password = ?, temp_password = ? WHERE id = ?", (hash_password(new_password), new_password, user_id))
         conn.commit()
@@ -4474,8 +4967,9 @@ def change_password_directory(user_id):
         return redirect(url_for('dashboard'))
         
     new_password = request.form.get('new_password', '').strip()
-    if len(new_password) < 6:
-        flash('Password must be at least 6 characters long.')
+    is_strong, error_msg = check_password_strength(new_password)
+    if not is_strong:
+        flash(error_msg)
         return redirect(request.referrer or url_for('student_list'))
         
     conn = get_db_connection()
@@ -4681,6 +5175,8 @@ def add_managing_committee():
         order_num = 0
     
     if name and designation:
+        global _committee_cache
+        _committee_cache = None  # Invalidate cache
         conn = get_db_connection()
         conn.execute("INSERT INTO managing_committee (name, designation, order_num) VALUES (?, ?, ?)",
                      (name, designation, order_num))
@@ -4704,6 +5200,8 @@ def edit_managing_committee(member_id):
         order_num = 0
         
     if name and designation:
+        global _committee_cache
+        _committee_cache = None  # Invalidate cache
         conn = get_db_connection()
         conn.execute("UPDATE managing_committee SET name = ?, designation = ?, order_num = ? WHERE id = ?",
                      (name, designation, order_num, member_id))
@@ -4718,6 +5216,8 @@ def edit_managing_committee(member_id):
 @login_required
 @roles_required('admin')
 def delete_managing_committee(member_id):
+    global _committee_cache
+    _committee_cache = None  # Invalidate cache
     conn = get_db_connection()
     conn.execute("DELETE FROM managing_committee WHERE id = ?", (member_id,))
     conn.commit()
@@ -4955,6 +5455,113 @@ def student_list():
         return render_template('admin/student_list.html', students=students, students_by_class=students_by_class, teachers=teachers, role=session['role'])
     return redirect(url_for('home'))
 
+@app.route('/admin/print-students')
+def print_students():
+    if 'user' in session and session['role'] in ['admin', 'teacher']:
+        class_name = request.args.get('class', 'All')
+        conn = get_db_connection()
+        if session.get('branch'):
+            students = conn.execute('''
+                SELECT u.id, u.username, u.email, si.full_name, si.branch, si.class, si.roll_number, si.unique_code,
+                       si.guardian_name, si.dob, si.section, si.blood_group, si.village, si.post_office, si.police_station, 
+                       si.district, si.phone_number, si.aadhaar_number, si.mothers_name, si.date_of_admission, si.monthly_fee,
+                       si.allow_marksheet, si.allow_admit, si.bank_details, si.sl_no, si.session, si.mode_of_admission,
+                       si.father_qualification, si.father_occupation, si.father_monthly_income, si.mother_qualification,
+                       si.mother_occupation, si.mother_monthly_income, si.nationality, si.religion, si.gender, si.caste,
+                       si.whatsapp_no, si.previous_class, si.prev_marks_percentage, si.identification_mark,
+                       si.attached_documents, si.coaching_opted, si.car_opted
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' AND si.branch = ?
+            ''', (session['branch'],)).fetchall()
+        else:
+            students = conn.execute('''
+                SELECT u.id, u.username, u.email, si.full_name, si.branch, si.class, si.roll_number, si.unique_code,
+                       si.guardian_name, si.dob, si.section, si.blood_group, si.village, si.post_office, si.police_station, 
+                       si.district, si.phone_number, si.aadhaar_number, si.mothers_name, si.date_of_admission, si.monthly_fee,
+                       si.allow_marksheet, si.allow_admit, si.bank_details, si.sl_no, si.session, si.mode_of_admission,
+                       si.father_qualification, si.father_occupation, si.father_monthly_income, si.mother_qualification,
+                       si.mother_occupation, si.mother_monthly_income, si.nationality, si.religion, si.gender, si.caste,
+                       si.whatsapp_no, si.previous_class, si.prev_marks_percentage, si.identification_mark,
+                       si.attached_documents, si.coaching_opted, si.car_opted
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student'
+            ''').fetchall()
+            
+        teacher_classes = set()
+        if session['role'] == 'teacher':
+            allowed = get_teacher_allowed_subjects(conn, session['username'])
+            teacher_classes = {normalize_class_name(x['class']) for x in allowed if x.get('class')}
+            
+        conn.close()
+
+        class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+        def get_class_sort_index(cls_name):
+            if not cls_name:
+                return len(class_order) + 2
+            cls_upper = normalize_class_name(cls_name).upper()
+            for idx, c in enumerate(class_order):
+                if c.upper() == cls_upper:
+                    return idx
+            return len(class_order) + 1
+
+        students_list = [dict(s) for s in students]
+        if session['role'] == 'teacher':
+            students_list = [s for s in students_list if normalize_class_name(s.get('class')) in teacher_classes]
+
+        class_display_map = {
+            'nursery': 'Nursery', 'nuesery': 'Nursery',
+            'u/n': 'Upper Nursery', 'un': 'Upper Nursery', 'u-n': 'Upper Nursery', 'kg': 'Upper Nursery', 'upper nursery': 'Upper Nursery',
+            'one': 'I', 'i': 'I', '1': 'I',
+            'two': 'II', 'ii': 'II', '2': 'II',
+            'three': 'III', 'iii': 'III', '3': 'III',
+            'four': 'IV', 'iv': 'IV', '4': 'IV',
+            'five': 'V', 'v': 'V', '5': 'V',
+            'six': 'VI', 'vi': 'VI', '6': 'VI', 'siz': 'VI'
+        }
+        
+        filtered_students = []
+        for s in students_list:
+            raw_cls = s.get('class') or 'Unassigned'
+            norm_cls = class_display_map.get(raw_cls.strip().lower(), raw_cls)
+            if class_name == 'All' or norm_cls == class_name:
+                s['class'] = norm_cls
+                filtered_students.append(s)
+                
+        def get_student_sort_key(student):
+            cls_idx = get_class_sort_index(student['class'])
+            roll = student['roll_number']
+            if not roll: roll_idx = 999999
+            else:
+                try:
+                    import re
+                    match = re.search(r'\d+', str(roll))
+                    roll_idx = int(match.group()) if match else 999999
+                except Exception:
+                    roll_idx = 999999
+            return (cls_idx, roll_idx)
+            
+        filtered_students.sort(key=get_student_sort_key)
+        
+        return render_template('admin/print_students.html', students=filtered_students, class_name=class_name)
+    return redirect(url_for('home'))
+
+@app.route('/admin/print-teachers')
+def print_teachers():
+    if 'user' in session and session['role'] in ['admin', 'teacher']:
+        conn = get_db_connection()
+        teachers = conn.execute('''
+            SELECT u.id, u.username, u.email, u.temp_password, ti.full_name, ti.phone_number, ti.qualification, ti.joining_date, ti.address,
+                   ti.aadhaar_number, ti.assigned_classes, ti.bank_details
+            FROM users u
+            LEFT JOIN teacher_info ti ON u.id = ti.user_id
+            WHERE u.role = 'teacher'
+        ''').fetchall()
+        conn.close()
+        return render_template('admin/print_teachers.html', teachers=teachers)
+    return redirect(url_for('home'))
+
 @app.route('/admin/update-student-permission', methods=['POST'])
 def update_student_permission():
     if 'user' in session and session['role'] == 'admin':
@@ -4985,6 +5592,15 @@ def add_student_manual():
             username = request.form['username']
             email = request.form.get('email', '')
             password = request.form['password']
+
+            is_strong, error_msg = check_password_strength(password)
+            if not is_strong:
+                flash(error_msg)
+                conn = get_db_connection()
+                classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
+                conn.close()
+                return render_template('admin/add_student.html', classes=classes)
+
             role = 'student'
             security_key = 'admin-created'
 
@@ -5399,6 +6015,12 @@ def add_user():
             username = request.form['username']
             email = request.form.get('email', '')
             password = request.form['password']
+
+            is_strong, error_msg = check_password_strength(password)
+            if not is_strong:
+                flash(error_msg)
+                return render_template('admin/add_user.html')
+
             role = request.form['role']
             security_key = request.form.get('security_key') or 'admin-created'
             branch = session['branch'] if session.get('branch') else request.form.get('branch') or None
@@ -6091,10 +6713,10 @@ def marksheet():
                         total_monthly_obt = 0.0
                         total_monthly_pos = 0.0
                         for m_m in monthly_tests_for_sub:
-                            obt_m = m_m.get('marks')
-                            t_pos = m_m.get('total_marks')
+                            obt_m = row_get(m_m, 'marks')
+                            t_pos = row_get(m_m, 'total_marks')
                             if t_pos is None:
-                                t_name = m_m['term'].strip().title()
+                                t_name = row_get(m_m, 'term').strip().title()
                                 t_pos = ct_fm_map.get((t_name, sub), 20.0)
                             if obt_m is not None and str(obt_m).strip() != '':
                                 total_monthly_obt += float(obt_m)
@@ -6904,12 +7526,6 @@ def question_papers():
         conn.close()
         return redirect(url_for('question_papers'))
         
-    try:
-        import update_sidebars_mc
-        update_sidebars_mc.run_update()
-    except Exception as e:
-        app.logger.error(f"Error updating sidebars on page load: {e}")
- 
     if user['role'] == 'teacher':
         allowed = get_teacher_allowed_subjects(conn, user['username'])
         allowed_pairs = set()
@@ -7042,7 +7658,106 @@ def delete_question_paper(paper_id):
 def bulk_marks():
     if 'user' in session and session['role'] in ['admin', 'teacher']:
         conn = get_db_connection()
-        
+        role = session['role']
+
+        if request.method == 'POST' and role == 'admin' and request.form.get('action_type'):
+            action_type = request.form.get('action_type')
+            class_name = request.form.get('class_name')
+            branch = request.form.get('branch', 'bhogram')
+            term_name = request.form.get('term_name')
+            
+            if action_type == 'add_subject':
+                new_subjects = request.form.get('new_subject', '')
+                for subj in new_subjects.split(','):
+                    subj = subj.strip().title()
+                    if subj:
+                        exists = conn.execute("SELECT id FROM subjects WHERE class = ? AND name = ?", (class_name, subj)).fetchone()
+                        if not exists:
+                            fm_1st = 50.0 if term_name in ['1st Unit', '1st Term'] else -1.0
+                            fm_2nd = 50.0 if term_name in ['2nd Unit', '2nd Term'] else -1.0
+                            fm_annual = 100.0 if term_name in ['Final Exam', 'Annual Exam', 'Annual'] else -1.0
+                            conn.execute("INSERT INTO subjects (class, name, full_marks_1st, full_marks_2nd, full_marks_annual) VALUES (?, ?, ?, ?, ?)", (class_name, subj, fm_1st, fm_2nd, fm_annual))
+                        else:
+                            # Reactivate for this term if it was deleted
+                            if term_name in ['1st Unit', '1st Term']:
+                                conn.execute("UPDATE subjects SET full_marks_1st = 50.0 WHERE class = ? AND name = ? AND full_marks_1st = -1.0", (class_name, subj))
+                            elif term_name in ['2nd Unit', '2nd Term']:
+                                conn.execute("UPDATE subjects SET full_marks_2nd = 50.0 WHERE class = ? AND name = ? AND full_marks_2nd = -1.0", (class_name, subj))
+                            elif term_name in ['Final Exam', 'Annual Exam', 'Annual']:
+                                conn.execute("UPDATE subjects SET full_marks_annual = 100.0 WHERE class = ? AND name = ? AND full_marks_annual = -1.0", (class_name, subj))
+                conn.commit()
+                flash('Subjects added successfully.', 'success')
+                
+            elif action_type == 'delete_subject':
+                subj_to_delete = request.form.get('subject_name')
+                if subj_to_delete:
+                    # Soft delete for the specific term
+                    if term_name in ['1st Unit', '1st Term']:
+                        conn.execute("UPDATE subjects SET full_marks_1st = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
+                    elif term_name in ['2nd Unit', '2nd Term']:
+                        conn.execute("UPDATE subjects SET full_marks_2nd = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
+                    elif term_name in ['Final Exam', 'Annual Exam', 'Annual']:
+                        conn.execute("UPDATE subjects SET full_marks_annual = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
+                    
+                    # Delete the row entirely if it's inactive across ALL terms
+                    conn.execute("DELETE FROM subjects WHERE class = ? AND name = ? AND full_marks_1st = -1.0 AND full_marks_2nd = -1.0 AND full_marks_annual = -1.0", (class_name, subj_to_delete))
+                    conn.commit()
+                    flash(f'Subject {subj_to_delete} removed from {term_name}.', 'success')
+                    
+            elif action_type == 'update_fm':
+                subj_name = request.form.get('subject_name')
+                fm_1st = request.form.get('full_marks_1st') or None
+                fm_2nd = request.form.get('full_marks_2nd') or None
+                fm_annual = request.form.get('full_marks_annual') or None
+                om_1st = request.form.get('oral_marks_1st') or None
+                wm_1st = request.form.get('written_marks_1st') or None
+                om_2nd = request.form.get('oral_marks_2nd') or None
+                wm_2nd = request.form.get('written_marks_2nd') or None
+                om_annual = request.form.get('oral_marks_annual') or None
+                wm_annual = request.form.get('written_marks_annual') or None
+                ct_annual = request.form.get('ct_marks_annual') or None
+                
+                if subj_name:
+                    conn.execute("""
+                        UPDATE subjects 
+                        SET full_marks_1st = ?, full_marks_2nd = ?, full_marks_annual = ?,
+                            oral_marks_1st = ?, written_marks_1st = ?,
+                            oral_marks_2nd = ?, written_marks_2nd = ?,
+                            oral_marks_annual = ?, written_marks_annual = ?,
+                            ct_marks_annual = ?
+                        WHERE class = ? AND name = ?
+                    """, (fm_1st, fm_2nd, fm_annual, om_1st, wm_1st, om_2nd, wm_2nd, om_annual, wm_annual, ct_annual, class_name, subj_name))
+                    conn.commit()
+                    flash(f'Subject {subj_name} FM updated.', 'success')
+            
+            elif action_type == 'update_fm_inline':
+                subj_name = request.form.get('subject_name')
+                field = request.form.get('field') # 'full', 'oral', 'written'
+                value = request.form.get('value')
+                
+                # Determine column based on term and field
+                term_map = {
+                    '1st Unit': '1st', '1st Term': '1st',
+                    '2nd Unit': '2nd', '2nd Term': '2nd',
+                    'Final Exam': 'annual', 'Annual Exam': 'annual', 'Annual': 'annual'
+                }
+                suffix = term_map.get(term_name)
+                
+                if subj_name and suffix and field in ['full', 'oral', 'written', 'ct']:
+                    col_name = f"{field}_marks_{suffix}"
+                    try:
+                        val = float(value) if value else None
+                    except ValueError:
+                        val = None
+                        
+                    conn.execute(f"UPDATE subjects SET {col_name} = ? WHERE class = ? AND name = ?", (val, class_name, subj_name))
+                    conn.commit()
+                    conn.close()
+                    return jsonify({'status': 'success'})
+            
+            conn.close()
+            return redirect(url_for('bulk_marks', branch=branch, **{'class': class_name}, term=term_name))
+
         # Sync and normalize monthly test configurations and existing marks
         sync_and_normalize_monthly_tests(conn)
         
@@ -7083,6 +7798,15 @@ def bulk_marks():
         selected_subject = request.args.get('subject') # Optional pre-fill for admin or selected subject
         selected_term = request.args.get('term', '1st Unit')
         
+        assigned_class = request.args.get('assigned_class')
+        if role == 'teacher' and assigned_class:
+            parts = assigned_class.split('|')
+            if len(parts) == 3:
+                selected_branch, selected_class, selected_subject = parts
+                
+        if selected_class:
+            selected_class = normalize_class_name(selected_class)
+        
         # Normalize the term name internally to prevent duplicates / naming mismatches
         selected_term = selected_term.strip()
         if selected_term in ['1st Term', '1st Unit']:
@@ -7091,6 +7815,8 @@ def bulk_marks():
             selected_term = '2nd Unit'
         elif selected_term in ['Annual Exam', 'Final Exam', 'Annual']:
             selected_term = 'Final Exam'
+        else:
+            selected_term = normalize_monthly_test_name(selected_term)
             
         is_class_test = selected_term in class_test_names
 
@@ -7124,7 +7850,13 @@ def bulk_marks():
         configured_class_test_subjects = []
         class_test_default_fm = 20.0
         if is_class_test and selected_class:
-            configs = conn.execute("SELECT subject_name, full_marks FROM class_test_configs WHERE test_name = ? AND class_name = ?", (selected_term, selected_class)).fetchall()
+            db_classes = get_db_class_names(selected_class)
+            configs = conn.execute(f"""
+                SELECT subject_name, full_marks 
+                FROM class_test_configs 
+                WHERE LOWER(test_name) = LOWER(?) 
+                  AND LOWER(class_name) IN ({','.join('LOWER(?)' for _ in db_classes)})
+            """, [selected_term] + db_classes).fetchall()
             if configs:
                 class_test_default_fm = max(c['full_marks'] for c in configs)
             for c in configs:
@@ -7140,11 +7872,7 @@ def bulk_marks():
         else:
             full_marks_val = request.args.get('full_marks', '100')
 
-        assigned_class = request.args.get('assigned_class')
-        if role == 'teacher' and assigned_class:
-            parts = assigned_class.split('|')
-            if len(parts) == 3:
-                selected_branch, selected_class, selected_subject = parts
+        # assigned_class is already handled and selected_class normalized above
 
         # Validate final selections for teacher to ensure they cannot view unauthorized classrooms
         if role == 'teacher':
@@ -7184,7 +7912,7 @@ def bulk_marks():
                 WHERE class IN ({placeholders}) 
                 ORDER BY name
             """, db_classes).fetchall()
-            subject_names = [r['name'].strip().title() for r in subjects_rows if r['name']]
+            subject_names = []
             
             subject_oral_limit = {}
             subject_written_limit = {}
@@ -7194,9 +7922,25 @@ def bulk_marks():
             for r in subjects_rows:
                 if r['name']:
                     name_norm = r['name'].strip().title()
+                    
+                    # Check if deleted for this term
+                    if selected_term in ['1st Unit', '1st Term'] and r['full_marks_1st'] == -1.0:
+                        continue
+                    if selected_term in ['2nd Unit', '2nd Term'] and r['full_marks_2nd'] == -1.0:
+                        continue
+                    if selected_term in ['Final Exam', 'Annual Exam', 'Annual'] and r['full_marks_annual'] == -1.0:
+                        continue
+                        
+                    subject_names.append(name_norm)
+                        
                     # Only override if not already set by a class test config (class test config takes precedence for class test terms)
                     if name_norm not in subject_full_marks:
-                        if selected_term in ['1st Unit', '1st Term']:
+                        if is_class_test:
+                            subject_full_marks[name_norm] = class_test_default_fm
+                            subject_oral_limit[name_norm] = 0.0
+                            subject_written_limit[name_norm] = class_test_default_fm
+                            subject_ct_limit[name_norm] = 0.0
+                        elif selected_term in ['1st Unit', '1st Term']:
                             subject_full_marks[name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
                             subject_oral_limit[name_norm] = r['oral_marks_1st']
                             subject_written_limit[name_norm] = r['written_marks_1st']
@@ -7212,12 +7956,7 @@ def bulk_marks():
                             subject_written_limit[name_norm] = r['written_marks_annual']
                             subject_ct_limit[name_norm] = r['ct_marks_annual']
 
-            default_subs = ["English", "Bengali", "Arabic", "Mathematics", "Science", "G.K.", "E.V.S", "Hindi", "Art", "Physical Education", "Work Education", "Hand Writing", "Behaviour", "Attendance"]
-            for s in default_subs:
-                s_norm = s.strip().title()
-                if s_norm not in subject_names:
-                    subject_names.append(s_norm)
-                    
+            # Remove default subjects
             # Add any subjects assigned to this specific teacher for this class
             if role == 'teacher':
                 for x in allowed_subjects:
@@ -7248,7 +7987,7 @@ def bulk_marks():
             subject_names = sorted(list(set(subject_names)))
             
             students = conn.execute(f'''
-                SELECT u.id, u.username, si.full_name, si.roll_number 
+                SELECT u.id, u.username, si.full_name, si.roll_number, si.whatsapp_no 
                 FROM users u 
                 JOIN student_info si ON u.id = si.user_id 
                 WHERE si.branch = ? AND si.class IN ({placeholders})
@@ -7276,7 +8015,10 @@ def bulk_marks():
                 }
                 if sub_norm and row['full_marks'] is not None:
                     if sub_norm not in subject_full_marks:
-                        subject_full_marks[sub_norm] = row['full_marks']
+                        if is_class_test:
+                            subject_full_marks[sub_norm] = class_test_default_fm
+                        else:
+                            subject_full_marks[sub_norm] = row['full_marks']
             
         # Check if currently selected exam term is locked
         is_locked = False
@@ -7307,7 +8049,8 @@ def bulk_marks():
                                subject_written_limit=subject_written_limit,
                                subject_ct_limit=subject_ct_limit,
                                configured_class_test_subjects=configured_class_test_subjects,
-                               is_locked=is_locked)
+                               is_locked=is_locked,
+                               db_subjects=subjects_rows if 'subjects_rows' in locals() else [])
     return redirect(url_for('home'))
 
 @app.route('/admin/marks-setup', methods=['GET', 'POST'])
@@ -7357,6 +8100,8 @@ def save_marks_api():
         term_name = '2nd Unit'
     elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
         term_name = 'Final Exam'
+    else:
+        term_name = normalize_monthly_test_name(term_name)
 
     # Get branch
     branch = data.get('branch')
@@ -7428,6 +8173,8 @@ def save_bulk_marks():
             selected_term = '2nd Unit'
         elif selected_term in ['Annual Exam', 'Final Exam', 'Annual']:
             selected_term = 'Final Exam'
+        else:
+            selected_term = normalize_monthly_test_name(selected_term)
             
         full_marks_val = request.form.get('full_marks') or request.form.get('total_marks') or '100'
         
@@ -7474,7 +8221,30 @@ def save_bulk_marks():
         subject_written_limit = {}
         subject_ct_limit = {}
         configured_class_test_subjects = []
+        class_test_default_fm = 20.0
         
+        if is_class_test:
+            db_classes = get_db_class_names(selected_class)
+            configs = conn.execute(f"""
+                SELECT subject_name, full_marks 
+                FROM class_test_configs 
+                WHERE LOWER(test_name) = LOWER(?) 
+                  AND LOWER(class_name) IN ({','.join('LOWER(?)' for _ in db_classes)})
+            """, [selected_term] + db_classes).fetchall()
+            if configs:
+                class_test_default_fm = max(c['full_marks'] for c in configs)
+            for c in configs:
+                name_norm = c['subject_name'].strip().title()
+                subject_full_marks[name_norm] = c['full_marks']
+                configured_class_test_subjects.append(name_norm)
+                
+            # Override full_marks and full_marks_val for class tests
+            full_marks = class_test_default_fm
+            if class_test_default_fm == int(class_test_default_fm):
+                full_marks_val = str(int(class_test_default_fm))
+            else:
+                full_marks_val = str(class_test_default_fm)
+
         # Populate subject_full_marks with values from database subjects table
         db_classes = get_db_class_names(selected_class)
         placeholders = ', '.join('?' for _ in db_classes)
@@ -7492,7 +8262,12 @@ def save_bulk_marks():
             if r['name']:
                 name_norm = r['name'].strip().title()
                 if name_norm not in subject_full_marks:
-                    if selected_term in ['1st Unit', '1st Term']:
+                    if is_class_test:
+                        subject_full_marks[name_norm] = class_test_default_fm
+                        subject_oral_limit[name_norm] = 0.0
+                        subject_written_limit[name_norm] = class_test_default_fm
+                        subject_ct_limit[name_norm] = 0.0
+                    elif selected_term in ['1st Unit', '1st Term']:
                         subject_full_marks[name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
                         subject_oral_limit[name_norm] = r['oral_marks_1st']
                         subject_written_limit[name_norm] = r['written_marks_1st']
@@ -7507,23 +8282,6 @@ def save_bulk_marks():
                         subject_oral_limit[name_norm] = r['oral_marks_annual']
                         subject_written_limit[name_norm] = r['written_marks_annual']
                         subject_ct_limit[name_norm] = r['ct_marks_annual']
-
-        if is_class_test:
-            class_test_default_fm = 20.0
-            configs = conn.execute("SELECT subject_name, full_marks FROM class_test_configs WHERE test_name = ? AND class_name = ?", (selected_term, selected_class)).fetchall()
-            if configs:
-                class_test_default_fm = max(c['full_marks'] for c in configs)
-            for c in configs:
-                name_norm = c['subject_name'].strip().title()
-                subject_full_marks[name_norm] = c['full_marks']
-                configured_class_test_subjects.append(name_norm)
-                
-            # Override full_marks and full_marks_val for class tests
-            full_marks = class_test_default_fm
-            if class_test_default_fm == int(class_test_default_fm):
-                full_marks_val = str(int(class_test_default_fm))
-            else:
-                full_marks_val = str(class_test_default_fm)
         
         # Security check for teacher using parsed qualifications and assigned subjects
         allowed_subjects_list = []
@@ -7588,7 +8346,7 @@ def save_bulk_marks():
                     continue
                     
                 # If class test, block saving marks for unconfigured subjects
-                if is_class_test and configured_class_test_subjects and subject_name not in configured_class_test_subjects:
+                if is_class_test and subject_name not in configured_class_test_subjects:
                     continue
                     
                 # Security check: verify that the student actually belongs to this branch
@@ -7844,6 +8602,16 @@ def get_fees():
                     INSERT INTO fees (student_id, amount, month, year, status, paid_at)
                     VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP)
                 ''', (student_id, amount, month, year))
+                
+                conn.execute('''
+                    UPDATE student_info
+                    SET remaining_fee = CASE 
+                        WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0 
+                        ELSE COALESCE(remaining_fee, 0.0) - ? 
+                    END
+                    WHERE user_id = ?
+                ''', (float(amount), float(amount), student_id))
+                
                 conn.commit()
                 send_activity_notification("Fee Collection", f"Collected fee of ₹{amount} for student ID {student_id} (Month: {month}, Year: {year}).")
                 flash('Fee collected successfully!')
@@ -7851,7 +8619,7 @@ def get_fees():
                 return redirect(url_for('get_fees'))
 
             if session.get('branch'):
-                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student' AND si.branch = ?", (session['branch'],)).fetchall()
+                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch, si.remaining_fee FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student' AND si.branch = ?", (session['branch'],)).fetchall()
                 recent_fees = conn.execute('''
                     SELECT f.*, u.username as student_name 
                     FROM fees f 
@@ -7861,7 +8629,7 @@ def get_fees():
                     ORDER BY f.paid_at DESC
                 ''', (session['branch'],)).fetchall()
             else:
-                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student'").fetchall()
+                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch, si.remaining_fee FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student'").fetchall()
                 recent_fees = conn.execute('''
                     SELECT f.*, u.username as student_name 
                     FROM fees f 
@@ -7881,7 +8649,7 @@ def get_fees():
             ''', (username,)).fetchall()
             
             student_info = conn.execute('''
-                SELECT monthly_fee, hostel_fee, branch FROM student_info si
+                SELECT monthly_fee, hostel_fee, branch, remaining_fee FROM student_info si
                 JOIN users u ON si.user_id = u.id
                 WHERE u.username = ?
             ''', (username,)).fetchone()
@@ -7892,8 +8660,10 @@ def get_fees():
                     student_info_dict['monthly_fee'] = 0.0
                 if student_info_dict.get('hostel_fee') is None:
                     student_info_dict['hostel_fee'] = 0.0
+                if student_info_dict.get('remaining_fee') is None:
+                    student_info_dict['remaining_fee'] = 0.0
             else:
-                student_info_dict = {'monthly_fee': 0.0, 'hostel_fee': 0.0, 'branch': ''}
+                student_info_dict = {'monthly_fee': 0.0, 'hostel_fee': 0.0, 'branch': '', 'remaining_fee': 0.0}
             
             conn.close()
             return render_template(
@@ -7934,6 +8704,12 @@ def delete_fee(fee_id):
                 return redirect(url_for('get_fees'))
                 
         conn.execute("DELETE FROM fees WHERE id = ?", (fee_id,))
+        conn.execute('''
+            UPDATE student_info
+            SET remaining_fee = COALESCE(remaining_fee, 0.0) + ?
+            WHERE user_id = ?
+        ''', (float(fee['amount']), fee['student_id']))
+        
         conn.commit()
         conn.close()
         flash('Fee record deleted successfully!')
@@ -8030,6 +8806,16 @@ def verify_payment():
         INSERT INTO fees (student_id, amount, month, year, status, paid_at)
         VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP)
     ''', (student_id, amount, month, year))
+    
+    conn.execute('''
+        UPDATE student_info
+        SET remaining_fee = CASE 
+            WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0 
+            ELSE COALESCE(remaining_fee, 0.0) - ? 
+        END
+        WHERE user_id = ?
+    ''', (float(amount), float(amount), student_id))
+    
     conn.commit()
     conn.close()
     session.pop('pending_fee_payment', None)
@@ -8180,11 +8966,11 @@ def set_fees():
                               readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
                               monthly_fee, monthly_fee_coaching, hostel_fee))
                 
-                # 2. Update existing students belonging to these class names
+                # 2. Update existing students belonging to these class names, skipping manual overrides
                 students_in_class = conn.execute(f'''
                     SELECT user_id, take_school, take_coaching, take_day_hostel, take_car
                     FROM student_info
-                    WHERE branch = ? AND class IN ({placeholders})
+                    WHERE branch = ? AND class IN ({placeholders}) AND (is_custom_fee = 0 OR is_custom_fee IS NULL)
                 ''', (branch, *db_classes)).fetchall()
                 
                 for student in students_in_class:
@@ -8244,16 +9030,18 @@ def set_fees():
                 amount = float(request.form.get('amount', 0.0))
                 admission_fee = float(request.form.get('admission_fee', 0.0))
                 readmission_fee = float(request.form.get('readmission_fee', 0.0))
+                remaining_fee = float(request.form.get('remaining_fee', 0.0))
                 
                 conn.execute('''
                     UPDATE student_info
                     SET take_school = ?, take_coaching = ?, take_day_hostel = ?, take_car = ?,
                         coaching_opted = ?, car_opted = ?, mode_of_admission = ?,
-                        monthly_fee = ?, admission_fee = ?, readmission_fee = ?
+                        monthly_fee = ?, admission_fee = ?, readmission_fee = ?,
+                        remaining_fee = ?, is_custom_fee = 1
                     WHERE user_id = ?
                 ''', (take_school, take_coaching, take_day_hostel, take_car,
                       coaching_opted, car_opted, mode_of_admission,
-                      amount, admission_fee, readmission_fee, student_id))
+                      amount, admission_fee, readmission_fee, remaining_fee, student_id))
                 
                 flash(f'Successfully updated fees and benefits for student ID {student_id}')
                 
@@ -8267,7 +9055,7 @@ def set_fees():
                 SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
                        si.monthly_fee, si.hostel_fee, si.branch,
                        si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
-                       si.admission_fee, si.readmission_fee
+                       si.admission_fee, si.readmission_fee, si.remaining_fee
                 FROM users u 
                 LEFT JOIN student_info si ON u.id = si.user_id 
                 WHERE u.role = 'student' AND si.branch = ?
@@ -8277,7 +9065,7 @@ def set_fees():
                 SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
                        si.monthly_fee, si.hostel_fee, si.branch,
                        si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
-                       si.admission_fee, si.readmission_fee
+                       si.admission_fee, si.readmission_fee, si.remaining_fee
                 FROM users u 
                 LEFT JOIN student_info si ON u.id = si.user_id 
                 WHERE u.role = 'student'
@@ -8298,27 +9086,210 @@ def set_salary():
     if 'user' in session and session['role'] == 'admin':
         conn = get_db_connection()
         if request.method == 'POST':
-            teacher_id = request.form['teacher_id']
+            recipient_type = request.form.get('recipient_type', 'teacher')
+            recipient_id = request.form.get('recipient_id')
             amount = request.form['amount']
+            remaining_salary = request.form.get('remaining_salary', 0.0)
             
-            conn.execute('''
-                UPDATE teacher_info 
-                SET salary = ? 
-                WHERE user_id = ?
-            ''', (amount, teacher_id))
+            # Check permissions if branch admin
+            if session.get('branch'):
+                if recipient_type == 'teacher':
+                    member = conn.execute("SELECT branch FROM users WHERE id = ?", (recipient_id,)).fetchone()
+                else:
+                    member = conn.execute("SELECT branch FROM staff WHERE id = ?", (recipient_id,)).fetchone()
+                if member and member['branch'] != session['branch']:
+                    conn.close()
+                    flash("Permission denied: Recipient belongs to another campus.")
+                    return redirect(url_for('set_salary'))
+            
+            if recipient_type == 'teacher':
+                conn.execute('''
+                    UPDATE teacher_info 
+                    SET salary = ?, remaining_salary = ? 
+                    WHERE user_id = ?
+                ''', (amount, remaining_salary, recipient_id))
+            elif recipient_type == 'staff':
+                conn.execute('''
+                    UPDATE staff 
+                    SET salary = ?, remaining_salary = ? 
+                    WHERE id = ?
+                ''', (amount, remaining_salary, recipient_id))
+                
             conn.commit()
             conn.close()
-            flash(f'Successfully updated salary to ₹{amount}')
+            flash(f'Successfully updated salary to ₹{amount} and remaining salary to ₹{remaining_salary}')
             return redirect(url_for('set_salary'))
             
-        teachers = conn.execute('''
-            SELECT u.id, u.username, ti.full_name, ti.salary 
-            FROM users u 
-            JOIN teacher_info ti ON u.id = ti.user_id 
-            WHERE u.role = 'teacher'
-        ''').fetchall()
+        if session.get('branch'):
+            teachers = conn.execute('''
+                SELECT u.id, u.username, ti.full_name, ti.salary, ti.remaining_salary 
+                FROM users u 
+                JOIN teacher_info ti ON u.id = ti.user_id 
+                WHERE u.role = 'teacher' AND u.branch = ?
+                ORDER BY COALESCE(ti.full_name, u.username)
+            ''', (session['branch'],)).fetchall()
+            
+            staff_list = conn.execute('''
+                SELECT id, full_name, staff_type, salary, remaining_salary, branch
+                FROM staff
+                WHERE branch = ?
+                ORDER BY full_name
+            ''', (session['branch'],)).fetchall()
+        else:
+            teachers = conn.execute('''
+                SELECT u.id, u.username, ti.full_name, ti.salary, ti.remaining_salary 
+                FROM users u 
+                JOIN teacher_info ti ON u.id = ti.user_id 
+                WHERE u.role = 'teacher'
+                ORDER BY COALESCE(ti.full_name, u.username)
+            ''').fetchall()
+            
+            staff_list = conn.execute('''
+                SELECT id, full_name, staff_type, salary, remaining_salary, branch
+                FROM staff
+                ORDER BY full_name
+            ''').fetchall()
+            
         conn.close()
-        return render_template('admin/set_salary.html', teachers=teachers, role=session['role'])
+        logo_url = LOGO_URL
+        return render_template('admin/set_salary.html', teachers=teachers, staff_list=staff_list, role=session['role'], logo_url=logo_url)
+    return redirect(url_for('home'))
+
+@app.route('/admin/give-salary', methods=['GET', 'POST'])
+def give_salary():
+    if 'user' in session and session['role'] == 'admin':
+        role = session['role']
+        conn = get_db_connection()
+        
+        if request.method == 'POST':
+            recipient_type = request.form.get('recipient_type', 'teacher')
+            recipient_id = request.form['recipient_id']
+            amount = request.form['amount']
+            month = request.form['month']
+            year = request.form['year']
+            description = request.form.get('description', '')
+            
+            # Fetch recipient branch
+            if recipient_type == 'teacher':
+                member = conn.execute("SELECT branch FROM users WHERE id = ?", (recipient_id,)).fetchone()
+            else:
+                member = conn.execute("SELECT branch FROM staff WHERE id = ?", (recipient_id,)).fetchone()
+            branch = member['branch'] if member else (session['branch'] if session.get('branch') else 'bhogram')
+            
+            # Check permissions for Branch Admin
+            if session.get('branch') and branch != session['branch']:
+                conn.close()
+                flash('Permission denied: Recipient does not belong to your campus.')
+                return redirect(url_for('give_salary'))
+
+            # Handle proof upload
+            proof_file = request.files.get('proof')
+            proof_path = None
+            if proof_file and proof_file.filename != '':
+                filename = secure_filename(proof_file.filename)
+                if filename:
+                    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
+                    saved_name = f"{timestamp}_{filename}"
+                    proofs_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'proofs')
+                    os.makedirs(proofs_folder, exist_ok=True)
+                    local_path = os.path.join(proofs_folder, saved_name)
+                    proof_file.save(local_path)
+                    upload_file_to_drive_and_map(local_path, saved_name, proof_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_PROOFS'), conn=conn)
+                    proof_path = saved_name
+
+            # Log as a Salary category expense
+            desc_with_month = f"{description} (Salary for {month} {year})".strip()
+            conn.execute('''
+                INSERT INTO expenses (amount, category, description, branch, proof_path, recipient_type, recipient_id)
+                VALUES (?, 'Salary', ?, ?, ?, ?, ?)
+            ''', (amount, desc_with_month, branch, proof_path, recipient_type, recipient_id))
+
+            # Deduct from recipient's remaining salary
+            if recipient_type == 'teacher':
+                conn.execute('''
+                    UPDATE teacher_info
+                    SET remaining_salary = CASE 
+                        WHEN COALESCE(remaining_salary, 0.0) - ? < 0 THEN 0.0 
+                        ELSE COALESCE(remaining_salary, 0.0) - ? 
+                    END
+                    WHERE user_id = ?
+                ''', (float(amount), float(amount), recipient_id))
+            elif recipient_type == 'staff':
+                conn.execute('''
+                    UPDATE staff
+                    SET remaining_salary = CASE 
+                        WHEN COALESCE(remaining_salary, 0.0) - ? < 0 THEN 0.0 
+                        ELSE COALESCE(remaining_salary, 0.0) - ? 
+                    END
+                    WHERE id = ?
+                ''', (float(amount), float(amount), recipient_id))
+
+            conn.commit()
+            send_activity_notification("Salary Disbursed", f"Disbursed salary of ₹{amount} to {recipient_type} ID {recipient_id} (Month: {month}, Year: {year}).")
+            flash('Salary disbursed successfully!')
+            conn.close()
+            return redirect(url_for('give_salary'))
+
+        # GET request: fetch list of teachers, staff and recent salary payments
+        if session.get('branch'):
+            teachers = conn.execute('''
+                SELECT u.id, u.username, ti.full_name, ti.salary, ti.remaining_salary, u.branch
+                FROM users u
+                JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE u.role = 'teacher' AND u.branch = ?
+                ORDER BY COALESCE(ti.full_name, u.username)
+            ''', (session['branch'],)).fetchall()
+            
+            staff_list = conn.execute('''
+                SELECT id, full_name, staff_type, salary, remaining_salary, branch
+                FROM staff
+                WHERE branch = ?
+                ORDER BY full_name
+            ''', (session['branch'],)).fetchall()
+            
+            recent_salaries = conn.execute('''
+                SELECT e.*, 
+                       CASE WHEN e.recipient_type = 'teacher' THEN COALESCE(ti.full_name, u.username)
+                            ELSE s.full_name 
+                       END as recipient_name
+                FROM expenses e
+                LEFT JOIN users u ON e.recipient_id = u.id AND e.recipient_type = 'teacher'
+                LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                LEFT JOIN staff s ON e.recipient_id = s.id AND e.recipient_type = 'staff'
+                WHERE e.category = 'Salary' AND e.branch = ?
+                ORDER BY e.date DESC
+            ''', (session['branch'],)).fetchall()
+        else:
+            teachers = conn.execute('''
+                SELECT u.id, u.username, ti.full_name, ti.salary, ti.remaining_salary, u.branch
+                FROM users u
+                JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE u.role = 'teacher'
+                ORDER BY COALESCE(ti.full_name, u.username)
+            ''').fetchall()
+            
+            staff_list = conn.execute('''
+                SELECT id, full_name, staff_type, salary, remaining_salary, branch
+                FROM staff
+                ORDER BY full_name
+            ''').fetchall()
+            
+            recent_salaries = conn.execute('''
+                SELECT e.*, 
+                       CASE WHEN e.recipient_type = 'teacher' THEN COALESCE(ti.full_name, u.username)
+                            ELSE s.full_name 
+                       END as recipient_name
+                FROM expenses e
+                LEFT JOIN users u ON e.recipient_id = u.id AND e.recipient_type = 'teacher'
+                LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                LEFT JOIN staff s ON e.recipient_id = s.id AND e.recipient_type = 'staff'
+                WHERE e.category = 'Salary'
+                ORDER BY e.date DESC
+            ''').fetchall()
+
+        conn.close()
+        logo_url = LOGO_URL
+        return render_template('admin/give_salary.html', teachers=teachers, staff_list=staff_list, recent_salaries=recent_salaries, role=role, logo_url=logo_url)
     return redirect(url_for('home'))
 
 @app.route('/admin/reminder-fees')
@@ -8330,7 +9301,8 @@ def reminder_fees():
         year = datetime.now().strftime('%Y')
         
         pending_students = conn.execute('''
-            SELECT u.id, u.username, si.full_name, si.phone_number, si.whatsapp_no, si.class, si.guardian_name 
+            SELECT u.id, u.username, si.full_name, si.phone_number, si.whatsapp_no, si.class, si.guardian_name,
+                   si.monthly_fee, si.hostel_fee, si.remaining_fee
             FROM users u 
             JOIN student_info si ON u.id = si.user_id 
             WHERE u.role = 'student' 
@@ -8352,18 +9324,6 @@ def spend():
             description = request.form['description']
             branch = session['branch'] if session.get('branch') else request.form.get('branch')
             
-            recipient_type = None
-            recipient_id = None
-            
-            if category == 'Salary':
-                salary_recipient_type = request.form.get('salary_recipient_type')
-                if salary_recipient_type == 'Teacher':
-                    recipient_type = 'teacher'
-                    recipient_id = request.form.get('teacher_recipient_id')
-                elif salary_recipient_type == 'Staff':
-                    recipient_type = 'staff'
-                    recipient_id = request.form.get('staff_recipient_id')
-            
             # Handle proof upload
             proof_file = request.files.get('proof')
             proof_path = None
@@ -8381,8 +9341,9 @@ def spend():
             
             conn.execute('''
                 INSERT INTO expenses (amount, category, description, branch, proof_path, recipient_type, recipient_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (amount, category, description, branch, proof_path, recipient_type, recipient_id))
+                VALUES (?, ?, ?, ?, ?, NULL, NULL)
+            ''', (amount, category, description, branch, proof_path))
+            
             conn.commit()
             send_activity_notification("Spend/Expense Recorded", f"Recorded expense of ₹{amount} under category '{category}' for branch '{branch}'. Description: {description}")
             flash('Expense recorded!')
@@ -8391,24 +9352,8 @@ def spend():
 
         if session.get('branch'):
             expenses = conn.execute("SELECT * FROM expenses WHERE branch = ? ORDER BY date DESC", (session['branch'],)).fetchall()
-            teachers = conn.execute('''
-                SELECT u.id, u.username, ti.full_name, ti.salary 
-                FROM users u 
-                JOIN teacher_info ti ON u.id = ti.user_id 
-                WHERE u.role = 'teacher' AND u.branch = ?
-                ORDER BY COALESCE(ti.full_name, u.username)
-            ''', (session['branch'],)).fetchall()
-            staff_list = conn.execute("SELECT * FROM staff WHERE branch = ? ORDER BY full_name", (session['branch'],)).fetchall()
         else:
             expenses = conn.execute("SELECT * FROM expenses ORDER BY date DESC").fetchall()
-            teachers = conn.execute('''
-                SELECT u.id, u.username, ti.full_name, ti.salary 
-                FROM users u 
-                JOIN teacher_info ti ON u.id = ti.user_id 
-                WHERE u.role = 'teacher'
-                ORDER BY COALESCE(ti.full_name, u.username)
-            ''').fetchall()
-            staff_list = conn.execute("SELECT * FROM staff ORDER BY full_name").fetchall()
             
         all_teachers_lookup = {t['id']: t['full_name'] or t['username'] for t in conn.execute("SELECT u.id, u.username, ti.full_name FROM users u JOIN teacher_info ti ON u.id = ti.user_id WHERE u.role = 'teacher'").fetchall()}
         all_staff_lookup = {s['id']: s['full_name'] for s in conn.execute("SELECT id, full_name FROM staff").fetchall()}
@@ -8425,14 +9370,14 @@ def spend():
             
         conn.close()
         logo_url = LOGO_URL
-        return render_template('admin/spend.html', expenses=expenses_with_recipients, teachers=teachers, staff_list=staff_list, role=role, logo_url=logo_url)
+        return render_template('admin/spend.html', expenses=expenses_with_recipients, role=role, logo_url=logo_url)
     return redirect(url_for('home'))
 
 @app.route('/admin/delete-expense/<int:expense_id>', methods=['POST'])
 def delete_expense(expense_id):
     if 'user' in session and session['role'] == 'admin':
         conn = get_db_connection()
-        expense = conn.execute("SELECT amount, category, branch, proof_path FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+        expense = conn.execute("SELECT amount, category, branch, proof_path, recipient_type, recipient_id FROM expenses WHERE id = ?", (expense_id,)).fetchone()
         if not expense:
             conn.close()
             flash('Expense not found.')
@@ -8449,12 +9394,31 @@ def delete_expense(expense_id):
             delete_old_mapped_file(expense['proof_path'])
             
         conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+        
+        if expense['category'] == 'Salary' and expense['recipient_id']:
+            if expense['recipient_type'] == 'teacher':
+                conn.execute('''
+                    UPDATE teacher_info
+                    SET remaining_salary = COALESCE(remaining_salary, 0.0) + ?
+                    WHERE user_id = ?
+                ''', (float(expense['amount']), expense['recipient_id']))
+            elif expense['recipient_type'] == 'staff':
+                conn.execute('''
+                    UPDATE staff
+                    SET remaining_salary = COALESCE(remaining_salary, 0.0) + ?
+                    WHERE id = ?
+                ''', (float(expense['amount']), expense['recipient_id']))
+            
         conn.commit()
         send_activity_notification("Delete Spend/Expense", f"Deleted expense record ID {expense_id} (amount: ₹{expense['amount']}, category: '{expense['category']}', branch: '{expense['branch']}').")
         conn.close()
         flash('Expense deleted successfully!')
     else:
         flash('Access denied.')
+        
+    referrer = request.referrer
+    if referrer and 'give-salary' in referrer:
+        return redirect(url_for('give_salary'))
     return redirect(url_for('spend'))
 
 @app.route('/admin/audit-report')
@@ -8476,13 +9440,144 @@ def audit_report():
                 FROM expenses 
                 WHERE branch = ?
             ''', (session['branch'],)).fetchone()['total'] or 0
+            
+            total_remaining_fees = conn.execute('''
+                SELECT SUM(si.remaining_fee) as total 
+                FROM student_info si
+                WHERE si.branch = ?
+            ''', (session['branch'],)).fetchone()['total'] or 0
+            
+            remaining_fees_details = conn.execute('''
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE si.branch = ? AND si.remaining_fee > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', (session['branch'],)).fetchall()
         else:
             total_fees = conn.execute("SELECT SUM(amount) as total FROM fees").fetchone()['total'] or 0
             total_expenses = conn.execute("SELECT SUM(amount) as total FROM expenses").fetchone()['total'] or 0
+            total_remaining_fees = conn.execute("SELECT SUM(remaining_fee) as total FROM student_info").fetchone()['total'] or 0
+            
+            remaining_fees_details = conn.execute('''
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE si.remaining_fee > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''').fetchall()
         
         balance = total_fees - total_expenses
         conn.close()
-        return render_template('admin/audit_report.html', fees=total_fees, expenses=total_expenses, balance=balance, role=role)
+        return render_template('admin/audit_report.html', fees=total_fees, expenses=total_expenses, balance=balance, remaining_fees=total_remaining_fees, remaining_fees_details=remaining_fees_details, role=role)
+    return redirect(url_for('home'))
+
+@app.route('/admin/print-audit')
+def print_audit():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        
+        if session.get('branch'):
+            branch = session['branch']
+            total_fees = conn.execute('''
+                SELECT SUM(f.amount) as total 
+                FROM fees f 
+                JOIN student_info si ON f.student_id = si.user_id
+                WHERE si.branch = ?
+            ''', (branch,)).fetchone()['total'] or 0
+            
+            total_expenses = conn.execute('''
+                SELECT SUM(amount) as total 
+                FROM expenses 
+                WHERE branch = ?
+            ''', (branch,)).fetchone()['total'] or 0
+            
+            total_remaining_fees = conn.execute('''
+                SELECT SUM(si.remaining_fee) as total 
+                FROM student_info si
+                WHERE si.branch = ?
+            ''', (branch,)).fetchone()['total'] or 0
+
+            remaining_fees_details = conn.execute('''
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE si.branch = ? AND si.remaining_fee > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', (branch,)).fetchall()
+            
+            fees_details = conn.execute('''
+                SELECT f.amount, f.month, f.year, f.paid_at, si.full_name as student_name, si.class, si.roll_number
+                FROM fees f
+                JOIN student_info si ON f.student_id = si.user_id
+                WHERE si.branch = ?
+                ORDER BY f.paid_at DESC
+            ''', (branch,)).fetchall()
+
+            expenses_details = conn.execute('''
+                SELECT amount, category, description, date, recipient_type
+                FROM expenses
+                WHERE branch = ?
+                ORDER BY date DESC
+            ''', (branch,)).fetchall()
+        else:
+            total_fees = conn.execute("SELECT SUM(amount) as total FROM fees").fetchone()['total'] or 0
+            total_expenses = conn.execute("SELECT SUM(amount) as total FROM expenses").fetchone()['total'] or 0
+            total_remaining_fees = conn.execute("SELECT SUM(remaining_fee) as total FROM student_info").fetchone()['total'] or 0
+
+            remaining_fees_details = conn.execute('''
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE si.remaining_fee > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''').fetchall()
+            
+            fees_details = conn.execute('''
+                SELECT f.amount, f.month, f.year, f.paid_at, si.full_name as student_name, si.class, si.roll_number
+                FROM fees f
+                JOIN student_info si ON f.student_id = si.user_id
+                ORDER BY f.paid_at DESC
+            ''').fetchall()
+
+            expenses_details = conn.execute('''
+                SELECT amount, category, description, date, recipient_type
+                FROM expenses
+                ORDER BY date DESC
+            ''').fetchall()
+            
+        balance = total_fees - total_expenses
+        conn.close()
+        return render_template('admin/print_audit.html', 
+                               fees=total_fees, expenses=total_expenses, balance=balance, remaining_fees=total_remaining_fees,
+                               fees_details=fees_details, expenses_details=expenses_details, remaining_fees_details=remaining_fees_details)
+    return redirect(url_for('home'))
+
+@app.route('/admin/post-monthly-fees', methods=['POST'])
+def post_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        try:
+            if session.get('branch'):
+                conn.execute('''
+                    UPDATE student_info
+                    SET remaining_fee = COALESCE(remaining_fee, 0.0) + COALESCE(monthly_fee, 0.0)
+                    WHERE branch = ?
+                ''', (session['branch'],))
+                flash(f"Monthly fees successfully posted to all students' remaining dues for campus: {session['branch'].title()}")
+            else:
+                conn.execute('''
+                    UPDATE student_info
+                    SET remaining_fee = COALESCE(remaining_fee, 0.0) + COALESCE(monthly_fee, 0.0)
+                ''')
+                flash("Monthly fees successfully posted to all students' remaining dues.")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error posting monthly fees: {e}")
+        finally:
+            conn.close()
+        return redirect(url_for('audit_report'))
     return redirect(url_for('home'))
 
 @app.route('/admin/academics-setting', methods=['GET', 'POST'])
@@ -8771,6 +9866,51 @@ Al-Hidayet Mission"""
             conn.close()
             return redirect(url_for('academics_setting'))
 
+        if request.method == 'POST' and 'create_exam_schedule' in request.form:
+            class_name = request.form.get('class_name', '').strip()
+            if class_name and class_name.startswith('Class '):
+                class_name = class_name[6:].strip()
+            term_name = request.form.get('term_name', '').strip()
+            branch = (session.get('branch') or 'bhogram').strip()
+            
+            dates = request.form.getlist('schedule_date[]')
+            times = request.form.getlist('schedule_time[]')
+            subjects = request.form.getlist('schedule_subject[]')
+            
+            schedule_list = []
+            for d, t, s in zip(dates, times, subjects):
+                if d or t or s:  # skip empty rows
+                    schedule_list.append({"date": d, "time": t, "subject": s})
+            
+            schedule_text = json.dumps(schedule_list) if schedule_list else '[]'
+            
+            try:
+                conn.execute('''
+                    INSERT INTO exam_schedules (class_name, term_name, branch, schedule_text)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(class_name, term_name, branch) DO UPDATE SET schedule_text = excluded.schedule_text, schedule_image = NULL
+                ''', (class_name, term_name, branch, schedule_text))
+                conn.commit()
+                flash(f'Exam schedule configured for Class {class_name} ({term_name}).')
+            except Exception as e:
+                conn.rollback()
+                flash(f'Server error: {str(e)}')
+            
+            conn.close()
+            return redirect(url_for('academics_setting'))
+
+        if request.method == 'POST' and 'delete_exam_schedule' in request.form:
+            schedule_id = request.form.get('schedule_id')
+            try:
+                conn.execute("DELETE FROM exam_schedules WHERE id = ?", (schedule_id,))
+                conn.commit()
+                flash('Exam schedule deleted successfully.')
+            except Exception as e:
+                conn.rollback()
+                flash(f'Server error: {str(e)}')
+            conn.close()
+            return redirect(url_for('academics_setting'))
+
         subjects = conn.execute("SELECT * FROM subjects ORDER BY class, name").fetchall()
         distinct_subjects = conn.execute("SELECT DISTINCT name FROM subjects ORDER BY name").fetchall()
         teachers = conn.execute('''
@@ -8818,8 +9958,10 @@ Al-Hidayet Mission"""
             ORDER BY ct.class_name
         ''').fetchall()
         
+        exam_schedules_list = conn.execute("SELECT * FROM exam_schedules ORDER BY class_name, term_name").fetchall()
+        
         conn.close()
-        return render_template('admin/academics_setting.html', subjects=subjects, distinct_subjects=distinct_subjects, teachers=teachers, assignments=assignments, class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, class_teachers=class_teachers, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, all_terms=all_terms, log_destination_email=log_email)
+        return render_template('admin/academics_setting.html', subjects=subjects, distinct_subjects=distinct_subjects, teachers=teachers, assignments=assignments, class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, class_teachers=class_teachers, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, all_terms=all_terms, log_destination_email=log_email, exam_schedules=exam_schedules_list)
     elif 'user' in session and session['role'] == 'teacher': # Teachers just view
          conn = get_db_connection()
          sync_and_normalize_monthly_tests(conn)
@@ -8841,8 +9983,9 @@ Al-Hidayet Mission"""
          registration_documents = conn.execute("SELECT * FROM registration_documents ORDER BY id").fetchall()
          exam_locks_raw = conn.execute("SELECT * FROM exam_locks").fetchall()
          exam_locks = [dict(row) for row in exam_locks_raw]
+         exam_schedules_list = conn.execute("SELECT * FROM exam_schedules ORDER BY class_name, term_name").fetchall()
          conn.close()
-         return render_template('admin/academics_setting.html', class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks) # Needs simplified view
+         return render_template('admin/academics_setting.html', class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, exam_schedules=exam_schedules_list) # Needs simplified view
 
 @app.route('/admin/toggle-exam-lock', methods=['POST'])
 def toggle_exam_lock():
@@ -9182,7 +10325,7 @@ def admit_card():
         student_id = request.args.get('student_id')
         if student_id:
             student = conn.execute('''
-                SELECT u.username, si.full_name, si.class, si.roll_number, si.branch 
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.branch, si.guardian_name 
                 FROM users u 
                 JOIN student_info si ON u.id = si.user_id 
                 WHERE u.id = ?
@@ -9203,7 +10346,7 @@ def admit_card():
     else:
         # Check student permission
         student = conn.execute('''
-            SELECT u.username, si.full_name, si.class, si.roll_number, si.branch, si.allow_admit 
+            SELECT u.username, si.full_name, si.class, si.roll_number, si.branch, si.allow_admit, si.guardian_name 
             FROM users u 
             LEFT JOIN student_info si ON u.id = si.user_id 
             WHERE u.id = ?
@@ -9215,7 +10358,9 @@ def admit_card():
     if student:
         branch = student['branch'] or 'bhogram'
         class_name = student['class']
-        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE class_name = ? AND term_name = ? AND branch = ?", (class_name, term_name, branch)).fetchone()
+        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (class_name, term_name, branch)).fetchone()
+        if not sched_row and class_name and 'nursery' in class_name.lower():
+            sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) LIKE '%nursery%' AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (term_name, branch)).fetchone()
         if sched_row:
             schedule_image = sched_row['schedule_image']
             schedule_text = sched_row['schedule_text']
@@ -9239,6 +10384,9 @@ def admit_card():
                 logo_url=LOGO_URL
             )
 
+    import datetime
+    current_year = datetime.datetime.now().year
+
     conn.close()
     return render_template(
         'admin/admit_card.html',
@@ -9247,7 +10395,8 @@ def admit_card():
         term_name=term_name,
         schedule_image=schedule_image,
         schedule_list=schedule_list,
-        logo_url=LOGO_URL
+        logo_url=LOGO_URL,
+        current_year=current_year
     )
 
 @app.route('/admin/admit-card/bulk', methods=['POST'])
@@ -9295,7 +10444,9 @@ def bulk_admit_card():
                 conn.commit()
 
     # Get the latest schedule from DB
-    sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE class_name = ? AND term_name = ? AND branch = ?", (class_name, term_name, branch)).fetchone()
+    sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (class_name, term_name, branch)).fetchone()
+    if not sched_row and class_name and 'nursery' in class_name.lower():
+        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = 'nursery' AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (term_name, branch)).fetchone()
     schedule_image = sched_row['schedule_image'] if sched_row else None
     schedule_text = sched_row['schedule_text'] if sched_row else None
     
@@ -9327,6 +10478,136 @@ def bulk_admit_card():
         schedule_list=schedule_list,
         logo_url=LOGO_URL
     )
+
+@app.route('/admin/exam-routine/bulk', methods=['POST'])
+@login_required
+def bulk_exam_routine():
+    user = get_session_user()
+    if user['role'] not in ['admin', 'teacher']:
+        return redirect(url_for('home'))
+        
+    class_name = request.form.get('class_name')
+    term_name = request.form.get('term_name')
+    cards_per_page = int(request.form.get('cards_per_page', 2))
+    
+    branch = 'bhogram'
+    if session.get('branch'):
+        branch = session['branch']
+        
+    conn = get_db_connection()
+    
+    sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (class_name, term_name, branch)).fetchone()
+    if not sched_row and class_name and 'nursery' in class_name.lower():
+        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = 'nursery' AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (term_name, branch)).fetchone()
+    schedule_image = sched_row['schedule_image'] if sched_row else None
+    schedule_text = sched_row['schedule_text'] if sched_row else None
+    
+    schedule_list = []
+    if schedule_text:
+        try:
+            schedule_list = json.loads(schedule_text)
+        except Exception:
+            pass
+            
+    conn.close()
+    
+    import datetime
+    current_year = datetime.datetime.now().year
+    
+    return render_template(
+        'admin/bulk_routine.html',
+        class_name=class_name,
+        term_name=term_name,
+        cards_per_page=cards_per_page,
+        schedule_image=schedule_image,
+        schedule_list=schedule_list,
+        logo_url=LOGO_URL,
+        current_year=current_year
+    )
+
+@app.route('/exam-routine/print/<class_name>')
+@login_required
+def print_exam_routine(class_name):
+    user = get_session_user()
+    term_name = request.args.get('term', '1st Unit')
+    branch = session.get('branch', 'bhogram')
+    if user['role'] == 'student':
+        conn = get_db_connection()
+        student = conn.execute("SELECT class, branch FROM student_info WHERE user_id = ?", (user['id'],)).fetchone()
+        conn.close()
+        if student:
+            class_name = student['class']
+            branch = student['branch'] or 'bhogram'
+            
+    conn = get_db_connection()
+    sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (class_name, term_name, branch)).fetchone()
+    if not sched_row and class_name and 'nursery' in class_name.lower():
+        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = 'nursery' AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (term_name, branch)).fetchone()
+    conn.close()
+    
+    schedule_image = sched_row['schedule_image'] if sched_row else None
+    schedule_text = sched_row['schedule_text'] if sched_row else None
+    schedule_list = []
+    if schedule_text:
+        try:
+            schedule_list = json.loads(schedule_text)
+        except Exception:
+            pass
+            
+    import datetime
+    current_year = datetime.datetime.now().year
+    
+    return render_template(
+        'admin/bulk_routine.html',
+        class_name=class_name,
+        term_name=term_name,
+        cards_per_page=1,
+        schedule_image=schedule_image,
+        schedule_list=schedule_list,
+        logo_url=LOGO_URL,
+        current_year=current_year,
+        single_print=True
+    )
+
+@app.route('/api/exam-schedule/all')
+def api_exam_schedule_all():
+    term_name = request.args.get('term', '1st Unit')
+    branch = request.args.get('branch', 'bhogram')
+    conn = get_db_connection()
+    schedules = conn.execute("SELECT class_name, schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?)) ORDER BY class_name", (term_name, branch)).fetchall()
+    conn.close()
+    
+    result = []
+    for s in schedules:
+        result.append({
+            'class_name': s['class_name'],
+            'schedule_image': s['schedule_image'],
+            'schedule_text': s['schedule_text']
+        })
+        
+    return jsonify({
+        'status': 'success',
+        'schedules': result
+    })
+
+@app.route('/api/exam-schedule/<class_name>')
+def api_exam_schedule(class_name):
+    term_name = request.args.get('term', '1st Unit')
+    branch = request.args.get('branch', 'bhogram')
+    conn = get_db_connection()
+    sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (class_name, term_name, branch)).fetchone()
+    if not sched_row and class_name and 'nursery' in class_name.lower():
+        sched_row = conn.execute("SELECT schedule_image, schedule_text FROM exam_schedules WHERE LOWER(TRIM(class_name)) = 'nursery' AND LOWER(TRIM(term_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(branch)) = LOWER(TRIM(?))", (term_name, branch)).fetchone()
+    conn.close()
+    
+    if sched_row:
+        return jsonify({
+            'status': 'success',
+            'schedule_image': sched_row['schedule_image'],
+            'schedule_text': sched_row['schedule_text']
+        })
+    return jsonify({'status': 'error', 'message': 'No schedule found'})
+
 
 @app.route('/admin/id-card')
 def id_card():
@@ -10595,7 +11876,17 @@ def view_routine():
                 return idx
         return len(class_order) + 1
 
-    routines = conn.execute("SELECT * FROM class_routine").fetchall()
+    if user['role'] == 'teacher':
+        teacher_row = conn.execute('''
+            SELECT COALESCE(ti.full_name, u.username) as name
+            FROM users u
+            LEFT JOIN teacher_info ti ON u.id = ti.user_id
+            WHERE u.id = ?
+        ''', (user['id'],)).fetchone()
+        t_name = teacher_row['name'] if teacher_row else ''
+        routines = conn.execute("SELECT * FROM class_routine WHERE LOWER(teacher_name) = LOWER(?)", (t_name,)).fetchall()
+    else:
+        routines = conn.execute("SELECT * FROM class_routine").fetchall()
     day_order = {d: i for i, d in enumerate(DAYS)}
     
     def parse_time_to_minutes(time_str):
@@ -10642,6 +11933,17 @@ def view_routine():
     classes_list = sorted([c[0] for c in db_classes], key=get_class_sort_index)
     
     distinct_subjects = [r['name'] for r in conn.execute("SELECT DISTINCT name FROM subjects").fetchall()]
+    
+    db_subjects_all = conn.execute("SELECT name, class FROM subjects").fetchall()
+    class_subjects_map = {}
+    for r in db_subjects_all:
+        c = r['class']
+        n = r['name']
+        if c not in class_subjects_map:
+            class_subjects_map[c] = []
+        if n not in class_subjects_map[c]:
+            class_subjects_map[c].append(n)
+
     teachers_list = conn.execute('''
         SELECT COALESCE(ti.full_name, u.username) as name
         FROM users u
@@ -10657,6 +11959,7 @@ def view_routine():
                            classes=classes_list, 
                            days=DAYS, 
                            distinct_subjects=distinct_subjects, 
+                           class_subjects_map=class_subjects_map,
                            teachers=teachers, 
                            routine_data=routine_data, 
                            role=user['role'], 
@@ -11182,18 +12485,22 @@ def manage_admins():
             if not username or not password:
                 flash('Username and password are required.')
             else:
-                existing = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-                if existing:
-                    flash('Username already exists.')
+                is_strong, error_msg = check_password_strength(password)
+                if not is_strong:
+                    flash(error_msg)
                 else:
-                    hashed = hash_password(password)
-                    security_key = secrets.token_hex(16)
-                    conn.execute('''
-                        INSERT INTO users (username, email, password, role, security_key, branch)
-                        VALUES (?, ?, ?, 'admin', ?, ?)
-                    ''', (username, email, hashed, security_key, branch))
-                    conn.commit()
-                    flash('Admin account created successfully.')
+                    existing = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+                    if existing:
+                        flash('Username already exists.')
+                    else:
+                        hashed = hash_password(password)
+                        security_key = secrets.token_hex(16)
+                        conn.execute('''
+                            INSERT INTO users (username, email, password, role, security_key, branch)
+                            VALUES (?, ?, ?, 'admin', ?, ?)
+                        ''', (username, email, hashed, security_key, branch))
+                        conn.commit()
+                        flash('Admin account created successfully.')
                     
         elif action == 'edit':
             user_id = request.form.get('user_id')
@@ -11204,6 +12511,8 @@ def manage_admins():
             
             if not username or not user_id:
                 flash('Admin ID and Username are required.')
+            elif password and not check_password_strength(password)[0]:
+                flash(check_password_strength(password)[1])
             else:
                 existing = conn.execute("SELECT id FROM users WHERE username = ? AND id != ?", (username, user_id)).fetchone()
                 if existing:
@@ -11457,6 +12766,20 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
+@app.route('/admin/delete-complaint/<int:complaint_id>', methods=['POST'])
+@login_required
+@roles_required('admin')
+def delete_complaint(complaint_id):
+    try:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM complaints WHERE id = ?", (complaint_id,))
+        conn.commit()
+        conn.close()
+        flash('Complaint deleted successfully!', 'success')
+    except Exception as e:
+        flash(f'Error deleting complaint: {str(e)}', 'danger')
+    return redirect(url_for('dashboard'))
+
 def sync_all_existing_teacher_assignments():
     debug_lines = []
     try:
@@ -11519,9 +12842,21 @@ def sync_all_existing_teacher_assignments():
     except Exception as e:
         print(f"Failed to write debug_sync.txt: {e}")
 
-sync_all_existing_teacher_assignments()
+# sync_all_existing_teacher_assignments() # Moved to bottom
+
+def run_startup_migrations():
+    print("Running database migrations and startup tasks...")
+    try:
+        consolidate_databases()
+        update_bhogram_class_fees()
+        migrate_class_teachers_and_complaints_schema()
+        sync_all_existing_teacher_assignments()
+        print("Startup tasks complete.")
+    except Exception as e:
+        print(f"Error during startup tasks: {e}")
 
 if __name__ == '__main__':
+    run_startup_migrations()
     port = int(os.getenv('PORT', 5001))
     print(f"Starting server on port {port} (debug=True)...")
     app.run(host='0.0.0.0', port=port, debug=True)

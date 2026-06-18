@@ -46,7 +46,8 @@
                         data-take-day-hostel="{{ s.take_day_hostel or 0 }}"
                         data-take-car="{{ s.take_car or 0 }}"
                         data-admission-fee="{{ s.admission_fee or 0.0 }}"
-                        data-readmission-fee="{{ s.readmission_fee or 0.0 }}">{{ s.full_name or s.username }}{% if s.guardian_name %} — G: {{ s.guardian_name }}{% endif %} ({{ s.roll_number or 'N/A' }})</option>
+                        data-readmission-fee="{{ s.readmission_fee or 0.0 }}"
+                        data-remaining-fee="{{ s.remaining_fee or 0.0 }}">{{ s.full_name or s.username }}{% if s.guardian_name %} — G: {{ s.guardian_name }}{% endif %} ({{ s.roll_number or 'N/A' }})</option>
                 {% endfor %}
             </optgroup>
             {% endif %}

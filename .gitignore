@@ -12,3 +12,10 @@ __pycache__/
 venv/
 static/uploads/
 records/
+
+# Debug, scratch and temporary files
+debug_*
+scratch*
+extracted_content_*
+test_manual_verify.txt
+

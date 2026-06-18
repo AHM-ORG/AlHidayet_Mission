@@ -322,6 +322,43 @@
         </div>
     </section>
 
+    <!-- Public Exam Schedule Section -->
+    <section id="exam-schedule-viewer" class="section exam-schedule-section bg-pattern" style="border-top: 1px solid #eee; background-color: #f1f2f6;">
+        <div class="container">
+            <div class="section-header text-center" style="margin-bottom: 35px;">
+                <h4 class="section-subtitle">Examination Schedule</h4>
+                <h2 class="section-title">Entire Exam Schedule</h2>
+                <p style="color: #636e72; font-size: 15px; max-width: 600px; margin: 10px auto 0 auto; line-height: 1.5;">
+                    Select the term below to view the exam schedule for all classes.
+                </p>
+            </div>
+
+            <!-- Selectors Grid -->
+            <div style="display: grid; grid-template-columns: 1fr; max-width: 600px; margin: 0 auto 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+                <div class="input-group" style="margin:0;">
+                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-dark);">Select Term:</label>
+                    <select id="public_exam_term" onchange="renderPublicExamSchedule()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: 'Outfit', sans-serif;">
+                        <option value="1st Unit">1st Unit Test</option>
+                        <option value="2nd Unit">2nd Unit Test</option>
+                        <option value="3rd Unit">3rd Unit Test</option>
+                        <option value="Annual">Annual Exam</option>
+                        <option value="Half Yearly">Half Yearly Exam</option>
+                        <option value="Pre-Test">Pre-Test Exam</option>
+                        <option value="Test">Test Exam</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Exam Schedule Target -->
+            <div id="public_exam_content" style="max-width: 800px; margin: 0 auto;">
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                    <i class="far fa-calendar-check" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                    <p style="margin: 0; font-weight: 500; font-size: 15px;">Loading exam schedule...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Reviews Section -->
     <section id="reviews" class="section reviews-section bg-pattern">
         <div class="container">
@@ -1054,7 +1091,102 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             filterNotices('bhogram');
+            renderPublicExamSchedule(); // Load exam schedules on init
         });
+
+        async function renderPublicExamSchedule() {
+            const term = document.getElementById('public_exam_term').value;
+            const branch = document.getElementById('public_branch') ? document.getElementById('public_branch').value : 'bhogram';
+            const container = document.getElementById('public_exam_content');
+            
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 40px; margin-bottom: 15px; color: var(--primary-color); display: block;"></i>
+                    <p style="margin: 0; font-weight: 500; font-size: 15px;">Loading Exam Schedules...</p>
+                </div>
+            `;
+            
+            try {
+                const res = await fetch(`/api/exam-schedule/all?term=${encodeURIComponent(term)}&branch=${encodeURIComponent(branch)}`);
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.schedules && data.schedules.length > 0) {
+                    let html = '';
+                    data.schedules.forEach(schedule => {
+                        html += `
+                        <div style="margin-bottom: 30px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; overflow: hidden;">
+                            <div style="background: var(--primary-color); padding: 15px; color: white;">
+                                <h3 style="margin: 0; font-size: 18px; text-align: center;">Class: ${schedule.class_name}</h3>
+                            </div>
+                            <div style="padding: 20px;">
+                        `;
+                        
+                        if (schedule.schedule_image) {
+                            html += `<img src="/static/uploads/exam_schedules/${schedule.schedule_image}" alt="Exam Routine" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;">`;
+                        } else if (schedule.schedule_text) {
+                            try {
+                                const sList = JSON.parse(schedule.schedule_text);
+                                if (sList && sList.length > 0) {
+                                    html += `
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                                        <thead>
+                                            <tr style="background: rgba(31, 111, 120, 0.1);">
+                                                <th style="padding: 10px; border: 1px solid #eee;">Date</th>
+                                                <th style="padding: 10px; border: 1px solid #eee;">Time</th>
+                                                <th style="padding: 10px; border: 1px solid #eee;">Subject</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                    `;
+                                    sList.forEach(item => {
+                                        html += `
+                                            <tr>
+                                                <td style="padding: 10px; border: 1px solid #eee;">${item.date || ''}</td>
+                                                <td style="padding: 10px; border: 1px solid #eee;">${item.time || ''}</td>
+                                                <td style="padding: 10px; border: 1px solid #eee; font-weight: 600;">${item.subject || ''}</td>
+                                            </tr>
+                                        `;
+                                    });
+                                    html += `</tbody></table>`;
+                                } else {
+                                    html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">No schedule data available.</p>`;
+                                }
+                            } catch (e) {
+                                html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">Invalid schedule format.</p>`;
+                            }
+                        } else {
+                            html += `<p style="text-align: center; color: #7f8c8d; font-style: italic;">No schedule configured.</p>`;
+                        }
+                        
+                        html += `
+                                <div style="text-align: center; margin-top: 15px;">
+                                    <a href="/exam-routine/print/${encodeURIComponent(schedule.class_name)}?term=${encodeURIComponent(term)}" target="_blank" class="btn btn-outline" style="padding: 8px 16px; font-size: 14px;">
+                                        <i class="fas fa-print"></i> Print Routine
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #7f8c8d;">
+                            <i class="far fa-calendar-times" style="font-size: 40px; margin-bottom: 15px; color: #dfe6e9; display: block;"></i>
+                            <p style="margin: 0; font-weight: 500; font-size: 15px;">No exam schedules found for this term.</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); border: 1px solid #eee; color: #e74c3c;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 40px; margin-bottom: 15px; display: block;"></i>
+                        <p style="margin: 0; font-weight: 500; font-size: 15px;">Error loading exam schedules.</p>
+                    </div>
+                `;
+            }
+        }
     </script>
 </body>
 
