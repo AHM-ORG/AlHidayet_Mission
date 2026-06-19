@@ -51,6 +51,7 @@
             text-align: center;
             margin: 10px 0 15px 0;
             letter-spacing: 0.5px;
+            padding: 0 95px;
         }
 
         .ac-top-logos {
@@ -265,6 +266,8 @@
 
             body {
                 background: white;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
             .sidebar,
@@ -400,10 +403,9 @@
                 <div class="term-selector-container" style="margin-bottom: 25px; display: flex; justify-content: center; align-items: center; gap: 10px; font-family: 'Outfit', sans-serif;">
                     <label style="font-weight: 600; color: var(--text-dark); font-size: 14px;">Select Exam Term:</label>
                     <select id="term_selector" onchange="changeTerm(this.value)" style="padding: 8px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; background: #fff; cursor: pointer; font-weight: 500;">
-                        <option value="1st Unit" {% if term_name == '1st Unit' %}selected{% endif %}>1st Unit</option>
-                        <option value="2nd Unit" {% if term_name == '2nd Unit' %}selected{% endif %}>2nd Unit</option>
-                        <option value="3rd Unit" {% if term_name == '3rd Unit' %}selected{% endif %}>3rd Unit</option>
-                        <option value="Annual Exam" {% if term_name == 'Annual Exam' %}selected{% endif %}>Annual Exam</option>
+                        {% for term in all_terms %}
+                            <option value="{{ term }}" {% if term == term_name %}selected{% endif %}>{{ term }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 

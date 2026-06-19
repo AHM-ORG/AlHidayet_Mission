@@ -321,11 +321,9 @@
                                             <h4 style="margin: 0; color: var(--secondary-color);"><i data-lucide="file-text" style="width: 16px; height: 16px; vertical-align: middle;"></i> Exam Routine</h4>
                                             <div style="display: flex; gap: 10px;">
                                                 <select id="term-select-admin-{{ loop.index }}" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;" onchange="fetchExamSchedule('{{ class_name }}', 'admin-exam-content-{{ loop.index }}', this.value)">
-                                                    <option value="1st Unit">1st Unit</option>
-                                                    <option value="2nd Unit">2nd Unit</option>
-                                                    <option value="3rd Unit">3rd Unit</option>
-                                                    <option value="Annual Exam">Annual Exam</option>
-                                                    <option value="Final Exam">Final Exam</option>
+                                                    {% for term in all_terms %}
+                                                        <option value="{{ term }}">{{ term }}</option>
+                                                    {% endfor %}
                                                 </select>
                                                 <button class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 4px;" onclick="printExamSchedule('{{ class_name }}', document.getElementById('term-select-admin-{{ loop.index }}').value)">
                                                     <i data-lucide="printer" style="width: 14px; height: 14px; vertical-align: middle;"></i> Print
@@ -407,11 +405,9 @@
                                     <h4 style="margin: 0; color: var(--secondary-color);"><i data-lucide="file-text" style="width: 16px; height: 16px; vertical-align: middle;"></i> Exam Routine</h4>
                                             <div style="display: flex; gap: 10px;">
                                         <select id="term-select-std-{{ loop.index }}" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;" onchange="fetchExamSchedule('{{ class_name }}', 'std-exam-content-{{ loop.index }}', this.value)">
-                                            <option value="1st Unit">1st Unit</option>
-                                            <option value="2nd Unit">2nd Unit</option>
-                                            <option value="3rd Unit">3rd Unit</option>
-                                            <option value="Annual Exam">Annual Exam</option>
-                                            <option value="Final Exam">Final Exam</option>
+                                            {% for term in all_terms %}
+                                                <option value="{{ term }}">{{ term }}</option>
+                                            {% endfor %}
                                         </select>
                                         <button class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 4px;" onclick="printExamSchedule('{{ class_name }}', document.getElementById('term-select-std-{{ loop.index }}').value)">
                                             <i data-lucide="printer" style="width: 14px; height: 14px; vertical-align: middle;"></i> Print

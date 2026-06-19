@@ -471,9 +471,10 @@
                 monthlyFee += 400.0;
             }
             
-            feeInput.value = monthlyFee.toFixed(2);
-            if (admFeeInput) admFeeInput.value = admissionFee.toFixed(2);
-            if (readmFeeInput) readmFeeInput.value = readmissionFee.toFixed(2);
+            const formatVal = (v) => (v === 0 || v === 0.0) ? '' : v.toFixed(2);
+            feeInput.value = formatVal(monthlyFee);
+            if (admFeeInput) admFeeInput.value = formatVal(admissionFee);
+            if (readmFeeInput) readmFeeInput.value = formatVal(readmissionFee);
         }
 
         document.addEventListener("DOMContentLoaded", function() {

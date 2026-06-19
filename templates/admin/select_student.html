@@ -124,10 +124,9 @@
                         <div class="input-group" style="margin-bottom: 0;">
                             <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Term / Exam:</label>
                             <select name="term_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="1st Unit">1st Unit</option>
-                                <option value="2nd Unit">2nd Unit</option>
-                                <option value="3rd Unit">3rd Unit</option>
-                                <option value="Annual Exam">Annual Exam</option>
+                                {% for term in all_terms %}
+                                    <option value="{{ term }}">{{ term }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
@@ -210,10 +209,9 @@
                         <div class="input-group" style="margin-bottom: 0;">
                             <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Term / Exam:</label>
                             <select name="term_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="1st Unit">1st Unit</option>
-                                <option value="2nd Unit">2nd Unit</option>
-                                <option value="3rd Unit">3rd Unit</option>
-                                <option value="Annual Exam">Annual Exam</option>
+                                {% for term in all_terms %}
+                                    <option value="{{ term }}">{{ term }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
@@ -260,10 +258,9 @@
                             <div class="input-group">
                                 <label style="font-weight: 500;">Select Term / Exam</label>
                                 <select name="term_name" required style="width: 100%;">
-                                    <option value="1st Unit">1st Unit</option>
-                                    <option value="2nd Unit">2nd Unit</option>
-                                    <option value="3rd Unit">3rd Unit</option>
-                                    <option value="Annual Exam">Annual Exam</option>
+                                    {% for term in all_terms %}
+                                        <option value="{{ term }}">{{ term }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                             <button type="submit" class="auth-btn" style="margin: 0; background: var(--primary-color);">Print Class Marksheets (A4)</button>
@@ -289,10 +286,9 @@
                             <div class="input-group">
                                 <label style="font-weight: 500;">Select Term / Exam</label>
                                 <select name="term_name" required style="width: 100%;">
-                                    <option value="1st Unit">1st Unit</option>
-                                    <option value="2nd Unit">2nd Unit</option>
-                                    <option value="3rd Unit">3rd Unit</option>
-                                    <option value="Annual Exam">Annual Exam</option>
+                                    {% for term in all_terms %}
+                                        <option value="{{ term }}">{{ term }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                             <button type="submit" class="auth-btn" style="margin: 0; background: var(--secondary-color);">Generate Tabulation Sheet</button>

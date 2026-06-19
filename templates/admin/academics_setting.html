@@ -149,48 +149,10 @@
                             <input type="hidden" name="create_subject" value="1">
                             <div class="input-group">
                                 <label>Subject Name(s)</label>
-                                <input type="text" name="name" placeholder="e.g. Mathematics (or split by commas: English, Bengali, Mathematics)" required>
-                                <small style="color: #7f8c8d; font-size: 11.5px; margin-top: 4px; display: block; line-height: 1.4;">Enter a single subject, or enter multiple subjects separated by commas to register them simultaneously.</small>
+                                <input type="text" name="name" placeholder="e.g. Mathematics (or split by commas: English, Bengali, Mathematics)" required style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); box-sizing: border-box;">
+                                <small style="color: #7f8c8d; font-size: 11.5px; margin-top: 4px; display: block; line-height: 1.4;">Enter a single subject, or enter multiple subjects separated by commas to register them globally.</small>
                             </div>
-                            <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                <div>
-                                    <label>Written (1st Term)</label>
-                                    <input type="number" step="0.1" name="full_marks_1st" placeholder="50.0" value="50.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Written (2nd Term)</label>
-                                    <input type="number" step="0.1" name="full_marks_2nd" placeholder="50.0" value="50.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Written (Annual)</label>
-                                    <input type="number" step="0.1" name="full_marks_annual" placeholder="100.0" value="100.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                            </div>
-                            <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                <div>
-                                    <label>Oral (1st Term)</label>
-                                    <input type="number" step="0.1" name="oral_marks_1st" placeholder="e.g. 10.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Oral (2nd Term)</label>
-                                    <input type="number" step="0.1" name="oral_marks_2nd" placeholder="e.g. 10.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Oral (Annual)</label>
-                                    <input type="number" step="0.1" name="oral_marks_annual" placeholder="e.g. 20.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label>Classes (Tick all that apply)</label>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 5px;">
-                                    {% for c in distinct_classes %}
-                                    <label style="display: flex; align-items: center; font-weight: normal; font-size: 14px; cursor: pointer;">
-                                        <input type="checkbox" name="classes" value="{{ c.name }}" style="margin-right: 5px;"> {{ c.name }}
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <button type="submit" class="auth-btn">Add Subject to Classes</button>
+                            <button type="submit" class="auth-btn">Add Global Subject</button>
                         </form>
                     </div>
 
@@ -204,8 +166,6 @@
                                 <thead style="background: #f8f9fa; position: sticky; top: 0;">
                                     <tr>
                                         <th style="padding: 10px; text-align: left;">Subject</th>
-                                        <th style="padding: 10px; text-align: left;">Class</th>
-                                        <th style="padding: 10px; text-align: left; width: 380px;">Marks Config (1st / 2nd / Ann)</th>
                                         <th style="padding: 10px; text-align: center;">Action</th>
                                     </tr>
                                 </thead>
@@ -213,31 +173,8 @@
                                     {% for subject in subjects %}
                                     <tr style="border-bottom: 1px solid #eee;">
                                         <td style="padding: 10px;">{{ subject.name }}</td>
-                                        <td style="padding: 10px;">{{ subject.class }}</td>
-                                        <td style="padding: 10px; width: 380px;">
-                                            <form action="/admin/update-subject-marks" method="POST" style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
-                                                <input type="hidden" name="subject_id" value="{{ subject.id }}">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span style="font-size: 12px; color: #7f8c8d; width: 65px; font-weight: 500;">Written:</span>
-                                                    <input type="number" step="0.1" name="full_marks_1st" value="{{ subject.full_marks_1st or 50.0 }}" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="1st Term Written" required>
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="full_marks_2nd" value="{{ subject.full_marks_2nd or 50.0 }}" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="2nd Term Written" required>
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="full_marks_annual" value="{{ subject.full_marks_annual or 100.0 }}" style="width: 55px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="Annual Exam Written" required>
-                                                </div>
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span style="font-size: 12px; color: #7f8c8d; width: 65px; font-weight: 500;">Oral Marks:</span>
-                                                    <input type="number" step="0.1" name="oral_marks_1st" value="{{ subject.oral_marks_1st if subject.oral_marks_1st is not none else '' }}" placeholder="None" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="1st Term Oral">
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="oral_marks_2nd" value="{{ subject.oral_marks_2nd if subject.oral_marks_2nd is not none else '' }}" placeholder="None" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="2nd Term Oral">
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="oral_marks_annual" value="{{ subject.oral_marks_annual if subject.oral_marks_annual is not none else '' }}" placeholder="None" style="width: 55px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="Annual Oral">
-                                                    <button type="submit" class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;">Save</button>
-                                                </div>
-                                            </form>
-                                        </td>
                                         <td style="padding: 10px; text-align: center;">
-                                            <form method="POST" onsubmit="return confirm('Delete subject {{ subject.name }} for Class {{ subject.class }}?')" style="display: inline;">
+                                            <form method="POST" onsubmit="return confirm('Delete global subject {{ subject.name }}?')" style="display: inline;">
                                                 <input type="hidden" name="delete_subject" value="1">
                                                 <input type="hidden" name="subject_id" value="{{ subject.id }}">
                                                 <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
@@ -396,92 +333,7 @@
 
             </div>
 
-            <!-- CLASS TEST CONFIGURATIONS SECTION -->
-            <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
-                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="clipboard-list"></i> Class Test Configurations
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px;">
-                    <!-- Create Config Form -->
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa;">
-                        <h4 style="color: #0984e3; margin-bottom: 15px;">Configure Class Test</h4>
-                        <form method="POST">
-                            <input type="hidden" name="create_class_test_config" value="1">
-                            <div class="input-group">
-                                <label>Test Name</label>
-                                <input type="text" name="test_name" placeholder="e.g. Monthly Test 1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <div class="input-group">
-                                <label>Class</label>
-                                <select name="class_name" required>
-                                    <option value="">Select Class</option>
-                                    {% for c in distinct_classes %}
-                                    <option value="{{ c.name }}">{{ c.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Subjects (Tick all that apply)</label>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 5px; max-height: 150px; overflow-y: auto; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                                    {% for subject in distinct_subjects %}
-                                    <label style="display: flex; align-items: center; font-weight: normal; font-size: 13px; cursor: pointer;">
-                                        <input type="checkbox" name="subject_name" value="{{ subject.name }}" style="margin-right: 5px;"> {{ subject.name }}
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label>Full Marks</label>
-                                <input type="number" name="full_marks" placeholder="Full Marks" required min="1" max="100" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <button type="submit" class="auth-btn">Save Configuration</button>
-                        </form>
-                    </div>
-                    
-                    <!-- Table View -->
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                            <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Configured Tests</h4>
-                            <input type="text" id="configsSearch" placeholder="Search configs..." onkeyup="filterTable('configsSearch', 'configsTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
-                        </div>
-                        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
-                            <table id="configsTable" style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                                    <tr>
-                                        <th style="padding: 12px; text-align: left;">Test Name</th>
-                                        <th style="padding: 12px; text-align: left;">Class</th>
-                                        <th style="padding: 12px; text-align: left;">Subject</th>
-                                        <th style="padding: 12px; text-align: center;">Full Marks</th>
-                                        <th style="padding: 12px; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for config in class_test_configs %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 12px;"><strong>{{ config.test_name }}</strong></td>
-                                        <td style="padding: 12px;">Class {{ config.class_name }}</td>
-                                        <td style="padding: 12px;">{{ config.subject_name }}</td>
-                                        <td style="padding: 12px; text-align: center;"><span style="background: #e8f5e9; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 600;">{{ config.full_marks }}</span></td>
-                                        <td style="padding: 12px; text-align: center;">
-                                            <form method="POST" onsubmit="return confirm('Delete config for {{ config.test_name }}?')" style="display: inline;">
-                                                <input type="hidden" name="delete_class_test_config" value="1">
-                                                <input type="hidden" name="config_id" value="{{ config.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No class tests configured yet.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
 
             <!-- EXAM ROUTINE CONFIGURATIONS SECTION -->
@@ -801,36 +653,7 @@
                 </div>
             </div>
             {% else %}
-            <!-- Read-only View for Teachers -->
-            <div style="background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
-                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #eee; padding-bottom: 12px;">
-                    <i data-lucide="clipboard-list"></i> Configured Class Tests
-                </h3>
-                <div style="max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                            <tr>
-                                <th style="padding: 12px; text-align: left;">Test Name</th>
-                                <th style="padding: 12px; text-align: left;">Class</th>
-                                <th style="padding: 12px; text-align: left;">Subject</th>
-                                <th style="padding: 12px; text-align: center;">Full Marks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for config in class_test_configs %}
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 12px;"><strong>{{ config.test_name }}</strong></td>
-                                <td style="padding: 12px;">Class {{ config.class_name }}</td>
-                                <td style="padding: 12px;">{{ config.subject_name }}</td>
-                                <td style="padding: 12px; text-align: center;"><span style="background: #e8f5e9; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 600;">{{ config.full_marks }}</span></td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="4" style="padding: 20px; text-align: center; color: #999;">No class tests configured yet.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+
             
             <!-- EXAM TERM LOCKS SECTION -->
             <div style="margin-top: 30px; background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
@@ -989,6 +812,50 @@
                         }, "Confirm Deletion");
                     });
                 }
+            });
+
+            // Scroll Position and Details State Restoration
+            const savedScrollY = sessionStorage.getItem("academicsSettingsScrollY");
+            if (savedScrollY !== null) {
+                setTimeout(() => {
+                    window.scrollTo(0, parseInt(savedScrollY, 10));
+                }, 100);
+                sessionStorage.removeItem("academicsSettingsScrollY");
+            }
+            
+            const docsDetails = document.querySelector(".docs-details");
+            if (docsDetails) {
+                const savedDocsOpen = sessionStorage.getItem("academicsSettingsDocsOpen");
+                if (savedDocsOpen === "true") {
+                    docsDetails.open = true;
+                }
+                
+                // Track details toggling to keep state updated
+                docsDetails.addEventListener("toggle", function() {
+                    sessionStorage.setItem("academicsSettingsDocsOpen", docsDetails.open);
+                });
+            }
+
+            // Save scroll position on form submission (for non-AJAX forms) or page unload
+            window.addEventListener("beforeunload", function() {
+                sessionStorage.setItem("academicsSettingsScrollY", window.scrollY);
+            });
+            
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function() {
+                    const isDeleteForm = form.querySelector('input[name="delete_subject"]') ||
+                                         form.querySelector('input[name="delete_assignment"]') ||
+                                         form.querySelector('input[name="delete_class"]') ||
+                                         form.querySelector('input[name="delete_class_test_config"]') ||
+                                         form.querySelector('input[name="doc_id"]') ||
+                                         form.classList.contains('delete-doc-form');
+                    if (!isDeleteForm) {
+                        sessionStorage.setItem("academicsSettingsScrollY", window.scrollY);
+                        if (docsDetails) {
+                            sessionStorage.setItem("academicsSettingsDocsOpen", docsDetails.open);
+                        }
+                    }
+                });
             });
         });
 

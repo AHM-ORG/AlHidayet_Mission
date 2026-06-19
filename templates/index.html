@@ -338,13 +338,9 @@
                 <div class="input-group" style="margin:0;">
                     <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-dark);">Select Term:</label>
                     <select id="public_exam_term" onchange="renderPublicExamSchedule()" style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; font-family: 'Outfit', sans-serif;">
-                        <option value="1st Unit">1st Unit Test</option>
-                        <option value="2nd Unit">2nd Unit Test</option>
-                        <option value="3rd Unit">3rd Unit Test</option>
-                        <option value="Annual">Annual Exam</option>
-                        <option value="Half Yearly">Half Yearly Exam</option>
-                        <option value="Pre-Test">Pre-Test Exam</option>
-                        <option value="Test">Test Exam</option>
+                        {% for term in all_terms %}
+                            <option value="{{ term }}">{{ term }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>

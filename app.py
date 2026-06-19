@@ -234,49 +234,8 @@ def migrate_staff_and_expense_recipient_schema():
 # migrate_student_info_schema() was called here, but moved to run after init_db() on startup to support blank databases.
 
 def update_bhogram_class_fees():
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Exact values for bhogram classes from poster:
-        # Format: (adm_school, adm_coaching, adm_hostel, readm_school, readm_coaching, readm_hostel, mon_school, mon_coaching, mon_hostel)
-        bhogram_fees = {
-            'Nursery': (3500.0, 4000.0, 5000.0, 1500.0, 1700.0, 2000.0, 450.0, 650.0, 1550.0),
-            'Upper Nursery': (3500.0, 4000.0, 5000.0, 1600.0, 1800.0, 2100.0, 450.0, 650.0, 1550.0),
-            'I': (3500.0, 4000.0, 5000.0, 1700.0, 1900.0, 2200.0, 450.0, 650.0, 1550.0),
-            'II': (3500.0, 4000.0, 5000.0, 1800.0, 2000.0, 2300.0, 450.0, 650.0, 1550.0),
-            'III': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
-            'IV': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
-            'V': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0),
-            'VI': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0)
-        }
-        
-        for cls_name, vals in bhogram_fees.items():
-            row = c.execute("SELECT id FROM classes WHERE name = ? AND branch = 'bhogram'", (cls_name,)).fetchone()
-            if row:
-                c.execute("""
-                    UPDATE classes 
-                    SET admission_fee = ?, admission_fee_coaching = ?, admission_fee_hostel = ?,
-                        readmission_fee_school = ?, readmission_fee_coaching = ?, readmission_fee_hostel = ?,
-                        monthly_fee = ?, monthly_fee_coaching = ?, hostel_fee = ?
-                    WHERE id = ?
-                """, (*vals, row[0]))
-            else:
-                c.execute("""
-                    INSERT INTO classes (
-                        name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                        readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                        monthly_fee, monthly_fee_coaching, hostel_fee
-                    ) VALUES (?, 'bhogram', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (cls_name, *vals))
-                
-        conn.commit()
-        conn.close()
-        print(" [DB INIT] Bhogram class fees successfully updated/synced.")
-    except Exception as e:
-        print(f" [DB INIT ERROR] Failed to update Bhogram class fees: {e}")
+    return
 
-# update_bhogram_class_fees() # Moved to bottom
 
 
 def migrate_class_teachers_and_complaints_schema():
@@ -1140,11 +1099,11 @@ def teardown_db_connections(exception):
 def sync_teacher_assigned_classes_string_from_db(conn, teacher_id):
     # Fetch all current assignments for the teacher from teacher_subjects
     rows = conn.execute('''
-        SELECT s.class, s.name as subject_name
+        SELECT ts.class_name as class, s.name as subject_name
         FROM teacher_subjects ts
         JOIN subjects s ON ts.subject_id = s.id
         WHERE ts.teacher_id = ?
-        ORDER BY s.class, s.name
+        ORDER BY ts.class_name, s.name
     ''', (teacher_id,)).fetchall()
     
     if not rows:
@@ -1177,10 +1136,10 @@ def sync_teacher_subjects_from_string(conn, teacher_id, assigned_classes_str):
     # Update teacher_subjects
     conn.execute("DELETE FROM teacher_subjects WHERE teacher_id = ?", (teacher_id,))
     for c_lower, s_lower, orig_c, orig_s in valid_assignments:
-        subj_row = conn.execute("SELECT id FROM subjects WHERE LOWER(class) = ? AND LOWER(name) = ?", (c_lower, s_lower)).fetchone()
+        subj_row = conn.execute("SELECT id FROM subjects WHERE LOWER(name) = ?", (s_lower,)).fetchone()
         if subj_row:
             try:
-                conn.execute("INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)", (teacher_id, subj_row['id']))
+                conn.execute("INSERT INTO teacher_subjects (teacher_id, class_name, subject_id) VALUES (?, ?, ?)", (teacher_id, orig_c, subj_row['id']))
             except Exception:
                 pass
         
@@ -1258,21 +1217,23 @@ def sync_and_normalize_monthly_tests(conn):
     def get_normalized_name(term_name):
         return normalize_monthly_test_name(term_name)
 
-    # 1. Normalize test names in class_test_configs table
-    configs_rows = cursor.execute("SELECT DISTINCT id, test_name FROM class_test_configs").fetchall()
-    for row in configs_rows:
-        orig = row['test_name']
-        norm = get_normalized_name(orig)
-        if norm != orig:
-            cursor.execute("UPDATE class_test_configs SET test_name = ? WHERE id = ?", (norm, row['id']))
+    # 1. Normalize test names in class_subjects table
+    distinct_configs = cursor.execute("SELECT DISTINCT term_name FROM class_subjects").fetchall()
+    for row in distinct_configs:
+        orig = row['term_name']
+        if orig:
+            norm = get_normalized_name(orig)
+            if norm != orig:
+                cursor.execute("UPDATE OR REPLACE class_subjects SET term_name = ? WHERE term_name = ?", (norm, orig))
             
     # 2. Normalize term names in marks table
-    marks_rows = cursor.execute("SELECT DISTINCT term_name FROM marks").fetchall()
-    for row in marks_rows:
+    distinct_marks_terms = cursor.execute("SELECT DISTINCT term_name FROM marks").fetchall()
+    for row in distinct_marks_terms:
         orig = row['term_name']
-        norm = get_normalized_name(orig)
-        if norm != orig:
-            cursor.execute("UPDATE OR REPLACE marks SET term_name = ? WHERE term_name = ?", (norm, orig))
+        if orig:
+            norm = get_normalized_name(orig)
+            if norm != orig:
+                cursor.execute("UPDATE OR REPLACE marks SET term_name = ? WHERE term_name = ?", (norm, orig))
             
     # Helper to check if a term is a monthly test
     def is_monthly_test_local(term_name):
@@ -1284,39 +1245,66 @@ def sync_and_normalize_monthly_tests(conn):
                 return True
         return 'monthly' in term_lower or 'class test' in term_lower or 'test' in term_lower
 
-    # Clean up monthly tests for art subjects (configs & marks)
-    cursor.execute("DELETE FROM class_test_configs WHERE LOWER(subject_name) LIKE '%art%'")
-    for row in cursor.execute("SELECT DISTINCT term_name FROM marks WHERE LOWER(subject_name) LIKE '%art%'").fetchall():
-        term = row[0]
-        if term and is_monthly_test_local(term):
-            cursor.execute("DELETE FROM marks WHERE term_name = ? AND LOWER(subject_name) LIKE '%art%'", (term,))
+    # Clean up monthly tests for art subjects (configs & marks) in batch if they exist
+    if cursor.execute("SELECT 1 FROM class_subjects WHERE LOWER(subject_name) LIKE '%art%' AND (LOWER(term_name) LIKE '%monthly%' OR LOWER(term_name) LIKE '%class test%' OR LOWER(term_name) LIKE '%test%') LIMIT 1").fetchone():
+        cursor.execute("DELETE FROM class_subjects WHERE LOWER(subject_name) LIKE '%art%' AND (LOWER(term_name) LIKE '%monthly%' OR LOWER(term_name) LIKE '%class test%' OR LOWER(term_name) LIKE '%test%')")
+        
+    has_art_marks = cursor.execute("""
+        SELECT 1 FROM marks 
+        WHERE LOWER(subject_name) LIKE '%art%' 
+          AND (LOWER(term_name) LIKE '%monthly%' 
+               OR LOWER(term_name) LIKE '%class test%' 
+               OR LOWER(term_name) LIKE '%test%')
+        LIMIT 1
+    """).fetchone()
+    if has_art_marks:
+        cursor.execute("""
+            DELETE FROM marks 
+            WHERE LOWER(subject_name) LIKE '%art%' 
+              AND (LOWER(term_name) LIKE '%monthly%' 
+                   OR LOWER(term_name) LIKE '%class test%' 
+                   OR LOWER(term_name) LIKE '%test%')
+        """)
 
     # 3. Auto-insert configs for monthly tests in marks table lacking configs
-    marks_tests = cursor.execute("SELECT DISTINCT term_name, class_name, subject_name, full_marks FROM marks").fetchall()
+    # Fetch all existing configs into a set for O(1) lookup
+    existing_configs = set()
+    for r in cursor.execute("SELECT term_name, class_name, subject_name FROM class_subjects").fetchall():
+        if r[0] and r[1] and r[2]:
+            existing_configs.add((r[0].strip().lower(), r[1].strip().lower(), r[2].strip().lower()))
+
+    # Fetch candidate monthly tests marks rows
+    marks_tests = cursor.execute("""
+        SELECT DISTINCT term_name, class_name, subject_name, full_marks 
+        FROM marks
+        WHERE LOWER(subject_name) NOT LIKE '%art%'
+          AND (LOWER(term_name) LIKE '%monthly%' 
+               OR LOWER(term_name) LIKE '%class test%' 
+               OR LOWER(term_name) LIKE '%test%')
+    """).fetchall()
+
+    to_insert = []
+    inserted_keys = set()
     for row in marks_tests:
         term = row['term_name']
-        if term and is_monthly_test_local(term):
-            normalized_term = get_normalized_name(term)
-            cls = row['class_name']
-            sub = row['subject_name']
+        cls = row['class_name']
+        sub = row['subject_name']
+        if not term or not cls or not sub:
+            continue
             
-            # Art subjects will not have any monthly test
-            if 'art' in sub.lower():
-                continue
-                
+        normalized_term = get_normalized_name(term)
+        key = (normalized_term.strip().lower(), cls.strip().lower(), sub.strip().lower())
+        
+        if key not in existing_configs and key not in inserted_keys:
             fm = row['full_marks'] if row['full_marks'] is not None else 20.0
+            to_insert.append((cls, sub, normalized_term, fm))
+            inserted_keys.add(key)
             
-            # Check if this config exists
-            existing = cursor.execute('''
-                SELECT id FROM class_test_configs 
-                WHERE test_name = ? AND class_name = ? AND subject_name = ?
-            ''', (normalized_term, cls, sub)).fetchone()
-            
-            if not existing:
-                cursor.execute('''
-                    INSERT INTO class_test_configs (test_name, class_name, subject_name, full_marks)
-                    VALUES (?, ?, ?, ?)
-                ''', (normalized_term, cls, sub, fm))
+    if to_insert:
+        cursor.executemany('''
+            INSERT INTO class_subjects (class_name, subject_name, term_name, full_marks)
+            VALUES (?, ?, ?, ?)
+        ''', to_insert)
                 
     conn.commit()
 
@@ -1808,66 +1796,38 @@ def seed_default_subjects(conn):
     Auto-populates the subjects table with default subjects for classes that exist in the classes table,
     and removes subjects/routines/assignments for classes that no longer exist.
     """
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM subjects")
-    if c.fetchone()[0] > 0:
-        return
-    
-    # 1. Clean up orphaned subjects and their associations for classes not in the classes table
-    classes_rows = c.execute("SELECT DISTINCT name FROM classes").fetchall()
-    existing_classes = [row[0] for row in classes_rows]
-    
-    if existing_classes:
-        placeholders = ', '.join('?' for _ in existing_classes)
-        # Delete from teacher_subjects
-        c.execute(f"""
-            DELETE FROM teacher_subjects 
-            WHERE subject_id IN (
-                SELECT id FROM subjects 
-                WHERE class NOT IN ({placeholders})
-            )
-        """, existing_classes)
-        # Delete from teacher_assignments
-        c.execute(f"""
-            DELETE FROM teacher_assignments 
-            WHERE subject_id IN (
-                SELECT id FROM subjects 
-                WHERE class NOT IN ({placeholders})
-            )
-        """, existing_classes)
-        # Delete from class_test_configs
-        c.execute(f"""
-            DELETE FROM class_test_configs 
-            WHERE class_name NOT IN ({placeholders})
-        """, existing_classes)
-        # Delete from class_routine
-        c.execute(f"""
-            DELETE FROM class_routine 
-            WHERE class_name NOT IN ({placeholders})
-        """, existing_classes)
-        # Delete from subjects
-        c.execute(f"""
-            DELETE FROM subjects 
-            WHERE class NOT IN ({placeholders})
-        """, existing_classes)
-        
-    # 2. Seed default subjects for existing classes
-    default_subjects = ["English", "Bengali", "Arabic", "Mathematics", "Science", "G.K.", "E.V.S", "Hindi", "Art", "Physical Education", "Work Education", "Hand Writing", "Behaviour", "Attendance"]
-    inserted_count = 0
-    for class_name in existing_classes:
-        for subject_name in default_subjects:
-            c.execute("SELECT id FROM subjects WHERE name = ? AND class = ?", (subject_name, class_name))
-            if not c.fetchone():
-                c.execute("INSERT INTO subjects (name, class) VALUES (?, ?)", (subject_name, class_name))
-                inserted_count += 1
-    if inserted_count > 0:
-        print(f" [SEED] Pre-populated {inserted_count} new subject(s) in subjects table.")
+    return
+
 
 
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
     
+    # One-time database reset for starting from scratch
+    import os
+    cleaned_flag = os.path.join(app.root_path, 'ahm.db.cleaned_v5')
+    if not os.path.exists(cleaned_flag):
+        try:
+            c.execute("DROP TABLE IF EXISTS subjects")
+            c.execute("DROP TABLE IF EXISTS teacher_subjects")
+            c.execute("DROP TABLE IF EXISTS teacher_assignments")
+            c.execute("DROP TABLE IF EXISTS class_subjects")
+            c.execute("DROP TABLE IF EXISTS class_test_configs")
+            c.execute("DELETE FROM classes")
+            c.execute("DELETE FROM class_teachers")
+            c.execute("DELETE FROM marks")
+            c.execute("DELETE FROM class_routine")
+            c.execute("DELETE FROM exam_locks")
+            c.execute("DELETE FROM exam_schedules")
+            conn.commit()
+            with open(cleaned_flag, 'w') as f:
+                f.write('cleaned')
+            print(" [DB RESET] Database tables purged successfully for starting from zero.")
+        except Exception as reset_err:
+            print(f" [DB RESET ERROR] {reset_err}")
+            conn.rollback()
+            
     # Tables creation
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -1961,29 +1921,31 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS subjects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            class TEXT,
-            full_marks REAL DEFAULT 100.0,
-            full_marks_1st REAL DEFAULT 50.0,
-            full_marks_2nd REAL DEFAULT 50.0,
-            full_marks_annual REAL DEFAULT 100.0,
-            oral_marks_1st REAL DEFAULT NULL,
-            written_marks_1st REAL DEFAULT NULL,
-            oral_marks_2nd REAL DEFAULT NULL,
-            written_marks_2nd REAL DEFAULT NULL,
-            oral_marks_annual REAL DEFAULT NULL,
-            written_marks_annual REAL DEFAULT NULL,
-            ct_marks_annual REAL DEFAULT NULL
+            name TEXT UNIQUE NOT NULL
         )
     ''')
     c.execute('''
         CREATE TABLE IF NOT EXISTS teacher_subjects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            teacher_id INTEGER,
-            subject_id INTEGER,
+            teacher_id INTEGER NOT NULL,
+            class_name TEXT NOT NULL,
+            subject_id INTEGER NOT NULL,
             FOREIGN KEY (teacher_id) REFERENCES users (id),
             FOREIGN KEY (subject_id) REFERENCES subjects (id),
-            UNIQUE(teacher_id, subject_id)
+            UNIQUE(teacher_id, class_name, subject_id)
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS class_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT NOT NULL,
+            subject_name TEXT NOT NULL,
+            term_name TEXT NOT NULL,
+            full_marks REAL,
+            oral_limit REAL,
+            written_limit REAL,
+            ct_limit REAL,
+            UNIQUE(class_name, subject_name, term_name)
         )
     ''')
     c.execute('''
@@ -2142,17 +2104,7 @@ def init_db():
         c.execute("INSERT INTO managing_committee (name, designation, order_num) VALUES (?, ?, ?)",
                   ("Habibur Rahman (Ripon)", "President", 2))
     
-    # Class Test Configs table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS class_test_configs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            test_name TEXT NOT NULL,
-            class_name TEXT NOT NULL,
-            subject_name TEXT NOT NULL,
-            full_marks REAL NOT NULL,
-            UNIQUE(test_name, class_name, subject_name)
-        )
-    ''')
+    # Class Test Configs table is deprecated and removed
     
     c.execute('''
         CREATE TABLE IF NOT EXISTS classes (
@@ -2204,27 +2156,8 @@ def init_db():
         except Exception as e:
             print(f" [DB MIGRATE] Classes migration failed: {e}")
 
-    # Default fees and classes seeding
-    c.execute('SELECT COUNT(*) FROM classes')
-    if c.fetchone()[0] == 0:
-        default_fees = {
-            'Nursery': (3500.0, 4000.0, 5000.0, 1500.0, 1700.0, 2000.0, 450.0, 650.0, 1550.0),
-            'Upper Nursery': (3500.0, 4000.0, 5000.0, 1600.0, 1800.0, 2100.0, 450.0, 650.0, 1550.0),
-            'I': (3500.0, 4000.0, 5000.0, 1700.0, 1900.0, 2200.0, 450.0, 650.0, 1550.0),
-            'II': (3500.0, 4000.0, 5000.0, 1800.0, 2000.0, 2300.0, 450.0, 650.0, 1550.0),
-            'III': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
-            'IV': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
-            'V': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0),
-            'VI': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0)
-        }
-        for cls_name, vals in default_fees.items():
-            c.execute("""
-                INSERT INTO classes (
-                    name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                    readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                    monthly_fee, monthly_fee_coaching, hostel_fee
-                ) VALUES (?, 'bhogram', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (cls_name, *vals))
+    # Default fees and classes seeding disabled (start from zero classes)
+    pass
 
     # Registration Documents table
     c.execute('''
@@ -3025,13 +2958,13 @@ def migrate_and_normalize_database_classes():
         tables_to_migrate = [
             ('student_info', 'class'),
             ('marks', 'class_name'),
-            ('class_test_configs', 'class_name'),
             ('class_routine', 'class_name'),
             ('exam_locks', 'class_name'),
             ('question_papers', 'class_name'),
             ('exam_schedules', 'class_name'),
             ('certificates', 'class_name'),
-            ('subjects', 'class'),
+            ('teacher_subjects', 'class_name'),
+            ('class_subjects', 'class_name'),
             ('teacher_assignments', 'class_name')
         ]
         
@@ -3072,28 +3005,17 @@ def is_db_initialized(conn):
     except Exception:
         return False
 
-# Initialize DB and run migrations if not already initialized or forced
-run_migrations_env = os.getenv('RUN_MIGRATIONS', 'false').lower() == 'true'
-db_exists = False
+# Initialize DB and run migrations
 try:
-    conn = get_db_connection()
-    db_exists = is_db_initialized(conn)
-    conn.close()
-except Exception as e:
-    print(f" [DB CHECK ERROR] Failed to inspect database on startup: {e}")
-
-if not db_exists or run_migrations_env:
-    print(" [DB INIT] Database not initialized or migrations forced. Running migrations...")
+    print(" [DB INIT] Running database initialization and safe migrations...")
     init_db()
     migrate_student_info_schema()
     migrate_staff_and_expense_recipient_schema()
     migrate_and_normalize_database_classes()
     migrate_pending_media_drive_id()
     migrate_question_papers_to_drive()
-else:
-    print(" [DB INIT] Database already initialized. Running safe migrations anyway...")
-    migrate_student_info_schema()
-    migrate_staff_and_expense_recipient_schema()
+except Exception as e:
+    print(f" [DB INIT ERROR] Failed to initialize database on startup: {e}")
 
 def migrate_manual_financial_schema():
     try:
@@ -3102,18 +3024,24 @@ def migrate_manual_financial_schema():
         try:
             c.execute("ALTER TABLE student_info ADD COLUMN remaining_fee REAL DEFAULT 0.0")
             print(" [DB MIGRATE] Added remaining_fee column to student_info")
+        except sqlite3.OperationalError:
+            pass
         except Exception as ex:
-            print(f" [DB MIGRATE] remaining_fee column check: {ex}")
+            print(f" [DB MIGRATE] remaining_fee column check error: {ex}")
         try:
             c.execute("ALTER TABLE teacher_info ADD COLUMN remaining_salary REAL DEFAULT 0.0")
             print(" [DB MIGRATE] Added remaining_salary column to teacher_info")
+        except sqlite3.OperationalError:
+            pass
         except Exception as ex:
-            print(f" [DB MIGRATE] remaining_salary column check: {ex}")
+            print(f" [DB MIGRATE] remaining_salary column check error: {ex}")
         try:
             c.execute("ALTER TABLE staff ADD COLUMN remaining_salary REAL DEFAULT 0.0")
             print(" [DB MIGRATE] Added remaining_salary column to staff")
+        except sqlite3.OperationalError:
+            pass
         except Exception as ex:
-            print(f" [DB MIGRATE] remaining_salary column check on staff: {ex}")
+            print(f" [DB MIGRATE] remaining_salary column check on staff error: {ex}")
         conn.commit()
         conn.close()
     except Exception as e:
@@ -3334,43 +3262,43 @@ def get_teacher_allowed_subjects(conn, username):
         WHERE u.username = ?
     ''', (username,)).fetchone()
     
-    if teacher_info and teacher_info['full_name']:
+    if teacher_info:
         teacher_id = teacher_info['id']
-        teacher_name = teacher_info['full_name']
         
-        special_subjects = ['Behaviour', 'Work Education', 'Physical Education', 'Attendance', 'Hand Writing']
+        # 1. Fetch teacher assignments from teacher_subjects table
+        ts_rows = conn.execute('''
+            SELECT ts.class_name, s.name as subject_name
+            FROM teacher_subjects ts
+            JOIN subjects s ON ts.subject_id = s.id
+            WHERE ts.teacher_id = ?
+        ''', (teacher_id,)).fetchall()
         
-        # 1. Fetch from class_routine table (excluding special subjects)
-        cr_rows = conn.execute('''
-            SELECT DISTINCT branch, class_name, subject 
-            FROM class_routine 
-            WHERE LOWER(teacher_name) = LOWER(?)
-        ''', (teacher_name,)).fetchall()
-        for r in cr_rows:
-            sub_name = r['subject']
-            if sub_name not in special_subjects:
-                allowed_subjects.append({
-                    'branch': r['branch'],
-                    'class': r['class_name'],
-                    'name': sub_name
-                })
+        teacher_user = conn.execute("SELECT branch FROM users WHERE id = ?", (teacher_id,)).fetchone()
+        branch = teacher_user['branch'] if (teacher_user and teacher_user['branch']) else 'bhogram'
+        
+        for r in ts_rows:
+            allowed_subjects.append({
+                'branch': branch,
+                'class': r['class_name'],
+                'name': r['subject_name']
+            })
             
         # 2. Add special subjects ONLY for Class Teachers
         ct_rows = conn.execute('''
             SELECT class_name FROM class_teachers WHERE teacher_id = ?
         ''', (teacher_id,)).fetchall()
         
+        special_subjects = ['Behaviour', 'Work Education', 'Physical Education', 'Attendance', 'Hand Writing']
         for ct in ct_rows:
             cls_name = ct['class_name']
-            for branch in BRANCHES:
-                for special in special_subjects:
-                    exists = any(x['branch'] == branch and x['class'] == cls_name and x['name'] == special for x in allowed_subjects)
-                    if not exists:
-                        allowed_subjects.append({
-                            'branch': branch,
-                            'class': cls_name,
-                            'name': special
-                        })
+            for special in special_subjects:
+                exists = any(x['branch'] == branch and x['class'] == cls_name and x['name'] == special for x in allowed_subjects)
+                if not exists:
+                    allowed_subjects.append({
+                        'branch': branch,
+                        'class': cls_name,
+                        'name': special
+                    })
                     
     return allowed_subjects
 
@@ -3395,6 +3323,13 @@ def get_db_class_names(selected_class):
     
     val = str(selected_class).strip()
     return list({val, val.lower(), val.upper(), val.title()})
+
+
+def get_all_academic_terms(conn):
+    class_tests_rows = conn.execute("SELECT DISTINCT term_name FROM class_subjects").fetchall()
+    all_terms = ['1st Unit', '2nd Unit', 'Final Exam'] + [r['term_name'] for r in class_tests_rows if r['term_name']]
+    seen = set()
+    return [x for x in all_terms if not (x in seen or seen.add(x))]
 
 
 # --- ROUTES ---
@@ -3446,6 +3381,7 @@ def home():
     # Query teachers
     teachers = [dict(row) for row in conn.execute("SELECT * FROM teacher_info WHERE full_name IS NOT NULL AND full_name != ''").fetchall()]
     
+    all_terms = get_all_academic_terms(conn)
     conn.close()
     return render_template('index.html', 
                            classes=classes, 
@@ -3454,7 +3390,8 @@ def home():
                            routine_list=routine_list, 
                            reviews=reviews,
                            notices=notices,
-                           teachers=teachers)
+                           teachers=teachers,
+                           all_terms=all_terms)
 
 
 
@@ -4923,20 +4860,54 @@ def delete_notice(notice_id):
 def delete_user(user_id):
     if 'user' in session and session['role'] == 'admin':
         conn = get_db_connection()
-        c = conn.cursor()
-        user_row = c.execute("SELECT username, role FROM users WHERE id = ?", (user_id,)).fetchone()
-        c.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        c.execute("DELETE FROM student_info WHERE user_id = ?", (user_id,))
-        c.execute("DELETE FROM teacher_info WHERE user_id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-        if user_row:
+        try:
+            user_row = conn.execute("SELECT username, role FROM users WHERE id = ?", (user_id,)).fetchone()
+            if not user_row:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return {'status': 'error', 'message': 'User not found'}
+                flash('User not found.')
+                return redirect(request.referrer or url_for('dashboard'))
+
+            admin_id_row = conn.execute("SELECT id FROM users WHERE username = ?", (session['user'],)).fetchone()
+            admin_id = admin_id_row['id'] if admin_id_row else 1
+
+            # Delete/update child rows first to satisfy foreign key constraints
+            conn.execute("DELETE FROM student_info WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM teacher_info WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM teacher_subjects WHERE teacher_id = ?", (user_id,))
+            conn.execute("DELETE FROM teacher_assignments WHERE teacher_id = ?", (user_id,))
+            conn.execute("DELETE FROM class_teachers WHERE teacher_id = ?", (user_id,))
+            conn.execute("DELETE FROM marks WHERE student_id = ?", (user_id,))
+            conn.execute("UPDATE marks SET uploaded_by = ? WHERE uploaded_by = ?", (admin_id, user_id))
+            conn.execute("DELETE FROM fees WHERE student_id = ?", (user_id,))
+            conn.execute("DELETE FROM applications WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM pending_media WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM meeting_attendance WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM complaints WHERE student_id = ? OR teacher_id = ?", (user_id, user_id))
+            conn.execute("UPDATE question_papers SET uploaded_by = ? WHERE uploaded_by = ?", (admin_id, user_id))
+            conn.execute("DELETE FROM attendance WHERE user_id = ?", (user_id,))
+            
+            # Finally delete the user parent record
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            
             send_activity_notification("Delete User", f"Deleted user ID {user_id} (username: '{user_row[0]}', role: '{user_row[1]}').")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return {'status': 'success'}
+            flash('User deleted successfully!')
+        except Exception as e:
+            conn.rollback()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return {'status': 'error', 'message': f"Database error: {str(e)}"}
+            flash(f"Database error: {str(e)}", 'error')
+        finally:
+            conn.close()
+    else:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return {'status': 'success'}
-        flash('User deleted successfully!')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return {'status': 'error', 'message': 'Permission denied'}
+            return {'status': 'error', 'message': 'Permission denied'}
+        flash('Permission denied.')
+        
     return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/admin/reset-password/<int:user_id>', methods=['POST'])
@@ -6141,7 +6112,6 @@ def calculate_overall_grade(percentage):
 def marksheet():
     if 'user' in session:
         conn = get_db_connection()
-        sync_and_normalize_monthly_tests(conn)
         role = session['role']
         
         user = conn.execute("SELECT id, role FROM users WHERE username = ?", (session['user'],)).fetchone()
@@ -6165,7 +6135,7 @@ def marksheet():
 
             # Fetch student meta early to know their class/branch
             student_meta = conn.execute('''
-                SELECT u.id, COALESCE(si.full_name, u.username) as name, si.class, si.roll_number, si.section, si.branch, si.guardian_name
+                SELECT u.id, COALESCE(si.full_name, u.username) as name, si.class, si.roll_number, si.section, si.branch, si.guardian_name, si.session
                 FROM users u
                 LEFT JOIN student_info si ON u.id = si.user_id
                 WHERE u.id = ?
@@ -6191,60 +6161,34 @@ def marksheet():
                 db_classes = get_db_class_names(class_name)
                 placeholders = ', '.join('?' for _ in db_classes)
                 subjects_rows = conn.execute(f"""
-                    SELECT name, 
-                           full_marks_1st, full_marks_2nd, full_marks_annual,
-                           oral_marks_1st, written_marks_1st,
-                           oral_marks_2nd, written_marks_2nd,
-                           oral_marks_annual, written_marks_annual,
-                           ct_marks_annual
-                    FROM subjects 
-                    WHERE class IN ({placeholders})
+                    SELECT subject_name AS name, term_name, full_marks, oral_limit, written_limit, ct_limit
+                    FROM class_subjects 
+                    WHERE class_name IN ({placeholders})
                 """, db_classes).fetchall()
                 for r in subjects_rows:
                     if r['name']:
                         sub_name_norm = r['name'].strip().title()
-                        subject_fm_1st_map[sub_name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
-                        subject_fm_2nd_map[sub_name_norm] = r['full_marks_2nd'] if r['full_marks_2nd'] is not None else 50.0
-                        subject_fm_annual_map[sub_name_norm] = r['full_marks_annual'] if r['full_marks_annual'] is not None else 100.0
-                        
-                        subject_oral_1st_map[sub_name_norm] = r['oral_marks_1st']
-                        subject_written_1st_map[sub_name_norm] = r['written_marks_1st']
-                        subject_oral_2nd_map[sub_name_norm] = r['oral_marks_2nd']
-                        subject_written_2nd_map[sub_name_norm] = r['written_marks_2nd']
-                        subject_oral_annual_map[sub_name_norm] = r['oral_marks_annual']
-                        subject_written_annual_map[sub_name_norm] = r['written_marks_annual']
-                        subject_ct_annual_map[sub_name_norm] = r['ct_marks_annual']
-
-            default_subs = ["English", "Bengali", "Arabic", "Mathematics", "Science", "G.K.", "E.V.S", "Hindi", "Art", "Physical Education", "Work Education", "Hand Writing", "Behaviour", "Attendance"]
-            default_fm_1st_dict = {
-                'Physical Education': 20.0,
-                'Work Education': 30.0,
-                'Hand Writing': 20.0,
-                'Behaviour': 20.0,
-                'Attendance': 10.0,
-            }
-            default_fm_2nd_dict = {
-                'Physical Education': 20.0,
-                'Work Education': 30.0,
-                'Hand Writing': 20.0,
-                'Behaviour': 20.0,
-                'Attendance': 10.0,
-            }
-            default_fm_annual_dict = {
-                'Physical Education': 20.0,
-                'Work Education': 30.0,
-                'Hand Writing': 20.0,
-                'Behaviour': 20.0,
-                'Attendance': 10.0,
-            }
-            for s_sub in default_subs:
-                s_norm = s_sub.strip().title()
-                if s_norm not in subject_fm_1st_map:
-                    subject_fm_1st_map[s_norm] = default_fm_1st_dict.get(s_norm, 50.0)
-                if s_norm not in subject_fm_2nd_map:
-                    subject_fm_2nd_map[s_norm] = default_fm_2nd_dict.get(s_norm, 50.0)
-                if s_norm not in subject_fm_annual_map:
-                    subject_fm_annual_map[s_norm] = default_fm_annual_dict.get(s_norm, 100.0)
+                        term_norm = r['term_name'].strip()
+                        if term_norm in ['1st Term', '1st Unit']:
+                            term_norm = '1st Unit'
+                        elif term_norm in ['2nd Term', '2nd Unit']:
+                            term_norm = '2nd Unit'
+                        elif term_norm in ['Annual Exam', 'Final Exam', 'Annual']:
+                            term_norm = 'Final Exam'
+                            
+                        if term_norm == '1st Unit':
+                            subject_fm_1st_map[sub_name_norm] = r['full_marks']
+                            subject_oral_1st_map[sub_name_norm] = r['oral_limit']
+                            subject_written_1st_map[sub_name_norm] = r['written_limit']
+                        elif term_norm == '2nd Unit':
+                            subject_fm_2nd_map[sub_name_norm] = r['full_marks']
+                            subject_oral_2nd_map[sub_name_norm] = r['oral_limit']
+                            subject_written_2nd_map[sub_name_norm] = r['written_limit']
+                        elif term_norm == 'Final Exam':
+                            subject_fm_annual_map[sub_name_norm] = r['full_marks']
+                            subject_oral_annual_map[sub_name_norm] = r['oral_limit']
+                            subject_written_annual_map[sub_name_norm] = r['written_limit']
+                            subject_ct_annual_map[sub_name_norm] = r['ct_limit']
 
             class_subjects = sorted(list(set(list(subject_fm_1st_map.keys()) + list(subject_fm_2nd_map.keys()) + list(subject_fm_annual_map.keys()))))
 
@@ -6274,29 +6218,39 @@ def marksheet():
                 ORDER BY m.uploaded_at DESC
             ''', (student_id,)).fetchall()
             
-            # Query class tests config to isolate monthly tests
-            class_tests_rows = conn.execute("SELECT DISTINCT test_name FROM class_test_configs").fetchall()
-            class_test_names = [r['test_name'] for r in class_tests_rows]
-            
             # Standard monthly tests keywords matching fallback
             def is_monthly_test(term_name):
-                if term_name in class_test_names:
-                    return True
-                term_lower = term_name.lower()
-                return 'monthly' in term_lower or 'class test' in term_lower or 'test' in term_lower
+                if not term_name:
+                    return False
+                term_clean = term_name.strip()
+                if term_clean in ['1st Unit', '2nd Unit', 'Final Exam', '1st Term', '2nd Term', 'Annual Exam', 'Annual']:
+                    return False
+                return True
+                
+            class_test_names = []
+            for r in marks_rows:
+                t = r['term']
+                if t and is_monthly_test(t) and t.strip() not in class_test_names:
+                    class_test_names.append(t.strip())
+            class_test_names.sort(key=get_month_sort_key)
             
             monthly_marks = []
             term_marks = []
             annual_marks = []
             
             def fmt_limit(lim):
+                if lim is None: return '-'
                 if lim == int(lim): return str(int(lim))
                 return f"{lim:.1f}"
 
             for m in marks_rows:
                 term_name = m['term'].strip()
+                sub_name_lower = m['subject'].strip().lower()
+                is_ct_special = sub_name_lower in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance']
+                
                 if is_monthly_test(term_name):
-                    monthly_marks.append(m)
+                    if not is_ct_special:
+                        monthly_marks.append(m)
                 else:
                     if term_name in ['1st Term', '1st Unit']:
                         term_name = '1st Unit'
@@ -6305,57 +6259,58 @@ def marksheet():
                     elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
                         term_name = 'Final Exam'
                     
-                    m_dict = dict(m)
-                    m_dict['term'] = term_name
-                    
-                    # Attach dynamic component limits
-                    sub_name = m_dict['subject'].strip().title()
-                    
-                    if term_name in ['1st Unit', '1st Term']:
-                        tot_fm = subject_fm_1st_map.get(sub_name, 50.0)
-                        custom_oral = subject_oral_1st_map.get(sub_name)
-                        custom_oral_val = custom_oral if custom_oral is not None else (tot_fm * 0.2)
-                        custom_written = subject_written_1st_map.get(sub_name)
-                        custom_written_val = custom_written if custom_written is not None else (tot_fm - custom_oral_val)
-                        m_dict['oral_limit'] = fmt_limit(custom_oral_val)
-                        m_dict['written_limit'] = fmt_limit(custom_written_val)
-                        m_dict['ct_limit'] = '0'
-                    elif term_name in ['2nd Unit', '2nd Term']:
-                        tot_fm = subject_fm_2nd_map.get(sub_name, 50.0)
-                        custom_oral = subject_oral_2nd_map.get(sub_name)
-                        custom_oral_val = custom_oral if custom_oral is not None else (tot_fm * 0.2)
-                        custom_written = subject_written_2nd_map.get(sub_name)
-                        custom_written_val = custom_written if custom_written is not None else (tot_fm - custom_oral_val)
-                        m_dict['oral_limit'] = fmt_limit(custom_oral_val)
-                        m_dict['written_limit'] = fmt_limit(custom_written_val)
-                        m_dict['ct_limit'] = '0'
-                    elif term_name in ['Final Exam', 'Annual Exam']:
-                        tot_fm = subject_fm_annual_map.get(sub_name, 100.0)
-                        custom_oral = subject_oral_annual_map.get(sub_name)
-                        custom_oral_val = custom_oral if custom_oral is not None else (tot_fm * 0.2)
-                        custom_ct = subject_ct_annual_map.get(sub_name)
-                        custom_ct_val = custom_ct if custom_ct is not None else (tot_fm * 0.1)
-                        custom_written = subject_written_annual_map.get(sub_name)
-                        custom_written_val = custom_written if custom_written is not None else (tot_fm - custom_oral_val - custom_ct_val)
-                        m_dict['oral_limit'] = fmt_limit(custom_oral_val)
-                        m_dict['written_limit'] = fmt_limit(custom_written_val)
-                        m_dict['ct_limit'] = fmt_limit(custom_ct_val)
-                    else:
-                        tot_fm = float(m_dict['total_marks'] if m_dict['total_marks'] is not None else subject_fm_annual_map.get(sub_name, 100.0))
-                        m_dict['oral_limit'] = '0'
-                        m_dict['written_limit'] = '0'
-                        m_dict['ct_limit'] = '0'
+                    if not (term_name in ['1st Unit', '2nd Unit'] and is_ct_special):
+                        m_dict = dict(m)
+                        m_dict['term'] = term_name
                         
-                    m_dict['total_marks'] = tot_fm
-                    term_marks.append(m_dict)
+                        # Attach dynamic component limits
+                        sub_name = m_dict['subject'].strip().title()
+                        
+                        if term_name in ['1st Unit', '1st Term']:
+                            tot_fm = subject_fm_1st_map.get(sub_name)
+                            if tot_fm is None:
+                                tot_fm = m_dict['total_marks'] if m_dict['total_marks'] is not None else 50.0
+                            m_dict['oral_limit'] = fmt_limit(subject_oral_1st_map.get(sub_name))
+                            m_dict['written_limit'] = fmt_limit(subject_written_1st_map.get(sub_name))
+                            m_dict['ct_limit'] = '-'
+                        elif term_name in ['2nd Unit', '2nd Term']:
+                            tot_fm = subject_fm_2nd_map.get(sub_name)
+                            if tot_fm is None:
+                                tot_fm = m_dict['total_marks'] if m_dict['total_marks'] is not None else 50.0
+                            m_dict['oral_limit'] = fmt_limit(subject_oral_2nd_map.get(sub_name))
+                            m_dict['written_limit'] = fmt_limit(subject_written_2nd_map.get(sub_name))
+                            m_dict['ct_limit'] = '-'
+                        elif term_name in ['Final Exam', 'Annual Exam']:
+                            tot_fm = subject_fm_annual_map.get(sub_name)
+                            if tot_fm is None:
+                                tot_fm = m_dict['total_marks'] if m_dict['total_marks'] is not None else 100.0
+                            m_dict['oral_limit'] = fmt_limit(subject_oral_annual_map.get(sub_name))
+                            m_dict['written_limit'] = fmt_limit(subject_written_annual_map.get(sub_name))
+                            m_dict['ct_limit'] = fmt_limit(subject_ct_annual_map.get(sub_name))
+                        else:
+                            tot_fm = float(m_dict['total_marks'] if m_dict['total_marks'] is not None else 100.0)
+                            m_dict['oral_limit'] = '-'
+                            m_dict['written_limit'] = '-'
+                            m_dict['ct_limit'] = '-'
+                            
+                        if m_dict['oral_limit'] == '-':
+                            m_dict['oral_marks'] = None
+                        if m_dict['written_limit'] == '-':
+                            m_dict['written_marks'] = None
+                        if m_dict['ct_limit'] == '-':
+                            m_dict['ct_marks'] = None
+                            
+                        m_dict['total_marks'] = tot_fm
+                        term_marks.append(m_dict)
                     
                 # Support both Unit tests and Terms for annual composite report card
                 term_lower = term_name.lower()
                 if any(x in term_lower for x in ['annual', 'final', 'unit', 'term']):
                     if not is_monthly_test(term_name):
-                        m_dict = dict(m)
-                        m_dict['term'] = term_name
-                        annual_marks.append(m_dict)
+                        if not (term_name in ['1st Unit', '2nd Unit'] and is_ct_special):
+                            m_dict = dict(m)
+                            m_dict['term'] = term_name
+                            annual_marks.append(m_dict)
                     
             # Get distinct term names for term exams
             distinct_terms = []
@@ -6395,19 +6350,19 @@ def marksheet():
                     monthly_subjects.append(sub)
             monthly_subjects.sort()
 
-            # Query class test configurations to get the correct full marks configured
+            # Query class subject configurations to get the correct full marks configured
             ct_fm_map = {}
             monthly_fms = {}
             if class_name:
                 student_db_classes = get_db_class_names(class_name)
                 placeholders_ct = ', '.join('?' for _ in student_db_classes)
                 ct_config_rows = conn.execute(f"""
-                    SELECT test_name, subject_name, full_marks 
-                    FROM class_test_configs 
+                    SELECT term_name, subject_name, full_marks 
+                    FROM class_subjects 
                     WHERE class_name IN ({placeholders_ct})
                 """, student_db_classes).fetchall()
                 for row in ct_config_rows:
-                    t_name = row['test_name'].strip().title()
+                    t_name = row['term_name'].strip().title()
                     sub_title = row['subject_name'].strip().title()
                     ct_fm_map[(t_name, sub_title)] = row['full_marks']
                     
@@ -6449,10 +6404,16 @@ def marksheet():
                             
                     if match:
                         obt = match['marks']
-                        sub_entry['marks'][term_name] = {
-                            'obt': int(obt) if obt == int(obt) else obt,
-                            'tot': int(configured_fm) if configured_fm == int(configured_fm) else configured_fm
-                        }
+                        if obt is None:
+                            sub_entry['marks'][term_name] = {
+                                'obt': '-',
+                                'tot': int(configured_fm) if configured_fm == int(configured_fm) else configured_fm
+                            }
+                        else:
+                            sub_entry['marks'][term_name] = {
+                                'obt': int(obt) if obt == int(obt) else obt,
+                                'tot': int(configured_fm) if configured_fm == int(configured_fm) else configured_fm
+                            }
                     else:
                         sub_entry['marks'][term_name] = {
                             'obt': '-',
@@ -6566,18 +6527,23 @@ def marksheet():
                     WHERE si.branch = ? AND si.class IN ({placeholders})
                 ''', [branch_name] + db_classes).fetchall()
                 
-                # Compute function for totals
-                def compute_student_annual_total(sid):
-                    rows = conn.execute('''
-                        SELECT subject_name, term_name, obtained_marks
+                # Fetch all marks for all class students in a single query
+                student_ids = [s_row['id'] for s_row in all_class_students]
+                marks_by_student = {}
+                if student_ids:
+                    placeholders_stud = ', '.join('?' for _ in student_ids)
+                    all_marks = conn.execute(f'''
+                        SELECT student_id, subject_name, term_name, obtained_marks
                         FROM marks
-                        WHERE student_id = ?
-                    ''', (sid,)).fetchall()
+                        WHERE student_id IN ({placeholders_stud})
+                    ''', student_ids).fetchall()
                     
-                    m_by_sub = {}
-                    for r in rows:
-                        sub_n = r['subject_name'].strip().title()
-                        term_n = r['term_name'].strip()
+                    for m in all_marks:
+                        sid = m['student_id']
+                        if sid not in marks_by_student:
+                            marks_by_student[sid] = {}
+                        sub_n = m['subject_name'].strip().title()
+                        term_n = m['term_name'].strip()
                         
                         norm_term = term_n
                         if term_n in ['1st Term', '1st Unit']:
@@ -6587,30 +6553,33 @@ def marksheet():
                         elif term_n in ['Annual Exam', 'Final Exam']:
                             norm_term = 'Final Exam'
                             
-                        if sub_n not in m_by_sub:
-                            m_by_sub[sub_n] = {}
-                        m_by_sub[sub_n][norm_term] = r
-                    
+                        if sub_n not in marks_by_student[sid]:
+                            marks_by_student[sid][sub_n] = {}
+                        marks_by_student[sid][sub_n][norm_term] = m['obtained_marks']
+
+                # Compute function for totals using in-memory cached data
+                def compute_student_annual_total_fast(sid):
+                    m_by_sub = marks_by_student.get(sid, {})
                     tot_obt = 0.0
                     for sub_n in active_main_subjects:
                         sub_tot = 0.0
                         for term_n in ['1st Unit', '2nd Unit', 'Final Exam']:
                             if term_n in m_by_sub.get(sub_n, {}):
-                                sub_tot += float(m_by_sub[sub_n][term_n]['obtained_marks'] or 0.0)
+                                sub_tot += float(m_by_sub[sub_n][term_n] or 0.0)
                         tot_obt += sub_tot
                         
                     if is_art_active:
                         art_tot = 0.0
                         for term_n in ['1st Unit', '2nd Unit', 'Final Exam']:
                             if 'Art' in m_by_sub and term_n in m_by_sub['Art']:
-                                art_tot += float(m_by_sub['Art'][term_n]['obtained_marks'] or 0.0)
+                                art_tot += float(m_by_sub['Art'][term_n] or 0.0)
                         tot_obt += art_tot
                         
                     if is_add_active:
                         add_tot = 0.0
                         for add_sub in ['Physical Education', 'Work Education', 'Hand Writing', 'Behaviour', 'Attendance']:
                             if add_sub in m_by_sub and 'Final Exam' in m_by_sub[add_sub]:
-                                add_tot += float(m_by_sub[add_sub]['Final Exam']['obtained_marks'] or 0.0)
+                                add_tot += float(m_by_sub[add_sub]['Final Exam'] or 0.0)
                         tot_obt += add_tot
                         
                     return tot_obt
@@ -6618,7 +6587,7 @@ def marksheet():
                 # Calculate ranks
                 student_totals = []
                 for s_row in all_class_students:
-                    s_tot = compute_student_annual_total(s_row['id'])
+                    s_tot = compute_student_annual_total_fast(s_row['id'])
                     student_totals.append((s_row['id'], s_tot))
                 
                 student_totals.sort(key=lambda x: x[1], reverse=True)
@@ -6638,6 +6607,7 @@ def marksheet():
                 s['roll'] = student_meta['roll_number']
                 s['section'] = student_meta['section'] or 'A'
                 s['branch'] = student_meta['branch'] or 'BHOGRAM'
+                s['session'] = student_meta['session'] or '2025'
                 
                 # Initialize sums for column totals
                 u1_o_tot = 0.0
@@ -6666,6 +6636,37 @@ def marksheet():
                 grand_tot_tot = 0.0
                 grand_tot_pos = 0.0
 
+                def row_get(row, field, default=None):
+                    if row is None:
+                        return default
+                    try:
+                        return row[field]
+                    except:
+                        return default
+
+                def fmt_val(row, field):
+                    val = row_get(row, field)
+                    if val is None: return '-'
+                    val_str = str(val).strip()
+                    if '/' in val_str:
+                        val_str = val_str.split('/')[0].strip()
+                    if val_str == '': return '-'
+                    try:
+                        fval = float(val_str)
+                        if fval == int(fval): return str(int(fval))
+                        return f"{fval:.1f}"
+                    except:
+                        return val_str
+
+                def get_float(row, field):
+                    val = row_get(row, field)
+                    if val is None: return 0.0
+                    val_str = str(val).strip()
+                    if '/' in val_str:
+                        val_str = val_str.split('/')[0].strip()
+                    try: return float(val_str)
+                    except: return 0.0
+
                 subjects_list = []
                 for sub in active_main_subjects:
                     sub_entry = {'name': sub.upper()}
@@ -6674,24 +6675,6 @@ def marksheet():
                     u2_m = student_marks_by_sub.get(sub, {}).get('2nd Unit')
                     f_m = student_marks_by_sub.get(sub, {}).get('Final Exam')
                     
-                    def row_get(row, field, default=None):
-                        if row is None:
-                            return default
-                        try:
-                            return row[field]
-                        except:
-                            return default
-
-                    def fmt_val(row, field):
-                        val = row_get(row, field)
-                        if val is None: return '-'
-                        try:
-                            fval = float(val)
-                            if fval == int(fval): return str(int(fval))
-                            return f"{fval:.1f}"
-                        except:
-                            return str(val)
-
                     sub_entry['u1_o'] = fmt_val(u1_m, 'oral_marks')
                     sub_entry['u1_w'] = fmt_val(u1_m, 'written_marks')
                     sub_entry['u1_tot'] = fmt_val(u1_m, 'marks')
@@ -6703,41 +6686,14 @@ def marksheet():
                     sub_entry['f_o'] = fmt_val(f_m, 'oral_marks')
                     sub_entry['f_w'] = fmt_val(f_m, 'written_marks')
                     
-                    # --- AUTO CT MARK CALCULATION ---
-                    custom_f_ct = subject_ct_annual_map.get(sub)
-                    custom_f_ct_val = custom_f_ct if custom_f_ct is not None else 10.0
-                    
+                    # --- AUTO CT MARK CALCULATION DISABLED (CONNECTED TO MANUAL INPUT) ---
                     auto_ct_val = None
-                    monthly_tests_for_sub = [m for m in monthly_marks if m['subject'].strip().title() == sub]
-                    if monthly_tests_for_sub:
-                        total_monthly_obt = 0.0
-                        total_monthly_pos = 0.0
-                        for m_m in monthly_tests_for_sub:
-                            obt_m = row_get(m_m, 'marks')
-                            t_pos = row_get(m_m, 'total_marks')
-                            if t_pos is None:
-                                t_name = row_get(m_m, 'term').strip().title()
-                                t_pos = ct_fm_map.get((t_name, sub), 20.0)
-                            if obt_m is not None and str(obt_m).strip() != '':
-                                total_monthly_obt += float(obt_m)
-                                total_monthly_pos += float(t_pos)
-                        if total_monthly_pos > 0:
-                            auto_ct_val = (total_monthly_obt / total_monthly_pos) * custom_f_ct_val
-
-                    def get_float(row, field):
-                        val = row_get(row, field)
-                        if val is None: return 0.0
-                        try: return float(val)
-                        except: return 0.0
 
                     f_o_val = get_float(f_m, 'oral_marks')
                     f_w_val = get_float(f_m, 'written_marks')
-                    f_ct_val = auto_ct_val if auto_ct_val is not None else get_float(f_m, 'ct_marks')
+                    f_ct_val = get_float(f_m, 'ct_marks')
 
-                    if auto_ct_val is not None:
-                        sub_entry['f_ct'] = f"{auto_ct_val:.1f}" if auto_ct_val != int(auto_ct_val) else str(int(auto_ct_val))
-                    else:
-                        sub_entry['f_ct'] = fmt_val(f_m, 'ct_marks')
+                    sub_entry['f_ct'] = fmt_val(f_m, 'ct_marks')
 
                     if f_m is None:
                         sub_entry['f_tot'] = '-'
@@ -6750,67 +6706,73 @@ def marksheet():
                     u2_tot_val = get_float(u2_m, 'marks')
                     grand_val = u1_tot_val + u2_tot_val + f_tot_val
                     
-                    u1_possible_val = subject_fm_1st_map.get(sub, 50.0)
-                    u2_possible_val = subject_fm_2nd_map.get(sub, 50.0)
-                    f_possible_val = subject_fm_annual_map.get(sub, 100.0)
+                    u1_possible_val = subject_fm_1st_map.get(sub)
+                    if u1_possible_val is None:
+                        u1_possible_val = get_float(u1_m, 'total_marks') if u1_m is not None else None
+                        
+                    u2_possible_val = subject_fm_2nd_map.get(sub)
+                    if u2_possible_val is None:
+                        u2_possible_val = get_float(u2_m, 'total_marks') if u2_m is not None else None
+                        
+                    f_possible_val = subject_fm_annual_map.get(sub)
+                    if f_possible_val is None:
+                        f_possible_val = get_float(f_m, 'total_marks') if f_m is not None else None
 
-                    # Populate sub_entry limits and track possible component totals
-                    custom_u1_o = subject_oral_1st_map.get(sub)
-                    custom_u1_o_val = custom_u1_o if custom_u1_o is not None else (u1_possible_val * 0.2)
-                    custom_u1_w = subject_written_1st_map.get(sub)
-                    custom_u1_w_val = custom_u1_w if custom_u1_w is not None else (u1_possible_val - custom_u1_o_val)
+                    custom_u1_o_val = subject_oral_1st_map.get(sub)
+                    custom_u1_w_val = subject_written_1st_map.get(sub)
+                    custom_u2_o_val = subject_oral_2nd_map.get(sub)
+                    custom_u2_w_val = subject_written_2nd_map.get(sub)
+                    custom_f_o_val = subject_oral_annual_map.get(sub)
+                    custom_f_w_val = subject_written_annual_map.get(sub)
+                    custom_f_ct_val = subject_ct_annual_map.get(sub)
+
                     sub_entry['u1_o_limit'] = fmt_limit(custom_u1_o_val)
                     sub_entry['u1_w_limit'] = fmt_limit(custom_u1_w_val)
                     sub_entry['u1_tot_limit'] = fmt_limit(u1_possible_val)
 
-                    custom_u2_o = subject_oral_2nd_map.get(sub)
-                    custom_u2_o_val = custom_u2_o if custom_u2_o is not None else (u2_possible_val * 0.2)
-                    custom_u2_w = subject_written_2nd_map.get(sub)
-                    custom_u2_w_val = custom_u2_w if custom_u2_w is not None else (u2_possible_val - custom_u2_o_val)
                     sub_entry['u2_o_limit'] = fmt_limit(custom_u2_o_val)
                     sub_entry['u2_w_limit'] = fmt_limit(custom_u2_w_val)
                     sub_entry['u2_tot_limit'] = fmt_limit(u2_possible_val)
-                    
-                    custom_f_o = subject_oral_annual_map.get(sub)
-                    custom_f_o_val = custom_f_o if custom_f_o is not None else (f_possible_val * 0.2)
-                    
-                    custom_f_w = subject_written_annual_map.get(sub)
-                    custom_f_w_val = custom_f_w if custom_f_w is not None else (f_possible_val - custom_f_o_val - custom_f_ct_val)
+
                     sub_entry['f_o_limit'] = fmt_limit(custom_f_o_val)
                     sub_entry['f_w_limit'] = fmt_limit(custom_f_w_val)
                     sub_entry['f_ct_limit'] = fmt_limit(custom_f_ct_val)
                     sub_entry['f_tot_limit'] = fmt_limit(f_possible_val)
-                    sub_entry['possible'] = fmt_limit(u1_possible_val + u2_possible_val + f_possible_val)
+                    
+                    u1_pos_calc = u1_possible_val if u1_possible_val is not None else 0.0
+                    u2_pos_calc = u2_possible_val if u2_possible_val is not None else 0.0
+                    f_pos_calc = f_possible_val if f_possible_val is not None else 0.0
+                    sub_entry['possible'] = fmt_limit(u1_pos_calc + u2_pos_calc + f_pos_calc)
 
                     possible_val = 0.0
                     if u1_m is not None:
-                        possible_val += u1_possible_val
+                        possible_val += u1_pos_calc
                         u1_o_tot += get_float(u1_m, 'oral_marks')
                         u1_w_tot += get_float(u1_m, 'written_marks')
                         u1_tot_tot += u1_tot_val
-                        u1_o_pos += custom_u1_o_val
-                        u1_w_pos += custom_u1_w_val
-                        u1_tot_pos += u1_possible_val
+                        if custom_u1_o_val is not None: u1_o_pos += custom_u1_o_val
+                        if custom_u1_w_val is not None: u1_w_pos += custom_u1_w_val
+                        u1_tot_pos += u1_pos_calc
                         
                     if u2_m is not None:
-                        possible_val += u2_possible_val
+                        possible_val += u2_pos_calc
                         u2_o_tot += get_float(u2_m, 'oral_marks')
                         u2_w_tot += get_float(u2_m, 'written_marks')
                         u2_tot_tot += u2_tot_val
-                        u2_o_pos += custom_u2_o_val
-                        u2_w_pos += custom_u2_w_val
-                        u2_tot_pos += u2_possible_val
+                        if custom_u2_o_val is not None: u2_o_pos += custom_u2_o_val
+                        if custom_u2_w_val is not None: u2_w_pos += custom_u2_w_val
+                        u2_tot_pos += u2_pos_calc
                         
                     if f_m is not None:
-                        possible_val += f_possible_val
+                        possible_val += f_pos_calc
                         f_o_tot += f_o_val
                         f_w_tot += f_w_val
                         f_ct_tot += f_ct_val
                         f_tot_tot += f_tot_val
-                        f_o_pos += custom_f_o_val
-                        f_w_pos += custom_f_w_val
-                        f_ct_pos += custom_f_ct_val
-                        f_tot_pos += f_possible_val
+                        if custom_f_o_val is not None: f_o_pos += custom_f_o_val
+                        if custom_f_w_val is not None: f_w_pos += custom_f_w_val
+                        if custom_f_ct_val is not None: f_ct_pos += custom_f_ct_val
+                        f_tot_pos += f_pos_calc
                     
                     if u1_m is None and u2_m is None and f_m is None:
                         sub_entry['grand'] = '-'
@@ -7002,77 +6964,31 @@ def get_written_marks_limit(conn, class_name, term_name, subject_name):
     elif norm_term in ['Annual Exam', 'Final Exam', 'Annual']:
         norm_term = 'Final Exam'
         
-    if norm_term in ['1st Unit', '2nd Unit', 'Final Exam']:
-        db_classes = get_db_class_names(class_name)
-        placeholders = ', '.join('?' for _ in db_classes)
+    db_classes = get_db_class_names(class_name)
+    placeholders = ', '.join('?' for _ in db_classes)
+    
+    row = conn.execute(f"""
+        SELECT written_limit FROM class_subjects
+        WHERE class_name IN ({placeholders}) AND subject_name = ? AND term_name = ?
+    """, (*db_classes, sub_title, norm_term)).fetchone()
+    
+    if not row:
         row = conn.execute(f"""
-            SELECT full_marks_1st, full_marks_2nd, full_marks_annual,
-                   oral_marks_1st, written_marks_1st,
-                   oral_marks_2nd, written_marks_2nd,
-                   oral_marks_annual, written_marks_annual,
-                   ct_marks_annual
-            FROM subjects
-            WHERE class IN ({placeholders}) AND name = ?
-        """, (*db_classes, subject_name)).fetchone()
+            SELECT written_limit FROM class_subjects
+            WHERE class_name IN ({placeholders}) AND LOWER(subject_name) = ? AND term_name = ?
+        """, (*db_classes, sub_title.lower(), norm_term)).fetchone()
         
-        if not row:
-            row = conn.execute(f"""
-                SELECT full_marks_1st, full_marks_2nd, full_marks_annual,
-                       oral_marks_1st, written_marks_1st,
-                       oral_marks_2nd, written_marks_2nd,
-                       oral_marks_annual, written_marks_annual,
-                       ct_marks_annual
-                FROM subjects
-                WHERE class IN ({placeholders}) AND LOWER(name) = ?
-            """, (*db_classes, subject_name.lower())).fetchone()
-            
-        if row:
-            if norm_term == '1st Unit':
-                tot_fm = row['full_marks_1st'] if row['full_marks_1st'] is not None else 50.0
-                oral_lim = row['oral_marks_1st'] if row['oral_marks_1st'] is not None else (tot_fm * 0.2)
-                return tot_fm - oral_lim
-            elif norm_term == '2nd Unit':
-                tot_fm = row['full_marks_2nd'] if row['full_marks_2nd'] is not None else 50.0
-                oral_lim = row['oral_marks_2nd'] if row['oral_marks_2nd'] is not None else (tot_fm * 0.2)
-                return tot_fm - oral_lim
-            else: # Final Exam
-                tot_fm = row['full_marks_annual'] if row['full_marks_annual'] is not None else 100.0
-                oral_lim = row['oral_marks_annual'] if row['oral_marks_annual'] is not None else (tot_fm * 0.2)
-                ct_lim = row['ct_marks_annual'] if row['ct_marks_annual'] is not None else (tot_fm * 0.1)
-                return tot_fm - oral_lim - ct_lim
-        else:
-            default_fm_1st_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-            default_fm_2nd_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-            default_fm_annual_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-            
-            if norm_term == '1st Unit':
-                tot_fm = default_fm_1st_dict.get(sub_title, 50.0)
-                oral_lim = tot_fm * 0.2
-                return tot_fm - oral_lim
-            elif norm_term == '2nd Unit':
-                tot_fm = default_fm_2nd_dict.get(sub_title, 50.0)
-                oral_lim = tot_fm * 0.2
-                return tot_fm - oral_lim
-            else: # Final Exam
-                tot_fm = default_fm_annual_dict.get(sub_title, 100.0)
-                oral_lim = tot_fm * 0.2
-                ct_lim = tot_fm * 0.1
-                return tot_fm - oral_lim - ct_lim
-    else:
-        row = conn.execute("""
-            SELECT full_marks FROM class_test_configs
-            WHERE test_name = ? AND class_name = ? AND subject_name = ?
-        """, (term_name, class_name, subject_name)).fetchone()
+    if row and row['written_limit'] is not None:
+        return row['written_limit']
         
-        if not row:
-            row = conn.execute("""
-                SELECT full_marks FROM class_test_configs
-                WHERE test_name = ? AND class_name = ? AND LOWER(subject_name) = ?
-            """, (term_name, class_name, subject_name.lower())).fetchone()
-            
-        if row:
-            return row['full_marks']
-            
+    default_fm_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
+    if sub_title in default_fm_dict:
+        return default_fm_dict[sub_title]
+        
+    if norm_term in ['1st Unit', '2nd Unit']:
+        return 40.0
+    elif norm_term == 'Final Exam':
+        return 70.0
     return 50.0
 
 @app.route('/admin/marksheet/bulk')
@@ -7090,60 +7006,37 @@ def bulk_marksheet():
         
     branch = session.get('branch')
     conn = get_db_connection()
-    sync_and_normalize_monthly_tests(conn)
-    
     db_classes = get_db_class_names(class_name)
     placeholders = ', '.join('?' for _ in db_classes)
-    subjects_rows = conn.execute(f"""
-        SELECT name, 
-               full_marks_1st, full_marks_2nd, full_marks_annual,
-               oral_marks_1st, written_marks_1st,
-               oral_marks_2nd, written_marks_2nd,
-               oral_marks_annual, written_marks_annual,
-               ct_marks_annual
-        FROM subjects 
-        WHERE class IN ({placeholders})
-    """, db_classes).fetchall()
     
-    subject_fm_1st_map = {}
-    subject_fm_2nd_map = {}
-    subject_fm_annual_map = {}
-    subject_oral_1st_map = {}
-    subject_written_1st_map = {}
-    subject_oral_2nd_map = {}
-    subject_written_2nd_map = {}
-    subject_oral_annual_map = {}
-    subject_written_annual_map = {}
-    subject_ct_annual_map = {}
+    norm_term = term_name
+    if term_name in ['1st Term', '1st Unit']:
+        norm_term = '1st Unit'
+    elif term_name in ['2nd Term', '2nd Unit']:
+        norm_term = '2nd Unit'
+    elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
+        norm_term = 'Final Exam'
+    else:
+        norm_term = normalize_monthly_test_name(term_name)
+
+    subjects_rows = conn.execute(f"""
+        SELECT subject_name AS name, full_marks, oral_limit, written_limit, ct_limit
+        FROM class_subjects 
+        WHERE class_name IN ({placeholders}) AND term_name = ?
+    """, db_classes + [norm_term]).fetchall()
+    
+    subject_fm_map = {}
+    subject_oral_map = {}
+    subject_written_map = {}
+    subject_ct_map = {}
     
     for r in subjects_rows:
         if r['name']:
             sub_name_norm = r['name'].strip().title()
-            subject_fm_1st_map[sub_name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
-            subject_fm_2nd_map[sub_name_norm] = r['full_marks_2nd'] if r['full_marks_2nd'] is not None else 50.0
-            subject_fm_annual_map[sub_name_norm] = r['full_marks_annual'] if r['full_marks_annual'] is not None else 100.0
-            
-            subject_oral_1st_map[sub_name_norm] = r['oral_marks_1st']
-            subject_written_1st_map[sub_name_norm] = r['written_marks_1st']
-            subject_oral_2nd_map[sub_name_norm] = r['oral_marks_2nd']
-            subject_written_2nd_map[sub_name_norm] = r['written_marks_2nd']
-            subject_oral_annual_map[sub_name_norm] = r['oral_marks_annual']
-            subject_written_annual_map[sub_name_norm] = r['written_marks_annual']
-            subject_ct_annual_map[sub_name_norm] = r['ct_marks_annual']
-
-    default_subs = ["English", "Bengali", "Arabic", "Mathematics", "Science", "G.K.", "E.V.S", "Hindi", "Art", "Physical Education", "Work Education", "Hand Writing", "Behaviour", "Attendance"]
-    default_fm_1st_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    default_fm_2nd_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    default_fm_annual_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    
-    for s_sub in default_subs:
-        s_norm = s_sub.strip().title()
-        if s_norm not in subject_fm_1st_map:
-            subject_fm_1st_map[s_norm] = default_fm_1st_dict.get(s_norm, 50.0)
-        if s_norm not in subject_fm_2nd_map:
-            subject_fm_2nd_map[s_norm] = default_fm_2nd_dict.get(s_norm, 50.0)
-        if s_norm not in subject_fm_annual_map:
-            subject_fm_annual_map[s_norm] = default_fm_annual_dict.get(s_norm, 100.0)
+            subject_fm_map[sub_name_norm] = r['full_marks']
+            subject_oral_map[sub_name_norm] = r['oral_limit']
+            subject_written_map[sub_name_norm] = r['written_limit']
+            subject_ct_map[sub_name_norm] = r['ct_limit']
 
     if branch:
         students = conn.execute(f'''
@@ -7162,16 +7055,8 @@ def bulk_marksheet():
             ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
         ''', tuple(db_classes)).fetchall()
 
-    norm_term = term_name
-    if term_name in ['1st Term', '1st Unit']:
-        norm_term = '1st Unit'
-    elif term_name in ['2nd Term', '2nd Unit']:
-        norm_term = '2nd Unit'
-    elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
-        norm_term = 'Final Exam'
-
     def fmt_limit(lim):
-        if lim is None: return 0
+        if lim is None: return '-'
         if lim == int(lim): return int(lim)
         return round(lim, 1)
 
@@ -7200,7 +7085,7 @@ def bulk_marksheet():
         total_obtained = 0.0
         total_possible = 0.0
         
-        active_subjects = sorted(list(set(list(subject_fm_1st_map.keys()) + list(subject_fm_2nd_map.keys()) + list(subject_fm_annual_map.keys()))))
+        active_subjects = sorted(list(subject_fm_map.keys()))
         
         for sub_name in active_subjects:
             match = None
@@ -7209,35 +7094,17 @@ def bulk_marksheet():
                     match = m
                     break
             
-            if norm_term == '1st Unit':
-                tot_fm = subject_fm_1st_map.get(sub_name, 50.0)
-                oral_lim = subject_oral_1st_map.get(sub_name)
-                oral_lim = oral_lim if oral_lim is not None else (tot_fm * 0.2)
-                written_lim = subject_written_1st_map.get(sub_name)
-                written_lim = written_lim if written_lim is not None else (tot_fm - oral_lim)
-                ct_lim = 0.0
-            elif norm_term == '2nd Unit':
-                tot_fm = subject_fm_2nd_map.get(sub_name, 50.0)
-                oral_lim = subject_oral_2nd_map.get(sub_name)
-                oral_lim = oral_lim if oral_lim is not None else (tot_fm * 0.2)
-                written_lim = subject_written_2nd_map.get(sub_name)
-                written_lim = written_lim if written_lim is not None else (tot_fm - oral_lim)
-                ct_lim = 0.0
-            else: # Final Exam
-                tot_fm = subject_fm_annual_map.get(sub_name, 100.0)
-                ct_lim = subject_ct_annual_map.get(sub_name)
-                ct_lim = ct_lim if ct_lim is not None else 10.0
-                oral_lim = subject_oral_annual_map.get(sub_name)
-                oral_lim = oral_lim if oral_lim is not None else (tot_fm * 0.2)
-                written_lim = subject_written_annual_map.get(sub_name)
-                written_lim = written_lim if written_lim is not None else (tot_fm - oral_lim - ct_lim)
+            tot_fm = subject_fm_map.get(sub_name, 100.0)
+            oral_lim = subject_oral_map.get(sub_name)
+            written_lim = subject_written_map.get(sub_name)
+            ct_lim = subject_ct_map.get(sub_name)
 
             if match:
                 obt = match['obtained_marks']
                 obt_val = float(obt) if obt is not None else 0.0
-                oral_obt = match['oral_marks']
-                written_obt = match['written_marks']
-                ct_obt = match['ct_marks']
+                oral_obt = match['oral_marks'] if oral_lim is not None else None
+                written_obt = match['written_marks'] if written_lim is not None else None
+                ct_obt = match['ct_marks'] if ct_lim is not None else None
             else:
                 obt_val = 0.0
                 obt = '-'
@@ -7311,43 +7178,31 @@ def result_sheet():
         flash('Class name and term name are required.', 'error')
         return redirect(url_for('dashboard'))
         
-    branch = session.get('branch')
     conn = get_db_connection()
-    sync_and_normalize_monthly_tests(conn)
-    
     db_classes = get_db_class_names(class_name)
     placeholders = ', '.join('?' for _ in db_classes)
+    
+    norm_term = term_name
+    if term_name in ['1st Term', '1st Unit']:
+        norm_term = '1st Unit'
+    elif term_name in ['2nd Term', '2nd Unit']:
+        norm_term = '2nd Unit'
+    elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
+        norm_term = 'Final Exam'
+    else:
+        norm_term = normalize_monthly_test_name(term_name)
+
     subjects_rows = conn.execute(f"""
-        SELECT name, 
-               full_marks_1st, full_marks_2nd, full_marks_annual
-        FROM subjects 
-        WHERE class IN ({placeholders})
-    """, db_classes).fetchall()
+        SELECT subject_name AS name, full_marks
+        FROM class_subjects 
+        WHERE class_name IN ({placeholders}) AND term_name = ?
+    """, db_classes + [norm_term]).fetchall()
     
-    subject_fm_1st_map = {}
-    subject_fm_2nd_map = {}
-    subject_fm_annual_map = {}
-    
+    subject_fm_map = {}
     for r in subjects_rows:
         if r['name']:
             sub_name_norm = r['name'].strip().title()
-            subject_fm_1st_map[sub_name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
-            subject_fm_2nd_map[sub_name_norm] = r['full_marks_2nd'] if r['full_marks_2nd'] is not None else 50.0
-            subject_fm_annual_map[sub_name_norm] = r['full_marks_annual'] if r['full_marks_annual'] is not None else 100.0
-
-    default_subs = ["English", "Bengali", "Arabic", "Mathematics", "Science", "G.K.", "E.V.S", "Hindi", "Art", "Physical Education", "Work Education", "Hand Writing", "Behaviour", "Attendance"]
-    default_fm_1st_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    default_fm_2nd_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    default_fm_annual_dict = {'Physical Education': 20.0, 'Work Education': 30.0, 'Hand Writing': 20.0, 'Behaviour': 20.0, 'Attendance': 10.0}
-    
-    for s_sub in default_subs:
-        s_norm = s_sub.strip().title()
-        if s_norm not in subject_fm_1st_map:
-            subject_fm_1st_map[s_norm] = default_fm_1st_dict.get(s_norm, 50.0)
-        if s_norm not in subject_fm_2nd_map:
-            subject_fm_2nd_map[s_norm] = default_fm_2nd_dict.get(s_norm, 50.0)
-        if s_norm not in subject_fm_annual_map:
-            subject_fm_annual_map[s_norm] = default_fm_annual_dict.get(s_norm, 100.0)
+            subject_fm_map[sub_name_norm] = r['full_marks']
 
     if branch:
         students = conn.execute(f'''
@@ -7366,14 +7221,6 @@ def result_sheet():
             ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
         ''', tuple(db_classes)).fetchall()
 
-    norm_term = term_name
-    if term_name in ['1st Term', '1st Unit']:
-        norm_term = '1st Unit'
-    elif term_name in ['2nd Term', '2nd Unit']:
-        norm_term = '2nd Unit'
-    elif term_name in ['Annual Exam', 'Final Exam', 'Annual']:
-        norm_term = 'Final Exam'
-
     student_ids = [s['id'] for s in students]
     marks_map = {}
     if student_ids:
@@ -7389,7 +7236,7 @@ def result_sheet():
                 marks_map[sid] = []
             marks_map[sid].append(m)
 
-    active_subjects = sorted(list(set(list(subject_fm_1st_map.keys()) + list(subject_fm_2nd_map.keys()) + list(subject_fm_annual_map.keys()))))
+    active_subjects = sorted(list(subject_fm_map.keys()))
 
     students_results = []
     for student in students:
@@ -7407,16 +7254,11 @@ def result_sheet():
                     match = m
                     break
             
-            if norm_term == '1st Unit':
-                tot_fm = subject_fm_1st_map.get(sub_name, 50.0)
-            elif norm_term == '2nd Unit':
-                tot_fm = subject_fm_2nd_map.get(sub_name, 50.0)
-            else:
-                tot_fm = subject_fm_annual_map.get(sub_name, 100.0)
+            tot_fm = subject_fm_map.get(sub_name, 100.0)
                 
-            if match:
+            if match and match['obtained_marks'] is not None:
                 obt = match['obtained_marks']
-                obt_val = float(obt) if obt is not None else 0.0
+                obt_val = float(obt)
                 subject_marks[sub_name] = int(obt) if obt == int(obt) else obt
             else:
                 obt_val = 0.0
@@ -7584,8 +7426,8 @@ def question_papers():
         if not classes:
             classes = std_order
         
-    class_tests_rows = conn.execute("SELECT DISTINCT test_name FROM class_test_configs").fetchall()
-    terms = ["1st Unit", "2nd Unit", "Final Exam"] + [r['test_name'] for r in class_tests_rows if r['test_name']]
+    class_tests_rows = conn.execute("SELECT DISTINCT term_name FROM class_subjects").fetchall()
+    terms = ["1st Unit", "2nd Unit", "Final Exam"] + [r['term_name'] for r in class_tests_rows if r['term_name']]
     terms = sorted(list(set(terms)))
     
     subjects_rows = conn.execute("SELECT DISTINCT name FROM subjects WHERE name IS NOT NULL AND name != ''").fetchall()
@@ -7667,90 +7509,115 @@ def bulk_marks():
             term_name = request.form.get('term_name')
             
             if action_type == 'add_subject':
-                new_subjects = request.form.get('new_subject', '')
-                for subj in new_subjects.split(','):
-                    subj = subj.strip().title()
-                    if subj:
-                        exists = conn.execute("SELECT id FROM subjects WHERE class = ? AND name = ?", (class_name, subj)).fetchone()
-                        if not exists:
-                            fm_1st = 50.0 if term_name in ['1st Unit', '1st Term'] else -1.0
-                            fm_2nd = 50.0 if term_name in ['2nd Unit', '2nd Term'] else -1.0
-                            fm_annual = 100.0 if term_name in ['Final Exam', 'Annual Exam', 'Annual'] else -1.0
-                            conn.execute("INSERT INTO subjects (class, name, full_marks_1st, full_marks_2nd, full_marks_annual) VALUES (?, ?, ?, ?, ?)", (class_name, subj, fm_1st, fm_2nd, fm_annual))
-                        else:
-                            # Reactivate for this term if it was deleted
-                            if term_name in ['1st Unit', '1st Term']:
-                                conn.execute("UPDATE subjects SET full_marks_1st = 50.0 WHERE class = ? AND name = ? AND full_marks_1st = -1.0", (class_name, subj))
-                            elif term_name in ['2nd Unit', '2nd Term']:
-                                conn.execute("UPDATE subjects SET full_marks_2nd = 50.0 WHERE class = ? AND name = ? AND full_marks_2nd = -1.0", (class_name, subj))
-                            elif term_name in ['Final Exam', 'Annual Exam', 'Annual']:
-                                conn.execute("UPDATE subjects SET full_marks_annual = 100.0 WHERE class = ? AND name = ? AND full_marks_annual = -1.0", (class_name, subj))
-                conn.commit()
-                flash('Subjects added successfully.', 'success')
+                new_subject = request.form.get('new_subject', '').strip().title()
+                if new_subject:
+                    written_enabled = request.form.get('written_enabled')
+                    written_max = request.form.get('written_max')
+                    oral_enabled = request.form.get('oral_enabled')
+                    oral_max = request.form.get('oral_max')
+                    ct_enabled = request.form.get('ct_enabled')
+                    ct_max = request.form.get('ct_max')
+                    
+                    try:
+                        written_limit = float(written_max) if (written_enabled and written_max) else None
+                    except ValueError:
+                        written_limit = None
+                    try:
+                        oral_limit = float(oral_max) if (oral_enabled and oral_max) else None
+                    except ValueError:
+                        oral_limit = None
+                    try:
+                        ct_limit = float(ct_max) if (ct_enabled and ct_max) else None
+                    except ValueError:
+                        ct_limit = None
+                        
+                    full_marks = (written_limit or 0.0) + (oral_limit or 0.0) + (ct_limit or 0.0)
+                    if written_limit is None and oral_limit is None and ct_limit is None:
+                        written_limit = 100.0
+                        full_marks = 100.0
+                        
+                    db_classes = get_db_class_names(class_name)
+                    for c_name in db_classes:
+                        conn.execute("""
+                            INSERT OR REPLACE INTO class_subjects (class_name, subject_name, term_name, full_marks, oral_limit, written_limit, ct_limit)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """, (c_name, new_subject, term_name, full_marks, oral_limit, written_limit, ct_limit))
+                    conn.commit()
+                    flash(f'Subject {new_subject} added successfully.', 'success')
                 
             elif action_type == 'delete_subject':
                 subj_to_delete = request.form.get('subject_name')
                 if subj_to_delete:
-                    # Soft delete for the specific term
-                    if term_name in ['1st Unit', '1st Term']:
-                        conn.execute("UPDATE subjects SET full_marks_1st = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
-                    elif term_name in ['2nd Unit', '2nd Term']:
-                        conn.execute("UPDATE subjects SET full_marks_2nd = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
-                    elif term_name in ['Final Exam', 'Annual Exam', 'Annual']:
-                        conn.execute("UPDATE subjects SET full_marks_annual = -1.0 WHERE class = ? AND name = ?", (class_name, subj_to_delete))
-                    
-                    # Delete the row entirely if it's inactive across ALL terms
-                    conn.execute("DELETE FROM subjects WHERE class = ? AND name = ? AND full_marks_1st = -1.0 AND full_marks_2nd = -1.0 AND full_marks_annual = -1.0", (class_name, subj_to_delete))
+                    db_classes = get_db_class_names(class_name)
+                    for c_name in db_classes:
+                        conn.execute("DELETE FROM class_subjects WHERE class_name = ? AND subject_name = ? AND term_name = ?", (c_name, subj_to_delete, term_name))
                     conn.commit()
                     flash(f'Subject {subj_to_delete} removed from {term_name}.', 'success')
                     
             elif action_type == 'update_fm':
                 subj_name = request.form.get('subject_name')
-                fm_1st = request.form.get('full_marks_1st') or None
-                fm_2nd = request.form.get('full_marks_2nd') or None
-                fm_annual = request.form.get('full_marks_annual') or None
-                om_1st = request.form.get('oral_marks_1st') or None
-                wm_1st = request.form.get('written_marks_1st') or None
-                om_2nd = request.form.get('oral_marks_2nd') or None
-                wm_2nd = request.form.get('written_marks_2nd') or None
-                om_annual = request.form.get('oral_marks_annual') or None
-                wm_annual = request.form.get('written_marks_annual') or None
-                ct_annual = request.form.get('ct_marks_annual') or None
+                w_limit = request.form.get('written_limit')
+                o_limit = request.form.get('oral_limit')
+                c_limit = request.form.get('ct_limit')
                 
-                if subj_name:
+                try:
+                    w_val = float(w_limit) if (w_limit and w_limit.strip() != '') else None
+                except ValueError:
+                    w_val = None
+                try:
+                    o_val = float(o_limit) if (o_limit and o_limit.strip() != '') else None
+                except ValueError:
+                    o_val = None
+                try:
+                    c_val = float(c_limit) if (c_limit and c_limit.strip() != '') else None
+                except ValueError:
+                    c_val = None
+                    
+                full_val = (w_val or 0.0) + (o_val or 0.0) + (c_val or 0.0)
+                if w_val is None and o_val is None and c_val is None:
+                    try:
+                        full_val = float(request.form.get('full_marks') or 100.0)
+                    except ValueError:
+                        full_val = 100.0
+                        
+                db_classes = get_db_class_names(class_name)
+                for c_name in db_classes:
                     conn.execute("""
-                        UPDATE subjects 
-                        SET full_marks_1st = ?, full_marks_2nd = ?, full_marks_annual = ?,
-                            oral_marks_1st = ?, written_marks_1st = ?,
-                            oral_marks_2nd = ?, written_marks_2nd = ?,
-                            oral_marks_annual = ?, written_marks_annual = ?,
-                            ct_marks_annual = ?
-                        WHERE class = ? AND name = ?
-                    """, (fm_1st, fm_2nd, fm_annual, om_1st, wm_1st, om_2nd, wm_2nd, om_annual, wm_annual, ct_annual, class_name, subj_name))
-                    conn.commit()
-                    flash(f'Subject {subj_name} FM updated.', 'success')
+                        INSERT OR REPLACE INTO class_subjects (class_name, subject_name, term_name, full_marks, oral_limit, written_limit, ct_limit)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (c_name, subj_name, term_name, full_val, o_val, w_val, c_val))
+                conn.commit()
+                flash(f'Subject {subj_name} configurations updated.', 'success')
             
             elif action_type == 'update_fm_inline':
                 subj_name = request.form.get('subject_name')
-                field = request.form.get('field') # 'full', 'oral', 'written'
+                field = request.form.get('field') # 'full', 'oral', 'written', 'ct'
                 value = request.form.get('value')
                 
-                # Determine column based on term and field
-                term_map = {
-                    '1st Unit': '1st', '1st Term': '1st',
-                    '2nd Unit': '2nd', '2nd Term': '2nd',
-                    'Final Exam': 'annual', 'Annual Exam': 'annual', 'Annual': 'annual'
-                }
-                suffix = term_map.get(term_name)
-                
-                if subj_name and suffix and field in ['full', 'oral', 'written', 'ct']:
-                    col_name = f"{field}_marks_{suffix}"
+                if subj_name and field in ['full', 'oral', 'written', 'ct']:
+                    col_map = {
+                        'full': 'full_marks',
+                        'oral': 'oral_limit',
+                        'written': 'written_limit',
+                        'ct': 'ct_limit'
+                    }
+                    col_name = col_map.get(field)
                     try:
-                        val = float(value) if value else None
+                        val = float(value) if (value and value.strip() != '') else None
                     except ValueError:
                         val = None
                         
-                    conn.execute(f"UPDATE subjects SET {col_name} = ? WHERE class = ? AND name = ?", (val, class_name, subj_name))
+                    db_classes = get_db_class_names(class_name)
+                    for c_name in db_classes:
+                        conn.execute(f"UPDATE class_subjects SET {col_name} = ? WHERE class_name = ? AND subject_name = ? AND term_name = ?", (val, c_name, subj_name, term_name))
+                        conn.execute("""
+                            UPDATE class_subjects 
+                            SET full_marks = CASE 
+                                WHEN oral_limit IS NULL AND written_limit IS NULL AND ct_limit IS NULL THEN full_marks
+                                ELSE COALESCE(oral_limit, 0) + COALESCE(written_limit, 0) + COALESCE(ct_limit, 0)
+                            END
+                            WHERE class_name = ? AND subject_name = ? AND term_name = ?
+                        """, (c_name, subj_name, term_name))
                     conn.commit()
                     conn.close()
                     return jsonify({'status': 'success'})
@@ -7758,29 +7625,17 @@ def bulk_marks():
             conn.close()
             return redirect(url_for('bulk_marks', branch=branch, **{'class': class_name}, term=term_name))
 
-        # Sync and normalize monthly test configurations and existing marks
-        sync_and_normalize_monthly_tests(conn)
-        
-        # Query class tests
-        class_tests_rows = conn.execute("SELECT DISTINCT test_name FROM class_test_configs").fetchall()
-        class_test_names = [r['test_name'] for r in class_tests_rows]
-        
-        # Helper to detect monthly class tests from marks table
-        def is_monthly_test_local(term_name):
-            if not term_name:
-                return False
-            if term_name in class_test_names:
-                return True
-            term_lower = term_name.lower()
-            return 'monthly' in term_lower or 'class test' in term_lower or 'test' in term_lower
-
-        # Append existing monthly tests from marks table
+        # Query class tests from marks table
         existing_marks_terms = conn.execute("SELECT DISTINCT term_name FROM marks").fetchall()
+        class_test_names = []
         for r in existing_marks_terms:
             t = r['term_name']
-            if t and is_monthly_test_local(t) and t not in class_test_names:
-                class_test_names.append(t)
-                
+            if t:
+                t_lower = t.lower()
+                is_monthly = 'monthly' in t_lower or 'class test' in t_lower or 'test' in t_lower
+                if is_monthly and t not in class_test_names:
+                    class_test_names.append(t)
+        
         # Sort monthly test names chronologically
         class_test_names.sort(key=get_month_sort_key)
         
@@ -7820,59 +7675,17 @@ def bulk_marks():
             
         is_class_test = selected_term in class_test_names
 
-        # Fetch and filter allowed subjects if teacher
+        # Fetch allowed subjects if teacher
         if role == 'teacher':
              allowed_subjects = get_teacher_allowed_subjects(conn, username)
-             if is_class_test:
-                 # Fetch configured classes and subjects for this monthly test
-                 test_configs = conn.execute("SELECT class_name, subject_name FROM class_test_configs WHERE test_name = ?", (selected_term,)).fetchall()
-                 authorized_pairs = set()
-                 for tc in test_configs:
-                     c_norms = get_db_class_names(tc['class_name'])
-                     s_norm = tc['subject_name'].strip().title()
-                     for c_norm in c_norms:
-                         authorized_pairs.add((c_norm.lower(), s_norm.lower()))
-                 
-                 filtered_subjects = []
-                 for sub in allowed_subjects:
-                     sub_class_norms = get_db_class_names(sub['class'])
-                     sub_subject_norm = sub['name'].strip().title()
-                     is_authorized = False
-                     for scn in sub_class_norms:
-                         if (scn.lower(), sub_subject_norm.lower()) in authorized_pairs:
-                             is_authorized = True
-                             break
-                     if is_authorized:
-                         filtered_subjects.append(sub)
-                 allowed_subjects = filtered_subjects
 
         subject_full_marks = {}
         configured_class_test_subjects = []
         class_test_default_fm = 20.0
-        if is_class_test and selected_class:
-            db_classes = get_db_class_names(selected_class)
-            configs = conn.execute(f"""
-                SELECT subject_name, full_marks 
-                FROM class_test_configs 
-                WHERE LOWER(test_name) = LOWER(?) 
-                  AND LOWER(class_name) IN ({','.join('LOWER(?)' for _ in db_classes)})
-            """, [selected_term] + db_classes).fetchall()
-            if configs:
-                class_test_default_fm = max(c['full_marks'] for c in configs)
-            for c in configs:
-                name_norm = c['subject_name'].strip().title()
-                subject_full_marks[name_norm] = c['full_marks']
-                configured_class_test_subjects.append(name_norm)
-                
+        
+        full_marks_val = request.args.get('full_marks', '100')
         if is_class_test:
-            if class_test_default_fm == int(class_test_default_fm):
-                full_marks_val = str(int(class_test_default_fm))
-            else:
-                full_marks_val = str(class_test_default_fm)
-        else:
-            full_marks_val = request.args.get('full_marks', '100')
-
-        # assigned_class is already handled and selected_class normalized above
+            full_marks_val = '20'
 
         # Validate final selections for teacher to ensure they cannot view unauthorized classrooms
         if role == 'teacher':
@@ -7894,96 +7707,48 @@ def bulk_marks():
         subject_oral_limit = {}
         subject_written_limit = {}
         subject_ct_limit = {}
+        subjects_rows = []
+        global_subjects = []
         
         if selected_branch and selected_class:
-            # 2. Fetch students using normalized class names (e.g. 'I' matches 'One' or 'I')
             db_classes = get_db_class_names(selected_class)
             placeholders = ', '.join('?' for _ in db_classes)
 
-            # 1. Fetch all subjects listed in the database subjects table for this class
-            subjects_rows = conn.execute(f"""
-                SELECT DISTINCT name, 
-                                full_marks_1st, full_marks_2nd, full_marks_annual,
-                                oral_marks_1st, written_marks_1st,
-                                oral_marks_2nd, written_marks_2nd,
-                                oral_marks_annual, written_marks_annual,
-                                ct_marks_annual
-                FROM subjects 
-                WHERE class IN ({placeholders}) 
-                ORDER BY name
-            """, db_classes).fetchall()
-            subject_names = []
-            
-            subject_oral_limit = {}
-            subject_written_limit = {}
-            subject_ct_limit = {}
+            global_subjects = conn.execute("SELECT id, name FROM subjects ORDER BY name").fetchall()
 
-            # Populate subject_full_marks with values from database subjects table
+            # Fetch class-subject settings for this class and term
+            subjects_rows = conn.execute(f"""
+                SELECT DISTINCT subject_name AS name, full_marks, oral_limit, written_limit, ct_limit
+                FROM class_subjects 
+                WHERE class_name IN ({placeholders}) AND term_name = ?
+                ORDER BY name
+            """, db_classes + [selected_term]).fetchall()
+            
             for r in subjects_rows:
                 if r['name']:
                     name_norm = r['name'].strip().title()
-                    
-                    # Check if deleted for this term
-                    if selected_term in ['1st Unit', '1st Term'] and r['full_marks_1st'] == -1.0:
-                        continue
-                    if selected_term in ['2nd Unit', '2nd Term'] and r['full_marks_2nd'] == -1.0:
-                        continue
-                    if selected_term in ['Final Exam', 'Annual Exam', 'Annual'] and r['full_marks_annual'] == -1.0:
+                    is_ct_subj = name_norm.lower() in ['behaviour', 'work education', 'physical education', 'attendance', 'hand writing']
+                    if is_ct_subj and selected_term != 'Final Exam':
                         continue
                         
                     subject_names.append(name_norm)
-                        
-                    # Only override if not already set by a class test config (class test config takes precedence for class test terms)
-                    if name_norm not in subject_full_marks:
-                        if is_class_test:
-                            subject_full_marks[name_norm] = class_test_default_fm
-                            subject_oral_limit[name_norm] = 0.0
-                            subject_written_limit[name_norm] = class_test_default_fm
-                            subject_ct_limit[name_norm] = 0.0
-                        elif selected_term in ['1st Unit', '1st Term']:
-                            subject_full_marks[name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
-                            subject_oral_limit[name_norm] = r['oral_marks_1st']
-                            subject_written_limit[name_norm] = r['written_marks_1st']
-                            subject_ct_limit[name_norm] = 0.0
-                        elif selected_term in ['2nd Unit', '2nd Term']:
-                            subject_full_marks[name_norm] = r['full_marks_2nd'] if r['full_marks_2nd'] is not None else 50.0
-                            subject_oral_limit[name_norm] = r['oral_marks_2nd']
-                            subject_written_limit[name_norm] = r['written_marks_2nd']
-                            subject_ct_limit[name_norm] = 0.0
-                        else: # Final Exam, Annual Exam
-                            subject_full_marks[name_norm] = r['full_marks_annual'] if r['full_marks_annual'] is not None else 100.0
-                            subject_oral_limit[name_norm] = r['oral_marks_annual']
-                            subject_written_limit[name_norm] = r['written_marks_annual']
-                            subject_ct_limit[name_norm] = r['ct_marks_annual']
-
-            # Remove default subjects
-            # Add any subjects assigned to this specific teacher for this class
+                    subject_full_marks[name_norm] = r['full_marks']
+                    subject_oral_limit[name_norm] = r['oral_limit']
+                    subject_written_limit[name_norm] = r['written_limit']
+                    subject_ct_limit[name_norm] = r['ct_limit']
+                    
             if role == 'teacher':
+                allowed_filtered = []
                 for x in allowed_subjects:
                     if x['class'].lower() in [c.lower() for c in db_classes]:
                         name_norm = x['name'].strip().title()
-                        if name_norm not in subject_names:
-                            subject_names.append(name_norm)
-            else:
-                # For admin, also add subjects assigned to any teacher for this class
-                teachers_list = conn.execute("SELECT username FROM users WHERE role = 'teacher'").fetchall()
-                for t in teachers_list:
-                    t_allowed = get_teacher_allowed_subjects(conn, t['username'])
-                    for x in t_allowed:
-                        if x['class'].lower() in [c.lower() for c in db_classes]:
-                            name_norm = x['name'].strip().title()
-                            if name_norm not in subject_names:
-                                subject_names.append(name_norm)
-                                
-            # Add any subjects that already have marks recorded in this class
-            existing_marks_subs = conn.execute(f"SELECT DISTINCT subject_name FROM marks WHERE class_name IN ({placeholders})", db_classes).fetchall()
-            for r in existing_marks_subs:
-                if r['subject_name']:
-                    name_norm = r['subject_name'].strip().title()
-                    if name_norm not in subject_names:
-                        subject_names.append(name_norm)
-                    
-            # Sort subject names alphabetically
+                        is_ct_subj = name_norm.lower() in ['behaviour', 'work education', 'physical education', 'attendance', 'hand writing']
+                        if is_ct_subj and selected_term != 'Final Exam':
+                            continue
+                        if name_norm not in allowed_filtered:
+                            allowed_filtered.append(name_norm)
+                subject_names = [s for s in subject_names if s in allowed_filtered]
+                
             subject_names = sorted(list(set(subject_names)))
             
             students = conn.execute(f'''
@@ -7994,7 +7759,7 @@ def bulk_marks():
                 ORDER BY CAST(si.roll_number AS INTEGER)
             ''', [selected_branch] + db_classes).fetchall()
             
-            # 3. Fetch existing marks for these students and term matching any class representation
+            # Fetch existing marks for these students and term
             marks_rows = conn.execute(f'''
                 SELECT student_id, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks
                 FROM marks 
@@ -8013,12 +7778,6 @@ def bulk_marks():
                     'written': row['written_marks'],
                     'ct': row['ct_marks']
                 }
-                if sub_norm and row['full_marks'] is not None:
-                    if sub_norm not in subject_full_marks:
-                        if is_class_test:
-                            subject_full_marks[sub_norm] = class_test_default_fm
-                        else:
-                            subject_full_marks[sub_norm] = row['full_marks']
             
         # Check if currently selected exam term is locked
         is_locked = False
@@ -8026,6 +7785,7 @@ def bulk_marks():
             is_locked_row = conn.execute("SELECT is_locked FROM exam_locks WHERE branch = ? AND class_name = ? AND term_name = ?", (selected_branch, selected_class, selected_term)).fetchone()
             is_locked = True if (is_locked_row and is_locked_row['is_locked'] == 1) else False
 
+        all_terms = get_all_academic_terms(conn)
         conn.close()
         
         return render_template('admin/bulk_marks.html', 
@@ -8044,13 +7804,16 @@ def bulk_marks():
                                full_marks=full_marks_val,
                                class_tests=class_test_names,
                                is_class_test=is_class_test,
+                               all_terms=all_terms,
                                subject_full_marks=subject_full_marks,
                                subject_oral_limit=subject_oral_limit,
                                subject_written_limit=subject_written_limit,
                                subject_ct_limit=subject_ct_limit,
                                configured_class_test_subjects=configured_class_test_subjects,
                                is_locked=is_locked,
-                               db_subjects=subjects_rows if 'subjects_rows' in locals() else [])
+                               db_subjects=subjects_rows,
+                               global_subjects=global_subjects)
+    return redirect(url_for('home'))
     return redirect(url_for('home'))
 
 @app.route('/admin/marks-setup', methods=['GET', 'POST'])
@@ -8194,94 +7957,30 @@ def save_bulk_marks():
 
         user = conn.execute("SELECT id FROM users WHERE username = ?", (session['user'],)).fetchone()
         
-        # Query configured class tests to see if this term is a custom test
-        class_tests_rows = conn.execute("SELECT DISTINCT test_name FROM class_test_configs").fetchall()
-        class_test_names = [r['test_name'] for r in class_tests_rows]
-        
-        # Helper to detect monthly class tests from marks table
-        def is_monthly_test_local_post(term_name):
-            if not term_name:
-                return False
-            if term_name in class_test_names:
-                return True
-            term_lower = term_name.lower()
-            return 'monthly' in term_lower or 'class test' in term_lower or 'test' in term_lower
-
-        # Append existing monthly tests from marks table
-        existing_marks_terms = conn.execute("SELECT DISTINCT term_name FROM marks").fetchall()
-        for r in existing_marks_terms:
-            t = r['term_name']
-            if t and is_monthly_test_local_post(t) and t not in class_test_names:
-                class_test_names.append(t)
-                
-        is_class_test = selected_term in class_test_names
-        
         subject_full_marks = {}
         subject_oral_limit = {}
         subject_written_limit = {}
         subject_ct_limit = {}
-        configured_class_test_subjects = []
-        class_test_default_fm = 20.0
-        
-        if is_class_test:
-            db_classes = get_db_class_names(selected_class)
-            configs = conn.execute(f"""
-                SELECT subject_name, full_marks 
-                FROM class_test_configs 
-                WHERE LOWER(test_name) = LOWER(?) 
-                  AND LOWER(class_name) IN ({','.join('LOWER(?)' for _ in db_classes)})
-            """, [selected_term] + db_classes).fetchall()
-            if configs:
-                class_test_default_fm = max(c['full_marks'] for c in configs)
-            for c in configs:
-                name_norm = c['subject_name'].strip().title()
-                subject_full_marks[name_norm] = c['full_marks']
-                configured_class_test_subjects.append(name_norm)
-                
-            # Override full_marks and full_marks_val for class tests
-            full_marks = class_test_default_fm
-            if class_test_default_fm == int(class_test_default_fm):
-                full_marks_val = str(int(class_test_default_fm))
-            else:
-                full_marks_val = str(class_test_default_fm)
 
         # Populate subject_full_marks with values from database subjects table
         db_classes = get_db_class_names(selected_class)
         placeholders = ', '.join('?' for _ in db_classes)
         subjects_rows = conn.execute(f"""
-            SELECT DISTINCT name, 
-                            full_marks_1st, full_marks_2nd, full_marks_annual,
-                            oral_marks_1st, written_marks_1st,
-                            oral_marks_2nd, written_marks_2nd,
-                            oral_marks_annual, written_marks_annual,
-                            ct_marks_annual
-            FROM subjects 
-            WHERE class IN ({placeholders})
-        """, db_classes).fetchall()
+            SELECT DISTINCT subject_name AS name, full_marks, oral_limit, written_limit, ct_limit
+            FROM class_subjects 
+            WHERE class_name IN ({placeholders}) AND term_name = ?
+        """, db_classes + [selected_term]).fetchall()
         for r in subjects_rows:
             if r['name']:
                 name_norm = r['name'].strip().title()
-                if name_norm not in subject_full_marks:
-                    if is_class_test:
-                        subject_full_marks[name_norm] = class_test_default_fm
-                        subject_oral_limit[name_norm] = 0.0
-                        subject_written_limit[name_norm] = class_test_default_fm
-                        subject_ct_limit[name_norm] = 0.0
-                    elif selected_term in ['1st Unit', '1st Term']:
-                        subject_full_marks[name_norm] = r['full_marks_1st'] if r['full_marks_1st'] is not None else 50.0
-                        subject_oral_limit[name_norm] = r['oral_marks_1st']
-                        subject_written_limit[name_norm] = r['written_marks_1st']
-                        subject_ct_limit[name_norm] = 0.0
-                    elif selected_term in ['2nd Unit', '2nd Term']:
-                        subject_full_marks[name_norm] = r['full_marks_2nd'] if r['full_marks_2nd'] is not None else 50.0
-                        subject_oral_limit[name_norm] = r['oral_marks_2nd']
-                        subject_written_limit[name_norm] = r['written_marks_2nd']
-                        subject_ct_limit[name_norm] = 0.0
-                    else:
-                        subject_full_marks[name_norm] = r['full_marks_annual'] if r['full_marks_annual'] is not None else 100.0
-                        subject_oral_limit[name_norm] = r['oral_marks_annual']
-                        subject_written_limit[name_norm] = r['written_marks_annual']
-                        subject_ct_limit[name_norm] = r['ct_marks_annual']
+                # Exclude class-teacher subjects if not Final Exam
+                is_ct_subj = name_norm.lower() in ['behaviour', 'work education', 'physical education', 'attendance', 'hand writing']
+                if is_ct_subj and selected_term != 'Final Exam':
+                    continue
+                subject_full_marks[name_norm] = r['full_marks'] if r['full_marks'] is not None else 100.0
+                subject_oral_limit[name_norm] = r['oral_limit']
+                subject_written_limit[name_norm] = r['written_limit']
+                subject_ct_limit[name_norm] = r['ct_limit']
         
         # Security check for teacher using parsed qualifications and assigned subjects
         allowed_subjects_list = []
@@ -8339,19 +8038,28 @@ def save_bulk_marks():
                     subject_name = '_'.join(parts[3:]).replace('_', ' ').strip().title()
                     entries.add((student_id, subject_name))
 
+        # Security check: verify that the student actually belongs to this branch and get student name mapping
+        student_info_rows = conn.execute('''
+            SELECT si.user_id, si.full_name, u.username 
+            FROM student_info si 
+            JOIN users u ON si.user_id = u.id 
+            WHERE si.branch = ?
+        ''', (selected_branch,)).fetchall()
+        allowed_students = {str(row['user_id']) for row in student_info_rows}
+        student_names = {str(row['user_id']): (row['full_name'] or row['username']) for row in student_info_rows}
+
         try:
             for student_id, subject_name in sorted(list(entries)):
                 # If teacher, only let them save their assigned subjects
                 if session['role'] == 'teacher' and subject_name not in allowed_subjects_list:
                     continue
                     
-                # If class test, block saving marks for unconfigured subjects
-                if is_class_test and subject_name not in configured_class_test_subjects:
+                # Block saving marks for unconfigured subjects
+                if subject_name not in subject_full_marks:
                     continue
                     
                 # Security check: verify that the student actually belongs to this branch
-                student_chk = conn.execute("SELECT user_id FROM student_info WHERE user_id = ? AND branch = ?", (student_id, selected_branch)).fetchone()
-                if not student_chk:
+                if student_id not in allowed_students:
                     continue
 
                 # Read component values from the request with robust space/underscore handling
@@ -8366,108 +8074,65 @@ def save_bulk_marks():
                 written_val = get_form_val('written_marks', student_id, subject_name)
                 ct_val = get_form_val('ct_marks', student_id, subject_name)
                 obt_val = get_form_val('marks', student_id, subject_name)
-                
-                is_art = (subject_name.lower() == 'art')
-                is_additional = (subject_name.lower() in ['physical education', 'work education', 'hand writing', 'behaviour', 'attendance'])
 
-                # Check if all relevant inputs for this student/subject are empty
-                if is_art or is_additional:
-                    if obt_val is None or obt_val == '':
+                # Get limits
+                oral_limit = subject_oral_limit.get(subject_name)
+                written_limit = subject_written_limit.get(subject_name)
+                ct_limit = subject_ct_limit.get(subject_name)
+                subject_fm = subject_full_marks.get(subject_name, 100.0)
+
+                # Check if all active components are empty (so we skip saving / delete existing)
+                if oral_limit is not None or written_limit is not None or ct_limit is not None:
+                    all_empty = True
+                    if oral_limit is not None and oral_val is not None and str(oral_val).strip() != '':
+                        all_empty = False
+                    if written_limit is not None and written_val is not None and str(written_val).strip() != '':
+                        all_empty = False
+                    if ct_limit is not None and ct_val is not None and str(ct_val).strip() != '':
+                        all_empty = False
+                    if all_empty:
+                        conn.execute("DELETE FROM marks WHERE student_id = ? AND class_name = ? AND term_name = ? AND subject_name = ?",
+                                     (student_id, selected_class, selected_term, subject_name))
                         continue
                 else:
-                    if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term'] and (oral_val is None or oral_val == '') and (written_val is None or written_val == ''):
-                        continue
-                    if selected_term in ['Final Exam', 'Annual Exam'] and (oral_val is None or oral_val == '') and (written_val is None or written_val == '') and (ct_val is None or ct_val == ''):
-                        continue
-                    if selected_term not in ['1st Unit', '2nd Unit', 'Final Exam', '1st Term', '2nd Term', 'Annual Exam'] and (obt_val is None or obt_val == ''):
+                    if obt_val is None or str(obt_val).strip() == '':
+                        conn.execute("DELETE FROM marks WHERE student_id = ? AND class_name = ? AND term_name = ? AND subject_name = ?",
+                                     (student_id, selected_class, selected_term, subject_name))
                         continue
 
                 def parse_input_val(val):
                     if val is None or str(val).strip() == '' or str(val).upper().strip() == 'AB':
-                        return 0.0
+                        return None
                     try:
                         return float(val)
                     except ValueError:
-                        return 0.0
+                        return None
 
                 oral_marks = parse_input_val(oral_val)
                 written_marks = parse_input_val(written_val)
                 ct_marks = parse_input_val(ct_val)
                 
-                # Default subject full marks
-                form_fm = request.form.get(f'fm_{subject_name}')
-                if form_fm is None:
-                    form_fm = request.form.get(f"fm_{subject_name.replace(' ', '_')}")
-                if form_fm:
-                    try:
-                        subject_fm = float(form_fm)
-                    except ValueError:
-                        subject_fm = subject_full_marks.get(subject_name, full_marks)
-                else:
-                    subject_fm = subject_full_marks.get(subject_name, full_marks)
+                std_name = student_names.get(student_id, f"ID {student_id}")
 
-                std_row = conn.execute("SELECT si.full_name, u.username FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.id = ?", (student_id,)).fetchone()
-                std_name = std_row['full_name'] or std_row['username'] if std_row else f"ID {student_id}"
-
-                if selected_term in ['1st Unit', '2nd Unit', '1st Term', '2nd Term']:
-                    if is_art:
-                        obtained_marks = parse_input_val(obt_val)
-                        if obtained_marks > 50.0:
-                            return handle_error_redirect(f"Logical Error: Art marks ({obtained_marks}) cannot exceed 50 for student '{std_name}'.")
-                        subject_fm = 50.0
-                    elif is_additional:
-                        obtained_marks = parse_input_val(obt_val)
-                        if obtained_marks > subject_fm:
-                            return handle_error_redirect(f"Logical Error: Obtained marks ({obtained_marks}) cannot exceed Full Marks ({subject_fm}) for student '{std_name}' in subject '{subject_name}'.")
-                    else:
-                        custom_fm = subject_full_marks.get(subject_name, 50.0)
-                        subject_fm = custom_fm
-                        custom_oral = subject_oral_limit.get(subject_name)
-                        oral_limit = custom_oral if custom_oral is not None else (subject_fm * 0.2)
-                        custom_written = subject_written_limit.get(subject_name)
-                        written_limit = custom_written if custom_written is not None else (subject_fm - oral_limit)
-                        if oral_marks > oral_limit or written_marks > written_limit:
-                            return handle_error_redirect(f"Validation Error: Oral marks ({oral_marks}/{oral_limit:.1f}) or Written marks ({written_marks}/{written_limit:.1f}) exceed limits for student '{std_name}' in subject '{subject_name}'.")
-                        obtained_marks = oral_marks + written_marks
-                elif selected_term in ['Final Exam', 'Annual Exam']:
-                    if is_art:
-                        obtained_marks = parse_input_val(obt_val)
-                        if obtained_marks > 100.0:
-                            return handle_error_redirect(f"Logical Error: Art marks ({obtained_marks}) cannot exceed 100 for student '{std_name}'.")
-                        subject_fm = 100.0
-                    elif is_additional:
-                        add_fm = 100.0
-                        if subject_name.lower() == 'physical education': add_fm = 20.0
-                        elif subject_name.lower() == 'work education': add_fm = 30.0
-                        elif subject_name.lower() == 'hand writing': add_fm = 20.0
-                        elif subject_name.lower() == 'behaviour': add_fm = 20.0
-                        elif subject_name.lower() == 'attendance': add_fm = 10.0
-                        
-                        # Use custom full marks from database if available (i.e. overridden by admin)
-                        custom_fm = subject_full_marks.get(subject_name)
-                        if custom_fm is not None:
-                            add_fm = custom_fm
-                        
-                        obtained_marks = parse_input_val(obt_val)
-                        if obtained_marks > add_fm:
-                            return handle_error_redirect(f"Validation Error: Obtained marks ({obtained_marks}) exceed limit ({add_fm}) for student '{std_name}' in subject '{subject_name}'.")
-                        subject_fm = add_fm
-                    else:
-                        custom_fm = subject_full_marks.get(subject_name, 100.0)
-                        subject_fm = custom_fm
-                        custom_oral = subject_oral_limit.get(subject_name)
-                        oral_limit = custom_oral if custom_oral is not None else (subject_fm * 0.2)
-                        custom_ct = subject_ct_limit.get(subject_name)
-                        ct_limit = custom_ct if custom_ct is not None else (subject_fm * 0.1)
-                        custom_written = subject_written_limit.get(subject_name)
-                        written_limit = custom_written if custom_written is not None else (subject_fm - oral_limit - ct_limit)
-                        if oral_marks > oral_limit or written_marks > written_limit or ct_marks > ct_limit:
-                            return handle_error_redirect(f"Validation Error: Oral ({oral_marks}/{oral_limit:.1f}), Written ({written_marks}/{written_limit:.1f}), or CT ({ct_marks}/{ct_limit:.1f}) exceed limits for student '{std_name}' in subject '{subject_name}'.")
-                        obtained_marks = oral_marks + written_marks + ct_marks
+                # If at least one component limit is active:
+                if oral_limit is not None or written_limit is not None or ct_limit is not None:
+                    # Validate each active component limit
+                    if oral_limit is not None and oral_marks is not None and oral_marks > oral_limit:
+                        return handle_error_redirect(f"Validation Error: Oral marks ({oral_marks}) exceed limit ({oral_limit:.1f}) for student '{std_name}' in subject '{subject_name}'.")
+                    if written_limit is not None and written_marks is not None and written_marks > written_limit:
+                        return handle_error_redirect(f"Validation Error: Written marks ({written_marks}) exceed limit ({written_limit:.1f}) for student '{std_name}' in subject '{subject_name}'.")
+                    if ct_limit is not None and ct_marks is not None and ct_marks > ct_limit:
+                        return handle_error_redirect(f"Validation Error: Class Test marks ({ct_marks}) exceed limit ({ct_limit:.1f}) for student '{std_name}' in subject '{subject_name}'.")
+                    
+                    # Sum the active components
+                    obtained_marks = (oral_marks if (oral_limit is not None and oral_marks is not None) else 0.0) + \
+                                     (written_marks if (written_limit is not None and written_marks is not None) else 0.0) + \
+                                     (ct_marks if (ct_limit is not None and ct_marks is not None) else 0.0)
                 else:
+                    # No component limit is active: validate single raw obtained marks against subject full marks
                     obtained_marks = parse_input_val(obt_val)
-                    if obtained_marks > subject_fm:
-                        return handle_error_redirect(f"Logical Error: Obtained marks ({obtained_marks}) cannot exceed Full Marks ({subject_fm}) for student '{std_name}' in subject '{subject_name}'.")
+                    if obtained_marks is not None and obtained_marks > subject_fm:
+                        return handle_error_redirect(f"Validation Error: Obtained marks ({obtained_marks}) exceed Full Marks ({subject_fm}) for student '{std_name}' in subject '{subject_name}'.")
 
                 conn.execute('''
                     INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, uploaded_by)
@@ -8883,19 +8548,17 @@ def set_fees():
                         placeholders = ', '.join('?' for _ in db_classes)
                         # Find all teacher subjects for this class to update their assigned_classes text
                         teachers = conn.execute(f'''
-                            SELECT DISTINCT ts.teacher_id
-                            FROM teacher_subjects ts
-                            JOIN subjects s ON ts.subject_id = s.id
-                            WHERE s.class IN ({placeholders})
-                        ''', tuple(db_classes)).fetchall()
+                            SELECT DISTINCT teacher_id
+                            FROM teacher_subjects
+                            WHERE LOWER(class_name) IN ({placeholders})
+                        ''', tuple(c.lower() for c in db_classes)).fetchall()
                         
                         # Cascade deletions to prevent foreign key or orphan row issues
-                        conn.execute(f"DELETE FROM teacher_subjects WHERE subject_id IN (SELECT id FROM subjects WHERE class IN ({placeholders}))", tuple(db_classes))
-                        conn.execute(f"DELETE FROM teacher_assignments WHERE subject_id IN (SELECT id FROM subjects WHERE class IN ({placeholders}))", tuple(db_classes))
+                        conn.execute(f"DELETE FROM teacher_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM teacher_assignments WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
                         conn.execute(f"DELETE FROM marks WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM class_test_configs WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM class_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
                         conn.execute(f"DELETE FROM class_routine WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM subjects WHERE class IN ({placeholders})", tuple(db_classes))
                         conn.execute("DELETE FROM classes WHERE id = ?", (class_id,))
                         
                         # Rebuild assigned_classes string for each affected teacher from DB
@@ -9584,14 +9247,8 @@ def post_monthly_fees():
 def academics_setting():
     if 'user' in session and session['role'] == 'admin': # Only Admin sets subjects
         conn = get_db_connection()
-        sync_and_normalize_monthly_tests(conn)
-        
-        # Ensure all teacher assigned classes text is synchronized with DB table teacher_subjects on page load
-        teachers_rows = conn.execute("SELECT user_id, assigned_classes FROM teacher_info").fetchall()
-        for t in teachers_rows:
-            if t['assigned_classes']:
-                sync_teacher_subjects_from_string(conn, t['user_id'], t['assigned_classes'])
-        conn.commit()
+        # No synchronization on GET load to avoid performance penalties.
+        # sync_and_normalize_monthly_tests and sync_teacher_subjects_from_string are handled on writes/edits.
         
         if request.method == 'POST' and 'update_general_settings' in request.form:
             new_coaching_time = request.form.get('coaching_class_time', '').strip()
@@ -9654,55 +9311,14 @@ Al-Hidayet Mission"""
 
         if request.method == 'POST' and 'create_subject' in request.form:
             name = request.form['name']
-            classes = request.form.getlist('classes')
-            try:
-                fm_1st = float(request.form.get('full_marks_1st', 50.0) or 50.0)
-                fm_2nd = float(request.form.get('full_marks_2nd', 50.0) or 50.0)
-                fm_annual = float(request.form.get('full_marks_annual', 100.0) or 100.0)
-            except ValueError:
-                fm_1st = 50.0
-                fm_2nd = 50.0
-                fm_annual = 100.0
-
-            def parse_float_opt(val):
-                if val is not None and val.strip() != '':
-                    try:
-                        return float(val)
-                    except ValueError:
-                        return None
-                return None
-
-            oral_1st = parse_float_opt(request.form.get('oral_marks_1st'))
-            oral_2nd = parse_float_opt(request.form.get('oral_marks_2nd'))
-            oral_annual = parse_float_opt(request.form.get('oral_marks_annual'))
-
-            written_1st = (fm_1st - oral_1st) if oral_1st is not None else None
-            written_2nd = (fm_2nd - oral_2nd) if oral_2nd is not None else None
-            ct_annual = (fm_annual * 0.1) if oral_annual is not None else None
-            written_annual = (fm_annual - oral_annual - ct_annual) if oral_annual is not None else None
-
-            if not classes:
-                flash('Please select at least one class.')
-            else:
-                # Support comma-separated subject registration
-                subject_names = [s.strip() for s in name.split(',') if s.strip()]
-                for sub_name in subject_names:
-                    for class_name in classes:
-                        existing = conn.execute("SELECT id FROM subjects WHERE name = ? AND class = ?", (sub_name, class_name)).fetchone()
-                        if not existing:
-                            conn.execute("""
-                                INSERT INTO subjects (
-                                    name, class, full_marks, full_marks_1st, full_marks_2nd, full_marks_annual,
-                                    oral_marks_1st, written_marks_1st, oral_marks_2nd, written_marks_2nd,
-                                    oral_marks_annual, written_marks_annual, ct_marks_annual
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                sub_name, class_name, fm_annual, fm_1st, fm_2nd, fm_annual,
-                                oral_1st, written_1st, oral_2nd, written_2nd,
-                                oral_annual, written_annual, ct_annual
-                            ))
-                conn.commit()
-                flash('Subject(s) added for selected classes!')
+            # Support comma-separated subject registration
+            subject_names = [s.strip() for s in name.split(',') if s.strip()]
+            for sub_name in subject_names:
+                existing = conn.execute("SELECT id FROM subjects WHERE name = ?", (sub_name,)).fetchone()
+                if not existing:
+                    conn.execute("INSERT INTO subjects (name) VALUES (?)", (sub_name,))
+            conn.commit()
+            flash('Global subject(s) added successfully!')
             conn.close()
             return redirect(url_for('academics_setting'))
             
@@ -9713,39 +9329,40 @@ Al-Hidayet Mission"""
             if not classes:
                 flash('Please select at least one class.')
             else:
-                assigned_count = 0
-                for class_name in classes:
-                    subject = conn.execute("SELECT id FROM subjects WHERE name = ? AND class = ?", (subject_name, class_name)).fetchone()
-                    if subject:
+                subject = conn.execute("SELECT id FROM subjects WHERE name = ?", (subject_name,)).fetchone()
+                if subject:
+                    assigned_count = 0
+                    for class_name in classes:
                         try:
-                            conn.execute("INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)", (teacher_id, subject['id']))
+                            conn.execute("INSERT INTO teacher_subjects (teacher_id, class_name, subject_id) VALUES (?, ?, ?)", (teacher_id, class_name, subject['id']))
                             add_teacher_assigned_classes_string(conn, teacher_id, class_name, subject_name)
                             assigned_count += 1
                         except sqlite3.IntegrityError:
                             pass
-                conn.commit()
-                if assigned_count > 0:
-                    flash(f'Teacher assigned to {assigned_count} class(es) for {subject_name}!')
+                    conn.commit()
+                    if assigned_count > 0:
+                        flash(f'Teacher assigned to {assigned_count} class(es) for {subject_name}!')
+                    else:
+                        flash('No new assignments made. Make sure the assignment does not already exist.')
                 else:
-                    flash('No new assignments made. Make sure the subject exists for the selected classes.')
+                    flash('Subject not found.')
             conn.close()
             return redirect(url_for('academics_setting'))
 
         if request.method == 'POST' and 'delete_subject' in request.form:
             subject_id = request.form['subject_id']
             try:
-                subject_row = conn.execute("SELECT name, class FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+                subject_row = conn.execute("SELECT name FROM subjects WHERE id = ?", (subject_id,)).fetchone()
                 if subject_row:
                     subject_name = subject_row['name']
-                    class_name = subject_row['class']
                     # Find all teachers assigned to this subject to update their assigned_classes text
                     teachers = conn.execute("SELECT DISTINCT teacher_id FROM teacher_subjects WHERE subject_id = ?", (subject_id,)).fetchall()
                     # Cascade deletions to prevent foreign key or orphan row issues
                     conn.execute("DELETE FROM teacher_subjects WHERE subject_id = ?", (subject_id,))
                     conn.execute("DELETE FROM teacher_assignments WHERE subject_id = ?", (subject_id,))
-                    conn.execute("DELETE FROM marks WHERE LOWER(subject_name) = LOWER(?) AND LOWER(class_name) = LOWER(?)", (subject_name, class_name))
-                    conn.execute("DELETE FROM class_test_configs WHERE subject_name = ? AND class_name = ?", (subject_name, class_name))
-                    conn.execute("DELETE FROM class_routine WHERE subject = ? AND class_name = ?", (subject_name, class_name))
+                    conn.execute("DELETE FROM class_subjects WHERE LOWER(subject_name) = LOWER(?)", (subject_name.lower(),))
+                    conn.execute("DELETE FROM marks WHERE LOWER(subject_name) = LOWER(?)", (subject_name.lower(),))
+                    conn.execute("DELETE FROM class_routine WHERE LOWER(subject) = LOWER(?)", (subject_name.lower(),))
                     conn.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
                     
                     # Rebuild assigned_classes string for each affected teacher from DB
@@ -9778,7 +9395,7 @@ Al-Hidayet Mission"""
             try:
                 # Find details of this assignment to update their assigned_classes text
                 info = conn.execute('''
-                    SELECT ts.teacher_id, s.name as subject_name, s.class as class_name
+                    SELECT ts.teacher_id, s.name as subject_name, ts.class_name
                     FROM teacher_subjects ts
                     JOIN subjects s ON ts.subject_id = s.id
                     WHERE ts.id = ?
@@ -9805,66 +9422,8 @@ Al-Hidayet Mission"""
             conn.close()
             return redirect(url_for('academics_setting'))
 
-        if request.method == 'POST' and 'create_class_test_config' in request.form:
-            test_name = normalize_monthly_test_name(request.form['test_name'].strip())
-            class_name = request.form['class_name']
-            subject_names = request.form.getlist('subject_name')
-            try:
-                full_marks = float(request.form['full_marks'])
-            except ValueError:
-                full_marks = 20.0
-                
-            if not test_name:
-                flash('Please enter a valid class test name.')
-            elif not subject_names:
-                flash('Please select at least one subject.')
-            else:
-                for subject_name in subject_names:
-                    if 'art' in subject_name.lower():
-                        flash(f'Art subjects ({subject_name}) cannot have monthly class tests. Skipped.')
-                        continue
-                    
-                    # Ensure subject exists for the selected class in subjects table
-                    db_classes = get_db_class_names(class_name)
-                    placeholders = ', '.join('?' for _ in db_classes)
-                    sub_exists = conn.execute(f"SELECT id FROM subjects WHERE name = ? AND class IN ({placeholders})", (subject_name, *db_classes)).fetchone()
-                    if not sub_exists:
-                        continue
-                        
-                    existing = conn.execute("SELECT id FROM class_test_configs WHERE test_name = ? AND class_name = ? AND subject_name = ?", (test_name, class_name, subject_name)).fetchone()
-                    if existing:
-                        conn.execute("UPDATE class_test_configs SET full_marks = ? WHERE id = ?", (full_marks, existing['id']))
-                    else:
-                        conn.execute("INSERT INTO class_test_configs (test_name, class_name, subject_name, full_marks) VALUES (?, ?, ?, ?)", (test_name, class_name, subject_name, full_marks))
-                flash(f'Configured {test_name} for Class {class_name} with F.M. {full_marks}!')
-                conn.commit()
-            conn.close()
-            return redirect(url_for('academics_setting'))
-
-        if request.method == 'POST' and 'delete_class_test_config' in request.form:
-            config_id = request.form['config_id']
-            try:
-                config = conn.execute("SELECT test_name, class_name, subject_name FROM class_test_configs WHERE id = ?", (config_id,)).fetchone()
-                if config:
-                    conn.execute("DELETE FROM marks WHERE LOWER(term_name) = LOWER(?) AND LOWER(class_name) = LOWER(?) AND LOWER(subject_name) = LOWER(?)",
-                                 (config['test_name'], config['class_name'], config['subject_name']))
-                conn.execute("DELETE FROM class_test_configs WHERE id = ?", (config_id,))
-                conn.commit()
-                
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-                    conn.close()
-                    return jsonify({'status': 'success', 'message': 'Class test configuration and associated marks deleted.'})
-                    
-                flash('Class test configuration deleted.')
-
-            except Exception as e:
-                conn.rollback()
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-                    conn.close()
-                    return jsonify({'status': 'error', 'message': f'Server error: {str(e)}'})
-                flash(f'Server error: {str(e)}')
-            conn.close()
-            return redirect(url_for('academics_setting'))
+        # Class test config post handlers disabled (moved to Bulk Marks)
+        pass
 
         if request.method == 'POST' and 'create_exam_schedule' in request.form:
             class_name = request.form.get('class_name', '').strip()
@@ -9911,8 +9470,8 @@ Al-Hidayet Mission"""
             conn.close()
             return redirect(url_for('academics_setting'))
 
-        subjects = conn.execute("SELECT * FROM subjects ORDER BY class, name").fetchall()
-        distinct_subjects = conn.execute("SELECT DISTINCT name FROM subjects ORDER BY name").fetchall()
+        subjects = conn.execute("SELECT * FROM subjects ORDER BY name").fetchall()
+        distinct_subjects = subjects
         teachers = conn.execute('''
             SELECT u.id, u.username, ti.full_name
             FROM users u
@@ -9920,14 +9479,12 @@ Al-Hidayet Mission"""
             WHERE u.role = 'teacher'
         ''').fetchall()
         assignments = conn.execute('''
-            SELECT ts.id, COALESCE(NULLIF(ti.full_name, ''), u.username) as teacher_name, s.name as subject_name, s.class 
+            SELECT ts.id, COALESCE(NULLIF(ti.full_name, ''), u.username) as teacher_name, s.name as subject_name, ts.class_name as class 
             FROM teacher_subjects ts
             JOIN users u ON ts.teacher_id = u.id
             LEFT JOIN teacher_info ti ON u.id = ti.user_id
             JOIN subjects s ON ts.subject_id = s.id
         ''').fetchall()
-        class_test_configs = conn.execute("SELECT * FROM class_test_configs ORDER BY class_name, test_name, subject_name").fetchall()
-        class_test_configs = sorted(class_test_configs, key=lambda x: (x['class_name'], get_month_sort_key(x['test_name']), x['subject_name']))
         classes = conn.execute("SELECT * FROM classes ORDER BY id").fetchall()
         
         # Get distinct class names programmatically to avoid any duplicates due to spacing or case differences
@@ -9945,8 +9502,8 @@ Al-Hidayet Mission"""
         
         exam_locks_raw = conn.execute("SELECT * FROM exam_locks").fetchall()
         exam_locks = [dict(row) for row in exam_locks_raw]
-        class_tests_rows = conn.execute("SELECT DISTINCT test_name FROM class_test_configs").fetchall()
-        all_terms = ['1st Unit', '2nd Unit', 'Final Exam'] + [r['test_name'] for r in class_tests_rows]
+        class_tests_rows = conn.execute("SELECT DISTINCT term_name FROM marks WHERE LOWER(term_name) NOT IN ('1st unit', '1st term', '2nd unit', '2nd term', 'final exam', 'annual exam')").fetchall()
+        all_terms = ['1st Unit', '2nd Unit', 'Final Exam'] + sorted(list({r['term_name'] for r in class_tests_rows if r['term_name']}), key=get_month_sort_key)
         
         log_email = get_school_setting('log_destination_email', 'missionalhidayet@gmail.com')
         
@@ -9961,12 +9518,9 @@ Al-Hidayet Mission"""
         exam_schedules_list = conn.execute("SELECT * FROM exam_schedules ORDER BY class_name, term_name").fetchall()
         
         conn.close()
-        return render_template('admin/academics_setting.html', subjects=subjects, distinct_subjects=distinct_subjects, teachers=teachers, assignments=assignments, class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, class_teachers=class_teachers, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, all_terms=all_terms, log_destination_email=log_email, exam_schedules=exam_schedules_list)
+        return render_template('admin/academics_setting.html', subjects=subjects, distinct_subjects=distinct_subjects, teachers=teachers, assignments=assignments, class_test_configs=[], classes=classes, distinct_classes=distinct_classes, class_teachers=class_teachers, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, all_terms=all_terms, log_destination_email=log_email, exam_schedules=exam_schedules_list)
     elif 'user' in session and session['role'] == 'teacher': # Teachers just view
          conn = get_db_connection()
-         sync_and_normalize_monthly_tests(conn)
-         class_test_configs = conn.execute("SELECT * FROM class_test_configs ORDER BY class_name, test_name, subject_name").fetchall()
-         class_test_configs = sorted(class_test_configs, key=lambda x: (x['class_name'], get_month_sort_key(x['test_name']), x['subject_name']))
          classes = conn.execute("SELECT * FROM classes ORDER BY id").fetchall()
          
          # Get distinct class names programmatically to avoid any duplicates due to spacing or case differences
@@ -9985,7 +9539,7 @@ Al-Hidayet Mission"""
          exam_locks = [dict(row) for row in exam_locks_raw]
          exam_schedules_list = conn.execute("SELECT * FROM exam_schedules ORDER BY class_name, term_name").fetchall()
          conn.close()
-         return render_template('admin/academics_setting.html', class_test_configs=class_test_configs, classes=classes, distinct_classes=distinct_classes, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, exam_schedules=exam_schedules_list) # Needs simplified view
+         return render_template('admin/academics_setting.html', class_test_configs=[], classes=classes, distinct_classes=distinct_classes, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, exam_schedules=exam_schedules_list) # Needs simplified view
 
 @app.route('/admin/toggle-exam-lock', methods=['POST'])
 def toggle_exam_lock():
@@ -10030,15 +9584,23 @@ def update_class_fees():
     if 'user' in session and session['role'] == 'admin':
         class_id = request.form.get('class_id')
         try:
-            admission_fee = float(request.form.get('admission_fee', 0.0) or 0.0)
-            admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0) or 0.0)
-            admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0) or 0.0)
-            readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0) or 0.0)
-            readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0) or 0.0)
-            readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0) or 0.0)
-            monthly_fee = float(request.form.get('monthly_fee', 0.0) or 0.0)
-            monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0) or 0.0)
-            hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0)
+            def parse_fee(val):
+                if val is None or str(val).strip() == '':
+                    return None
+                try:
+                    return float(val)
+                except ValueError:
+                    return None
+
+            admission_fee = parse_fee(request.form.get('admission_fee'))
+            admission_fee_coaching = parse_fee(request.form.get('admission_fee_coaching'))
+            admission_fee_hostel = parse_fee(request.form.get('admission_fee_hostel'))
+            readmission_fee_school = parse_fee(request.form.get('readmission_fee_school'))
+            readmission_fee_coaching = parse_fee(request.form.get('readmission_fee_coaching'))
+            readmission_fee_hostel = parse_fee(request.form.get('readmission_fee_hostel'))
+            monthly_fee = parse_fee(request.form.get('monthly_fee'))
+            monthly_fee_coaching = parse_fee(request.form.get('monthly_fee_coaching'))
+            hostel_fee = parse_fee(request.form.get('hostel_fee'))
             
             conn = get_db_connection()
             class_info = conn.execute("SELECT name, branch FROM classes WHERE id = ?", (class_id,)).fetchone()
@@ -10062,7 +9624,7 @@ def update_class_fees():
                     s_adm = admission_fee
                     s_readm = readmission_fee_school
                     s_mon = monthly_fee
-                    s_hostel = 0.0
+                    s_hostel = None
                     
                     if student['take_day_hostel']:
                         s_adm = admission_fee_hostel
@@ -10318,6 +9880,7 @@ def admit_card():
         return redirect(url_for('login', user_type='student'))
         
     conn = get_db_connection()
+    all_terms = get_all_academic_terms(conn)
     student = None
     term_name = request.args.get('term', '1st Unit')
     
@@ -10342,7 +9905,7 @@ def admit_card():
             else:
                 students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student'").fetchall()
             conn.close()
-            return render_template('admin/select_student.html', students=students, action='admit-card', role=user['role'])
+            return render_template('admin/select_student.html', students=students, action='admit-card', role=user['role'], all_terms=all_terms)
     else:
         # Check student permission
         student = conn.execute('''
@@ -10381,7 +9944,8 @@ def admit_card():
                 term_name=term_name,
                 schedule_image=schedule_image,
                 schedule_list=schedule_list,
-                logo_url=LOGO_URL
+                logo_url=LOGO_URL,
+                all_terms=all_terms
             )
 
     import datetime
@@ -10396,7 +9960,8 @@ def admit_card():
         schedule_image=schedule_image,
         schedule_list=schedule_list,
         logo_url=LOGO_URL,
-        current_year=current_year
+        current_year=current_year,
+        all_terms=all_terms
     )
 
 @app.route('/admin/admit-card/bulk', methods=['POST'])
@@ -10613,6 +10178,7 @@ def api_exam_schedule(class_name):
 def id_card():
     if 'user' in session:
         conn = get_db_connection()
+        all_terms = get_all_academic_terms(conn)
         user = conn.execute("SELECT id, role FROM users WHERE username = ?", (session['user'],)).fetchone()
         
         if user['role'] in ['admin', 'teacher']:
@@ -10632,7 +10198,7 @@ def id_card():
                     conn.close()
                     flash('Permission denied: Student does not belong to your campus.')
                     return redirect(url_for('dashboard'))
-
+ 
                 conn.close()
                 return render_template('admin/id_card.html', student=student, role=user['role'])
             else:
@@ -10641,7 +10207,7 @@ def id_card():
                 else:
                     students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student'").fetchall()
                 conn.close()
-                return render_template('admin/select_student.html', students=students, action='id-card', role=user['role'])
+                return render_template('admin/select_student.html', students=students, action='id-card', role=user['role'], all_terms=all_terms)
         else:
             student = conn.execute('''
                 SELECT u.id, u.username, si.full_name, si.class, si.roll_number, si.branch, u.email,
@@ -11928,13 +11494,13 @@ def view_routine():
     db_classes = conn.execute('''
         SELECT DISTINCT class FROM student_info WHERE class IS NOT NULL AND class != ''
         UNION
-        SELECT DISTINCT class FROM subjects WHERE class IS NOT NULL AND class != ''
+        SELECT DISTINCT class_name as class FROM class_subjects WHERE class_name IS NOT NULL AND class_name != ''
     ''').fetchall()
     classes_list = sorted([c[0] for c in db_classes], key=get_class_sort_index)
     
-    distinct_subjects = [r['name'] for r in conn.execute("SELECT DISTINCT name FROM subjects").fetchall()]
+    distinct_subjects = [r['name'] for r in conn.execute("SELECT name FROM subjects").fetchall()]
     
-    db_subjects_all = conn.execute("SELECT name, class FROM subjects").fetchall()
+    db_subjects_all = conn.execute("SELECT DISTINCT subject_name as name, class_name as class FROM class_subjects").fetchall()
     class_subjects_map = {}
     for r in db_subjects_all:
         c = r['class']
@@ -11952,6 +11518,7 @@ def view_routine():
     ''').fetchall()
     teachers = [t['name'] for t in teachers_list]
     
+    all_terms = get_all_academic_terms(conn)
     conn.close()
     logo_url = LOGO_URL
     
@@ -11963,7 +11530,8 @@ def view_routine():
                            teachers=teachers, 
                            routine_data=routine_data, 
                            role=user['role'], 
-                           logo_url=logo_url)
+                           logo_url=logo_url,
+                           all_terms=all_terms)
 
 
 # ================= GUARDIAN MEETINGS =================
@@ -12784,10 +12352,10 @@ def sync_all_existing_teacher_assignments():
     debug_lines = []
     try:
         conn = get_db_connection()
-        db_subjects = conn.execute("SELECT id, name, class FROM subjects").fetchall()
+        db_subjects = conn.execute("SELECT id, name FROM subjects").fetchall()
         debug_lines.append(f"DB Subjects count: {len(db_subjects)}")
         for sub in db_subjects:
-            debug_lines.append(f"  DB Sub: id={sub['id']}, name='{sub['name']}', class='{sub['class']}', c_norm='{normalize_class_name(sub['class'])}', s_norm='{normalize_subject_name(sub['name'])}'")
+            debug_lines.append(f"  DB Sub: id={sub['id']}, name='{sub['name']}', s_norm='{normalize_subject_name(sub['name'])}'")
             
         teachers = conn.execute("SELECT user_id, full_name, assigned_classes FROM teacher_info").fetchall()
         debug_lines.append(f"Teachers count: {len(teachers)}")
@@ -12803,7 +12371,7 @@ def sync_all_existing_teacher_assignments():
                 
             # Log what is now in teacher_subjects for this teacher
             ts_rows = conn.execute('''
-                SELECT ts.id, s.name as subject_name, s.class as subject_class
+                SELECT ts.id, s.name as subject_name, ts.class_name as subject_class
                 FROM teacher_subjects ts
                 JOIN subjects s ON ts.subject_id = s.id
                 WHERE ts.teacher_id = ?

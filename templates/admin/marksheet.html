@@ -13,7 +13,15 @@
 <body class="bg-pattern marksheet-page">
     <style>
         @media print {
-            body { background: #fff !important; }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            body { 
+                background: #fff !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
             .sidebar, .top-bar, .class-filter-btn, #marksheetSearch, .print-hide { display: none !important; }
             .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
             .dashboard-container { display: block !important; }
@@ -33,12 +41,13 @@
             /* A4 printable sizes */
             .annual-page {
                 width: 210mm !important;
-                height: 296mm !important;
-                padding: 4mm !important;
-                margin: 0 !important;
+                height: 275mm !important;
+                padding: 3mm !important;
+                margin: 0 auto !important;
                 border: none !important;
                 box-shadow: none !important;
                 page-break-after: always !important;
+                box-sizing: border-box !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -444,7 +453,7 @@
                                         <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
                                         <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
                                         <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
-                                        <div class="title">{{ selected_term | upper if selected_term else 'TERM RESULT' }} - 2025</div>
+                                        <div class="title">{{ selected_term | upper if selected_term else 'TERM RESULT' }} - {{ student_info.session or '2025' }}</div>
                                     </div>
                                     <table class="info-tbl">
                                         <tr>
@@ -511,14 +520,14 @@
                                             </tr>
                                             <tr>
                                                 {% if is_unit %}
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].oral_limit if (marks and marks[0].oral_limit is defined and marks[0].oral_limit is not none) else '10' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].written_limit if (marks and marks[0].written_limit is defined and marks[0].written_limit is not none) else '40' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">{{ marks[0].total_marks|round(1)|string|replace('.0', '') if (marks and marks[0].total_marks is defined and marks[0].total_marks is not none) else '50' }}</th>
                                                 {% elif is_final %}
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">LIMIT</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">LIMIT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].oral_limit if (marks and marks[0].oral_limit is defined and marks[0].oral_limit is not none) else '20' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].written_limit if (marks and marks[0].written_limit is defined and marks[0].written_limit is not none) else '70' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].ct_limit if (marks and marks[0].ct_limit is defined and marks[0].ct_limit is not none) else '10' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">{{ marks[0].total_marks|round(1)|string|replace('.0', '') if (marks and marks[0].total_marks is defined and marks[0].total_marks is not none) else '100' }}</th>
                                                 {% else %}
                                                     <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">-</th>
                                                     <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">-</th>
@@ -549,11 +558,11 @@
                                                 <tr style="background-color: #fafafa;">
                                                     <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
                                                     {% if is_unit %}
-                                                        <td colspan="3" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td colspan="3" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% elif is_final %}
-                                                        <td colspan="4" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td colspan="4" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% else %}
-                                                        <td colspan="2" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td colspan="2" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% endif %}
                                                     <td class="bg-grade">{{ grade }}</td>
                                                 </tr>
@@ -561,17 +570,17 @@
                                                 <tr>
                                                     <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
                                                     {% if is_unit %}
-                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}{% if mark.oral_marks is not none %}/{{ mark.oral_limit }}{% endif %}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}{% if mark.written_marks is not none %}/{{ mark.written_limit }}{% endif %}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% elif is_final %}
-                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}{% if mark.oral_marks is not none %}/{{ mark.oral_limit }}{% endif %}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}{% if mark.written_marks is not none %}/{{ mark.written_limit }}{% endif %}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.ct_marks|round(1)|string|replace('.0', '') if mark.ct_marks is not none else '-' }}{% if mark.ct_marks is not none %}/{{ mark.ct_limit }}{% endif %}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }}">{{ mark.ct_marks|round(1)|string|replace('.0', '') if mark.ct_marks is not none else '-' }}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% else %}
                                                         <td class="{{ row_bg_class }}">{{ mark.total_marks|round(1)|string|replace('.0', '') if mark.total_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}{% if mark.marks is not none %}/{{ mark.total_marks|round(1)|string|replace('.0', '') }}{% endif %}</td>
+                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
                                                     {% endif %}
                                                     <td class="bg-grade">{{ grade }}</td>
                                                 </tr>
@@ -671,7 +680,7 @@
                                         <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
                                         <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
                                         <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
-                                        <div class="title">MONTHLY CLASS TESTS - 2025</div>
+                                        <div class="title">MONTHLY CLASS TESTS - {{ student_info.session or '2025' }}</div>
                                     </div>
                                     <table class="info-tbl">
                                         <tr>
@@ -789,7 +798,7 @@
                                         <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" class="logo logo-right">
                                         <h1 class="ahm-h1">BHOGRAM AL-HIDAYET MISSION</h1>
                                         <div class="addr">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
-                                        <div class="title">ANNUAL RESULT - 2025</div>
+                                        <div class="title">ANNUAL RESULT - {{ s.session or '2025' }}</div>
                                     </div>
                                     <table class="info-tbl">
                                         <tr>
@@ -819,37 +828,37 @@
                                                 <th class="th-final">OR</th><th class="th-final">WR</th><th class="th-final">CT</th><th class="th-final">TOT</th>
                                             </tr>
                                             <tr>
-                                                <th class="th-u1" style="font-size:8pt">LIMIT</th><th class="th-u1" style="font-size:8pt">LIMIT</th><th class="th-u1 sub-tot" style="font-size:8pt">LIMIT</th>
-                                                <th class="th-u2" style="font-size:8pt">LIMIT</th><th class="th-u2" style="font-size:8pt">LIMIT</th><th class="th-u2 sub-tot" style="font-size:8pt">LIMIT</th>
-                                                <th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final" style="font-size:8pt">LIMIT</th><th class="th-final sub-tot" style="font-size:8pt">LIMIT</th>
+                                                 <th class="th-u1" style="font-size:8pt">{{ s.subjects[0].u1_o_limit if s.subjects else '10' }}</th><th class="th-u1" style="font-size:8pt">{{ s.subjects[0].u1_w_limit if s.subjects else '40' }}</th><th class="th-u1 sub-tot" style="font-size:8pt">{{ s.subjects[0].u1_tot_limit if s.subjects else '50' }}</th>
+                                                 <th class="th-u2" style="font-size:8pt">{{ s.subjects[0].u2_o_limit if s.subjects else '10' }}</th><th class="th-u2" style="font-size:8pt">{{ s.subjects[0].u2_w_limit if s.subjects else '40' }}</th><th class="th-u2 sub-tot" style="font-size:8pt">{{ s.subjects[0].u2_tot_limit if s.subjects else '50' }}</th>
+                                                 <th class="th-final" style="font-size:8pt">{{ s.subjects[0].f_o_limit if s.subjects else '20' }}</th><th class="th-final" style="font-size:8pt">{{ s.subjects[0].f_w_limit if s.subjects else '70' }}</th><th class="th-final" style="font-size:8pt">{{ s.subjects[0].f_ct_limit if s.subjects else '10' }}</th><th class="th-final sub-tot" style="font-size:8pt">{{ s.subjects[0].f_tot_limit if s.subjects else '100' }}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for sub in s.subjects %}
                                             <tr>
                                                 <td style="text-align:left; font-weight:bold; padding-left:5px;">{{ sub.name }}</td>
-                                                <td class="bg-unit1">{{ sub.u1_o }}{% if sub.u1_o != '-' %}/{{ sub.u1_o_limit }}{% endif %}</td>
-                                                <td class="bg-unit1">{{ sub.u1_w }}{% if sub.u1_w != '-' %}/{{ sub.u1_w_limit }}{% endif %}</td>
-                                                <td class="bg-unit1 sub-tot">{{ sub.u1_tot }}{% if sub.u1_tot != '-' %}/{{ sub.u1_tot_limit }}{% endif %}</td>
-                                                
-                                                <td class="bg-unit2">{{ sub.u2_o }}{% if sub.u2_o != '-' %}/{{ sub.u2_o_limit }}{% endif %}</td>
-                                                <td class="bg-unit2">{{ sub.u2_w }}{% if sub.u2_w != '-' %}/{{ sub.u2_w_limit }}{% endif %}</td>
-                                                <td class="bg-unit2 sub-tot">{{ sub.u2_tot }}{% if sub.u2_tot != '-' %}/{{ sub.u2_tot_limit }}{% endif %}</td>
-                                                
-                                                <td class="bg-final">{{ sub.f_o }}{% if sub.f_o != '-' %}/{{ sub.f_o_limit }}{% endif %}</td>
-                                                <td class="bg-final">{{ sub.f_w }}{% if sub.f_w != '-' %}/{{ sub.f_w_limit }}{% endif %}</td>
-                                                <td class="bg-final">{{ sub.f_ct }}{% if sub.f_ct != '-' %}/{{ sub.f_ct_limit }}{% endif %}</td>
-                                                <td class="bg-final sub-tot">{{ sub.f_tot }}{% if sub.f_tot != '-' %}/{{ sub.f_tot_limit }}{% endif %}</td>
+                                                 <td class="bg-unit1">{{ sub.u1_o }}</td>
+                                                 <td class="bg-unit1">{{ sub.u1_w }}</td>
+                                                 <td class="bg-unit1 sub-tot">{{ sub.u1_tot }}</td>
+                                                 
+                                                 <td class="bg-unit2">{{ sub.u2_o }}</td>
+                                                 <td class="bg-unit2">{{ sub.u2_w }}</td>
+                                                 <td class="bg-unit2 sub-tot">{{ sub.u2_tot }}</td>
+                                                 
+                                                 <td class="bg-final">{{ sub.f_o }}</td>
+                                                 <td class="bg-final">{{ sub.f_w }}</td>
+                                                 <td class="bg-final">{{ sub.f_ct }}</td>
+                                                 <td class="bg-final sub-tot">{{ sub.f_tot }}</td>
                                                 
                                                 <td class="bg-total">{{ sub.grand }}{% if sub.grand != '-' %}/{{ sub.possible }}{% endif %}</td>
                                                 <td class="bg-grade">{{ sub.grade }}</td>
                                             </tr>
                                             {% endfor %}
                                             <tr style="border-top: 2px solid black;">
-                                                <td style="text-align:left; font-weight:bold; padding-left:5px;">ART</td>
-                                                <td colspan="3" class="bg-unit1">{{ s.art_u1 }}{% if s.art_u1 != '-' %}/{{ s.art_u1_limit }}{% endif %}</td>
-                                                <td colspan="3" class="bg-unit2">{{ s.art_u2 }}{% if s.art_u2 != '-' %}/{{ s.art_u2_limit }}{% endif %}</td>
-                                                <td colspan="4" class="bg-final">{{ s.art_f }}{% if s.art_f != '-' %}/{{ s.art_f_limit }}{% endif %}</td>
+                                                 <td style="text-align:left; font-weight:bold; padding-left:5px;">ART</td>
+                                                 <td colspan="3" class="bg-unit1">{{ s.art_u1 }}</td>
+                                                 <td colspan="3" class="bg-unit2">{{ s.art_u2 }}</td>
+                                                 <td colspan="4" class="bg-final">{{ s.art_f }}</td>
                                                 <td class="bg-total">{{ s.art_grand }}{% if s.art_grand != '-' %}/{{ s.art_possible }}{% endif %}</td>
                                                 <td class="bg-grade">{{ s.art_grade }}</td>
                                             </tr>

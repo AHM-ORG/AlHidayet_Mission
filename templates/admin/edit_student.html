@@ -319,14 +319,14 @@
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Monthly Fee (₹)</label>
-                                <input type="number" name="monthly_fee" step="0.01" value="{{ student.monthly_fee or '' }}">
+                                <input type="number" name="monthly_fee" step="0.01" value="{{ student.monthly_fee if (student.monthly_fee is not none and student.monthly_fee != 0.0) else '' }}">
                             </div>
                         </div>
-                        <input type="hidden" name="admission_fee" value="{{ student.admission_fee or '0.00' }}">
+                        <input type="hidden" name="admission_fee" value="{{ student.admission_fee if (student.admission_fee is not none and student.admission_fee != 0.0) else '' }}">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Re-admission Fee (₹)</label>
-                                <input type="number" name="readmission_fee" step="0.01" value="{{ student.readmission_fee or '0.00' }}">
+                                <input type="number" name="readmission_fee" step="0.01" value="{{ student.readmission_fee if (student.readmission_fee is not none and student.readmission_fee != 0.0) else '' }}">
                             </div>
                         </div>
 
@@ -477,9 +477,10 @@
                 monthlyFee += 400.0;
             }
             
-            feeInput.value = monthlyFee.toFixed(2);
-            if (admFeeInput) admFeeInput.value = admissionFee.toFixed(2);
-            if (readmFeeInput) readmFeeInput.value = readmissionFee.toFixed(2);
+            const formatVal = (v) => (v === 0 || v === 0.0) ? '' : v.toFixed(2);
+            feeInput.value = formatVal(monthlyFee);
+            if (admFeeInput) admFeeInput.value = formatVal(admissionFee);
+            if (readmFeeInput) readmFeeInput.value = formatVal(readmissionFee);
         }
 
         document.addEventListener("DOMContentLoaded", function() {
