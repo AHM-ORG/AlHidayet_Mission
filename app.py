@@ -1809,17 +1809,24 @@ def init_db():
     cleaned_flag = os.path.join(app.root_path, 'ahm.db.cleaned_v5')
     if not os.path.exists(cleaned_flag):
         try:
-            c.execute("DROP TABLE IF EXISTS subjects")
-            c.execute("DROP TABLE IF EXISTS teacher_subjects")
-            c.execute("DROP TABLE IF EXISTS teacher_assignments")
-            c.execute("DROP TABLE IF EXISTS class_subjects")
-            c.execute("DROP TABLE IF EXISTS class_test_configs")
-            c.execute("DELETE FROM classes")
-            c.execute("DELETE FROM class_teachers")
-            c.execute("DELETE FROM marks")
-            c.execute("DELETE FROM class_routine")
-            c.execute("DELETE FROM exam_locks")
-            c.execute("DELETE FROM exam_schedules")
+            reset_statements = [
+                "DROP TABLE IF EXISTS subjects",
+                "DROP TABLE IF EXISTS teacher_subjects",
+                "DROP TABLE IF EXISTS teacher_assignments",
+                "DROP TABLE IF EXISTS class_subjects",
+                "DROP TABLE IF EXISTS class_test_configs",
+                "DELETE FROM classes",
+                "DELETE FROM class_teachers",
+                "DELETE FROM marks",
+                "DELETE FROM class_routine",
+                "DELETE FROM exam_locks",
+                "DELETE FROM exam_schedules"
+            ]
+            for stmt in reset_statements:
+                try:
+                    c.execute(stmt)
+                except Exception as stmt_err:
+                    print(f" [DB RESET STMT WARNING] Statement '{stmt}' failed (safe to ignore if table doesn't exist): {stmt_err}")
             conn.commit()
             with open(cleaned_flag, 'w') as f:
                 f.write('cleaned')
@@ -2243,6 +2250,14 @@ def init_db():
         print(" [DB MIGRATE] Added bank_details column to student_info")
     except sqlite3.OperationalError:
         pass
+
+    # Migrate users for email, security_key, and branch columns
+    for col, col_type in [('email', 'TEXT'), ('security_key', 'TEXT'), ('branch', 'TEXT')]:
+        try:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+            print(f" [DB MIGRATE] Added column {col} to users table")
+        except sqlite3.OperationalError:
+            pass # already exists
 
     # Migrate users for phone column
     try:
