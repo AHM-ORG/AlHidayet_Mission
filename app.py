@@ -59,8 +59,37 @@ def internal_server_error(e):
         tb_str = "Traceback unavailable"
         
     try:
-        details = f"URL: {request.url}\nMethod: {request.method}\nError: {err_msg}\n\nTraceback:\n{tb_str}"
-        send_activity_notification("500 Internal Server Error", details)
+        import threading
+        # Safely resolve destination email without throwing on database downtime
+        try:
+            dest_email = get_school_setting('log_destination_email', 'missionalhidayet@gmail.com')
+        except Exception:
+            dest_email = 'missionalhidayet@gmail.com'
+
+        username = session.get('user', 'Anonymous')
+        role = session.get('role', 'Unknown')
+        branch = session.get('branch', 'Not set')
+        ip = request.remote_addr if request else 'Unknown'
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        subject = f"AHM Critical 500 Error: {err_msg[:50]}"
+        body = f"""Institute Activity Log Info:
+----------------------------
+Action: 500 Internal Server Error
+User: {username} ({role})
+Branch: {branch}
+IP Address: {ip}
+Timestamp: {timestamp}
+
+URL: {request.url}
+Method: {request.method}
+Error: {err_msg}
+
+Traceback:
+{tb_str}
+----------------------------"""
+        # Send raw email directly to the destination logs recipient in background thread
+        threading.Thread(target=_send_email_raw, args=(subject, body, dest_email), daemon=True).start()
     except Exception as email_err:
         print(f" [ERROR MAIL] Failed to queue error email: {email_err}")
 
