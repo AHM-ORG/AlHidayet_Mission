@@ -9619,7 +9619,7 @@ def update_class_fees():
                 class_name = class_info['name']
                 branch = class_info['branch']
                 
-                students = conn.execute("SELECT id, take_coaching, take_day_hostel FROM student_info WHERE class = ? AND branch = ?", (class_name, branch)).fetchall()
+                students = conn.execute("SELECT user_id, take_coaching, take_day_hostel FROM student_info WHERE class = ? AND branch = ?", (class_name, branch)).fetchall()
                 for student in students:
                     s_adm = admission_fee
                     s_readm = readmission_fee_school
@@ -9638,8 +9638,8 @@ def update_class_fees():
                     conn.execute("""
                         UPDATE student_info
                         SET admission_fee = ?, readmission_fee = ?, monthly_fee = ?, hostel_fee = ?
-                        WHERE id = ?
-                    """, (s_adm, s_readm, s_mon, s_hostel, student['id']))
+                        WHERE user_id = ?
+                    """, (s_adm, s_readm, s_mon, s_hostel, student['user_id']))
 
             conn.commit()
             conn.close()

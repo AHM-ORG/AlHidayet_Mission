@@ -183,6 +183,28 @@
         input, select, textarea, .ts-control input {
             font-size: 16px !important;
         }
+        /* Ensure Tom Select dropdown lists render above all sticky headers and tables */
+        .ts-wrapper.dropdown-active {
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+        .ts-dropdown {
+            z-index: 999999 !important;
+        }
+        /* Force Tom Select dropdown inside the subjects panel to open upwards to avoid overlapping the table */
+        #manage-subjects-panel .ts-dropdown {
+            top: auto !important;
+            bottom: 100% !important;
+            margin-top: 0 !important;
+            margin-bottom: 5px !important;
+            box-shadow: 0 -6px 12px rgba(0,0,0,0.175) !important;
+        }
+        /* Remove sticky positioning and z-index from the Configured Subjects table headers inside the panel */
+        #manage-subjects-panel thead th {
+            position: relative !important;
+            z-index: 1 !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 <body class="bg-pattern">
@@ -380,9 +402,9 @@
                 <button type="button" onclick="document.getElementById('manage-subjects-panel').style.display = document.getElementById('manage-subjects-panel').style.display === 'none' ? 'block' : 'none'" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: var(--radius); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="settings" style="width: 18px; height: 18px;"></i> Manage Subjects & Full Marks
                 </button>
-                <div id="manage-subjects-panel" style="display: none; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; margin-top: 15px; box-shadow: var(--shadow-sm);">
+                <div id="manage-subjects-panel" style="display: none; position: relative; z-index: 100; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; margin-top: 15px; box-shadow: var(--shadow-sm);">
                     <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Add New Subject to {{ selected_term }}</h3>
-                    <form method="POST" action="/admin/bulk-marks" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+                    <form method="POST" action="/admin/bulk-marks" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; position: relative; z-index: 200;">
                         <input type="hidden" name="action_type" value="add_subject">
                         <input type="hidden" name="class_name" value="{{ selected_class }}">
                         <input type="hidden" name="term_name" value="{{ selected_term }}">
@@ -434,14 +456,14 @@
                     <h3 style="margin-top: 0; color: var(--primary-dark); font-size: 1.1em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Configured Subjects for {{ selected_term }}</h3>
                     <div style="overflow-x: auto;">
                         <table class="responsive-table" style="width: 100%; border: 1px solid var(--border-color);">
-                            <thead style="background: var(--surface-soft);">
-                                <tr>
-                                    <th>Subject</th>
-                                    <th>Written Limit</th>
-                                    <th>Oral Limit</th>
-                                    <th>Class Test Limit</th>
-                                    <th>Full Marks</th>
-                                    <th>Actions</th>
+                            <thead style="background: var(--surface-soft); position: relative !important; z-index: 1 !important;">
+                                <tr style="position: relative !important; z-index: 1 !important;">
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Subject</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Written Limit</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Oral Limit</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Class Test Limit</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Full Marks</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

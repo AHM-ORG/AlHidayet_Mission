@@ -2097,3 +2097,8 @@ html {
 input, select, textarea, button, a, .ts-control, .ts-dropdown {
     touch-action: manipulation;
 }
+
+/* Ensure Tom Select dropdown lists render above all sticky headers and tables */
+.ts-dropdown {
+    z-index: 999 !important;
+}
