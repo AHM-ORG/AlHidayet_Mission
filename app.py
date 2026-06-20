@@ -57,7 +57,14 @@ def internal_server_error(e):
         tb_str = traceback.format_exc()
     except Exception:
         tb_str = "Traceback unavailable"
-    return render_template('error_500.html', error=err_msg, traceback=tb_str), 500
+        
+    try:
+        details = f"URL: {request.url}\nMethod: {request.method}\nError: {err_msg}\n\nTraceback:\n{tb_str}"
+        send_activity_notification("500 Internal Server Error", details)
+    except Exception as email_err:
+        print(f" [ERROR MAIL] Failed to queue error email: {email_err}")
+
+    return render_template('error_500.html'), 500
 
 # Database Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
