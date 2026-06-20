@@ -4,4 +4,4 @@ python-dotenv
 razorpay
 requests
 google-genai
-libsql-experimental
+libsql
