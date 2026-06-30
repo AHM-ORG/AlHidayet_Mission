@@ -23,7 +23,7 @@ except ImportError:
     razorpay = None
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY') or secrets.token_hex(32)
