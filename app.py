@@ -977,71 +977,40 @@ MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'true').lower() == 'true'
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 
-# Helper: Real Email Sender for OTP (SSL/TLS with logging fallback)
+# Helper: Real Email Sender for OTP (HTTP API to bypass port blocking)
 def _send_otp_email_sync(to_email, otp):
-    if not SENDER_EMAIL or not SENDER_PASSWORD:
-        print(f" [EMAIL ERROR] Missing email credentials. OTP code is: {otp}")
+    subject = "AHM Login Verification Code"
+    body = f"<p>Your OTP Verification Code is: <strong>{otp}</strong></p><p>Do not share this code with anyone.</p>"
+    
+    brevo_api_key = os.getenv('BREVO_API_KEY')
+    if not brevo_api_key:
+        print(f" [EMAIL ERROR] BREVO_API_KEY missing in .env! OTP code is: {otp}")
         return False
         
-    subject = "AHM Login Verification Code"
-    body = f"Your OTP Verification Code is: {otp}\n\nDo not share this code with anyone."
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": "Mission Al Hidayet", "email": SENDER_EMAIL},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": body
+    }
     
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = to_email
-
-    # Determine connection settings from config
-    server_host = MAIL_SERVER
-    port_env = MAIL_PORT
-    use_ssl = MAIL_USE_SSL
-    use_tls = MAIL_USE_TLS
-    
-    if port_env:
-        try:
-            port = int(port_env)
-        except ValueError:
-            port = 465 if use_ssl else (587 if use_tls else 25)
-    else:
-        port = 465 if use_ssl else (587 if use_tls else 25)
-
     try:
-        print(f" [EMAIL] Attempting connection to {server_host}:{port} (SSL={use_ssl}, TLS={use_tls})...")
-        if use_ssl:
-            with smtplib.SMTP_SSL(server_host, port, timeout=10) as server:
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                server.send_message(msg)
+        print(f" [EMAIL] Sending OTP via Brevo API to {to_email}...")
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [201, 202, 200]:
+            print(f" [EMAIL SENT] OTP {otp} sent successfully to {to_email}")
+            return True
         else:
-            with smtplib.SMTP(server_host, port, timeout=10) as server:
-                if use_tls:
-                    server.starttls()
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                server.send_message(msg)
-        print(f" [EMAIL SENT] OTP {otp} sent successfully to {to_email}")
-        return True
+            print(f" [EMAIL ERROR] Brevo API rejected email: {response.text}")
+            return False
     except Exception as e:
-        print(f" [EMAIL ERROR] Failed to send OTP {otp} to {to_email} via {server_host}:{port}: {e}")
-        
-        # If primary connection failed and server is Gmail, try the automatic SSL/TLS fallback
-        if server_host == 'smtp.gmail.com':
-            fallback_port = 587 if port == 465 else 465
-            fallback_ssl = (fallback_port == 465)
-            fallback_tls = (fallback_port == 587)
-            print(f" [EMAIL FALLBACK] Attempting automatic fallback connection to smtp.gmail.com:{fallback_port}...")
-            try:
-                if fallback_ssl:
-                    with smtplib.SMTP_SSL('smtp.gmail.com', fallback_port, timeout=10) as server:
-                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                        server.send_message(msg)
-                else:
-                    with smtplib.SMTP('smtp.gmail.com', fallback_port, timeout=10) as server:
-                        server.starttls()
-                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                        server.send_message(msg)
-                print(f" [EMAIL SENT] OTP {otp} sent successfully to {to_email} via fallback")
-                return True
-            except Exception as fallback_err:
-                print(f" [EMAIL ERROR] Fallback failed for OTP {otp} to {to_email}: {fallback_err}")
+        print(f" [EMAIL ERROR] Failed to send OTP to {to_email} via Brevo HTTP API: {e}")
         return False
 
 import threading
@@ -1052,58 +1021,34 @@ def send_otp_email(to_email, otp):
     return True
 
 def _send_email_raw(subject, body, to_email="missionalhidayet@gmail.com"):
-    if not SENDER_EMAIL or not SENDER_PASSWORD:
+    brevo_api_key = os.getenv('BREVO_API_KEY')
+    if not brevo_api_key:
         return False
-        
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = to_email
 
-    server_host = MAIL_SERVER
-    port_env = MAIL_PORT
-    use_ssl = MAIL_USE_SSL
-    use_tls = MAIL_USE_TLS
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    # Wrap standard text body in HTML tags if it isn't already
+    html_content = body if "<" in body else f"<pre>{body}</pre>"
+    payload = {
+        "sender": {"name": "Mission Al Hidayet", "email": SENDER_EMAIL},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content
+    }
     
-    if port_env:
-        try:
-            port = int(port_env)
-        except ValueError:
-            port = 465 if use_ssl else (587 if use_tls else 25)
-    else:
-        port = 465 if use_ssl else (587 if use_tls else 25)
-
     try:
-        if use_ssl:
-            with smtplib.SMTP_SSL(server_host, port, timeout=10) as server:
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                server.send_message(msg)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [201, 202, 200]:
+            return True
         else:
-            with smtplib.SMTP(server_host, port, timeout=10) as server:
-                if use_tls:
-                    server.starttls()
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                server.send_message(msg)
-        return True
+            print(f" [EMAIL ERROR] Connection failed (Brevo API): {response.text}")
+            return False
     except Exception as e:
-        print(f" [EMAIL ERROR] Connection failed to {server_host}:{port}: {e}")
-        if server_host == 'smtp.gmail.com':
-            fallback_port = 587 if port == 465 else 465
-            fallback_ssl = (fallback_port == 465)
-            fallback_tls = (fallback_port == 587)
-            try:
-                if fallback_ssl:
-                    with smtplib.SMTP_SSL('smtp.gmail.com', fallback_port, timeout=10) as server:
-                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                        server.send_message(msg)
-                else:
-                    with smtplib.SMTP('smtp.gmail.com', fallback_port, timeout=10) as server:
-                        server.starttls()
-                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                        server.send_message(msg)
-                return True
-            except Exception as fallback_err:
-                print(f" [EMAIL ERROR] Fallback failed: {fallback_err}")
+        print(f" [EMAIL ERROR] Connection failed to Brevo API: {e}")
         return False
 
 def _send_activity_email_sync(subject, body):
@@ -1979,10 +1924,6 @@ def is_safe_next_url(target):
     return bool(target) and target.startswith('/') and not target.startswith('//')
 
 def get_session_user():
-    if not session.get('user'):
-        session['user'] = 'headmaster'
-        session['role'] = 'admin'
-        session['branch'] = None
     username = session.get('user')
     role = session.get('role')
     if not username or role not in VALID_ROLES:
