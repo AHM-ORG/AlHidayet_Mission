@@ -458,7 +458,7 @@
                                     <table class="info-tbl">
                                         <tr>
                                             <td class="lbl-name">NAME</td>
-                                            <td style="width:40%"><span class="val green">{{ student_info.name or student_info.student_name if student_info else 'N/A' }}</span></td>
+                                            <td style="width:40%"><span class="val green">{{ student_info.name if student_info else 'N/A' }}</span></td>
                                             <td class="lbl-class">CLASS</td>
                                             <td style="width:10%"><span class="val">{{ student_info.class or 'N/A' if student_info else 'N/A' }}</span></td>
                                             <td class="lbl-roll">ROLL</td>
@@ -520,14 +520,14 @@
                                             </tr>
                                             <tr>
                                                 {% if is_unit %}
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].oral_limit if (marks and marks[0].oral_limit is defined and marks[0].oral_limit is not none) else '10' }}</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].written_limit if (marks and marks[0].written_limit is defined and marks[0].written_limit is not none) else '40' }}</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">{{ marks[0].total_marks|round(1)|string|replace('.0', '') if (marks and marks[0].total_marks is defined and marks[0].total_marks is not none) else '50' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">OR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">WR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">TOT</th>
                                                 {% elif is_final %}
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].oral_limit if (marks and marks[0].oral_limit is defined and marks[0].oral_limit is not none) else '20' }}</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].written_limit if (marks and marks[0].written_limit is defined and marks[0].written_limit is not none) else '70' }}</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">{{ marks[0].ct_limit if (marks and marks[0].ct_limit is defined and marks[0].ct_limit is not none) else '10' }}</th>
-                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">{{ marks[0].total_marks|round(1)|string|replace('.0', '') if (marks and marks[0].total_marks is defined and marks[0].total_marks is not none) else '100' }}</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">OR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">WR</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">CT</th>
+                                                    <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">TOT</th>
                                                 {% else %}
                                                     <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt">-</th>
                                                     <th style="background-color: {{ sub_header_bg }}; color: black !important; font-size:8pt" class="sub-tot">-</th>
@@ -535,57 +535,63 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% set ns = namespace(total_obtained=0, total_possible=0) %}
-                                            {% for mark in marks %}
-                                                {% set percent = 0 %}
-                                                {% if mark.total_marks %}
-                                                    {% set percent = (mark.marks / mark.total_marks * 100)|round(1) %}
-                                                    {% set ns.total_obtained = ns.total_obtained + mark.marks %}
-                                                    {% set ns.total_possible = ns.total_possible + mark.total_marks %}
-                                                {% endif %}
-                                                
-                                                {% set pct = (mark.marks / mark.total_marks * 100) if mark.total_marks else 0 %}
-                                                {% set grade = 'D' %}
-                                                {% if pct >= 90 %}{% set grade = 'AA' %}
-                                                {% elif pct >= 80 %}{% set grade = 'A+' %}
-                                                {% elif pct >= 60 %}{% set grade = 'A' %}
-                                                {% elif pct >= 45 %}{% set grade = 'B+' %}
-                                                {% elif pct >= 35 %}{% set grade = 'B' %}
-                                                {% elif pct >= 25 %}{% set grade = 'C' %}
-                                                {% endif %}
-                                                
-                                                {% if mark.subject.strip().lower() == 'art' %}
-                                                <tr style="background-color: #fafafa;">
-                                                    <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
-                                                    {% if is_unit %}
-                                                        <td colspan="3" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% elif is_final %}
-                                                        <td colspan="4" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% else %}
-                                                        <td colspan="2" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% endif %}
-                                                    <td class="bg-grade">{{ grade }}</td>
-                                                </tr>
+                                            {% set ns.total_obtained = ns.total_obtained + (mark.marks if (mark.total_marks and not mark.is_absent) else 0) %}
+                                            {% set ns.total_possible = ns.total_possible + (mark.total_marks if (mark.total_marks and not mark.is_absent) else 0) %}
+                                            
+                                            {% set pct = (mark.marks / mark.total_marks * 100) if (mark.total_marks and not mark.is_absent) else 0 %}
+                                            {% set grade = 'D' %}
+                                            {% if pct >= 90 %}{% set grade = 'AA' %}
+                                            {% elif pct >= 80 %}{% set grade = 'A+' %}
+                                            {% elif pct >= 60 %}{% set grade = 'A' %}
+                                            {% elif pct >= 45 %}{% set grade = 'B+' %}
+                                            {% elif pct >= 35 %}{% set grade = 'B' %}
+                                            {% elif pct >= 25 %}{% set grade = 'C' %}
+                                            {% endif %}
+                                            
+                                            {% if mark.is_absent %}
+                                            {# A6: Show ABSENT badge for this subject row #}
+                                            <tr>
+                                                <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
+                                                {% if is_unit %}
+                                                    <td colspan="3" style="text-align:center; font-weight:900; color:#c0392b; letter-spacing:2px; background:#fff5f5;">AB</td>
+                                                {% elif is_final %}
+                                                    <td colspan="4" style="text-align:center; font-weight:900; color:#c0392b; letter-spacing:2px; background:#fff5f5;">AB</td>
                                                 {% else %}
-                                                <tr>
-                                                    <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
-                                                    {% if is_unit %}
-                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% elif is_final %}
-                                                        <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }}">{{ mark.ct_marks|round(1)|string|replace('.0', '') if mark.ct_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% else %}
-                                                        <td class="{{ row_bg_class }}">{{ mark.total_marks|round(1)|string|replace('.0', '') if mark.total_marks is not none else '-' }}</td>
-                                                        <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
-                                                    {% endif %}
-                                                    <td class="bg-grade">{{ grade }}</td>
-                                                </tr>
+                                                    <td colspan="2" style="text-align:center; font-weight:900; color:#c0392b; letter-spacing:2px; background:#fff5f5;">AB</td>
                                                 {% endif %}
-                                            {% endfor %}
+                                                <td style="text-align:center; color:#c0392b; font-weight:bold;">-</td>
+                                            </tr>
+                                            {% elif mark.subject.strip().lower() == 'art' %}
+                                            <tr style="background-color: #fafafa;">
+                                                <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
+                                                {% if is_unit %}
+                                                    <td colspan="3" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% elif is_final %}
+                                                    <td colspan="4" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% else %}
+                                                    <td colspan="2" class="{{ row_bg_class }} sub-tot" style="font-weight: bold;">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% endif %}
+                                                <td class="bg-grade">{{ grade }}</td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td style="text-align:left; font-weight:bold; padding-left:10px;">{{ mark.subject }}</td>
+                                                {% if is_unit %}
+                                                    <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% elif is_final %}
+                                                    <td class="{{ row_bg_class }}">{{ mark.oral_marks|round(1)|string|replace('.0', '') if mark.oral_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }}">{{ mark.written_marks|round(1)|string|replace('.0', '') if mark.written_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }}">{{ mark.ct_marks|round(1)|string|replace('.0', '') if mark.ct_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% else %}
+                                                    <td class="{{ row_bg_class }}">{{ mark.total_marks|round(1)|string|replace('.0', '') if mark.total_marks is not none else '-' }}</td>
+                                                    <td class="{{ row_bg_class }} sub-tot">{{ mark.marks|round(1)|string|replace('.0', '') if mark.marks is not none else '-' }}</td>
+                                                {% endif %}
+                                                <td class="bg-grade">{{ grade }}</td>
+                                            </tr>
+                                            {% endif %}
                                         </tbody>
                                     </table>
                                     {% else %}
@@ -950,7 +956,7 @@
                                 {% set ns.classes = ns.classes + [s.class.strip().lower()] %}
                             {% endif %}
                         {% endfor %}
-                        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                        {% set class_order = global_classes %}
                         {% for c in class_order %}
                             {% if c.strip().lower() in ns.classes %}
                             <button class="class-filter-btn" data-class="{{ c }}" style="padding: 6px 16px; border-radius: 20px; border: 2px solid #ddd; background: #fff; color: #333; cursor: pointer; font-weight: 500; font-size: 13px;">{{ c }}</button>

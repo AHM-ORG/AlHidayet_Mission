@@ -564,11 +564,12 @@
                                     {% if ct_limit is not none %}{% set active_components = active_components + 1 %}{% endif %}
                                     
                                     {% if active_components > 0 %}
-                                        <th colspan="{{ active_components }}" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px;">
+                                        <th colspan="{{ active_components + 1 }}" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px;">
                                             <div style="font-weight: 700; margin-bottom: 5px;">{{ sub }}</div>
                                             <div style="font-weight: normal; font-size: 0.85em; color: #ffeaa7;">FM: {{ sub_max_fm|round(1)|string|replace('.0', '') }}</div>
                                         </th>
                                     {% else %}
+                                        <th style="text-align: center; border-right: 1px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.8em; padding: 8px 4px; vertical-align: middle; color: #fca5a5;" rowspan="2">AB</th>
                                         <th rowspan="2" style="text-align: center; border-right: 2px solid var(--primary-dark); font-family: var(--font-heading); font-size: 0.95em; padding: 12px 10px; vertical-align: middle;">
                                             <div style="font-weight: 700; margin-bottom: 5px;">{{ sub }}</div>
                                             <div style="font-weight: normal; font-size: 0.85em; display: flex; align-items: center; justify-content: center; gap: 4px; color: #ffeaa7;">
@@ -607,6 +608,10 @@
                                     
                                     {% if oral_limit is not none %}
                                         {% set oral_limit_str = oral_limit|round(1)|string|replace('.0', '') %}
+                                        {# AB sub-header for component subjects - shown once per subject #}
+                                        {% if loop.index == 1 or true %}
+                                        <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 40px; color:#fca5a5;">AB</th>
+                                        {% endif %}
                                         <th style="padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); min-width: 80px; white-space: nowrap;">
                                             OR ({% if role == 'admin' %}<input type="number" class="header-inline-input" value="{{ oral_limit_str }}" min="0" max="500" onchange="updateSubjectFMInline('{{ sub }}', 'oral', this.value, '{{ selected_term }}')">{% else %}{{ oral_limit_str }}{% endif %})
                                         </th>
@@ -653,8 +658,27 @@
                                     {% set oral_limit = subject_oral_limit.get(sub) %}
                                     {% set written_limit = subject_written_limit.get(sub) %}
                                     {% set ct_limit = subject_ct_limit.get(sub) %}
-                                    
+                                    {% set is_student_absent = student_marks.get('is_absent', 0) %}
+
                                     {% if oral_limit is not none or written_limit is not none or ct_limit is not none %}
+                                        {# A4: AB absent checkbox for component-based subjects #}
+                                        {% if not is_disabled and not is_locked %}
+                                        <td style="text-align:center; border-right:1px solid var(--border-color); padding:4px; vertical-align:middle;">
+                                            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;">
+                                                <input type="checkbox"
+                                                       name="absent_{{ student.id }}_{{ sub }}"
+                                                       value="1"
+                                                       class="absent-checkbox"
+                                                       data-student="{{ student.id }}"
+                                                       data-subject="{{ sub }}"
+                                                       {% if is_student_absent %}checked{% endif %}
+                                                       style="width:16px;height:16px;accent-color:#e74c3c;cursor:pointer;">
+                                                <span style="font-size:0.7em;font-weight:700;color:#e74c3c;">AB</span>
+                                            </label>
+                                        </td>
+                                        {% else %}
+                                        <td style="border-right:1px solid var(--border-color);"></td>
+                                        {% endif %}
                                         {% if oral_limit is not none %}
                                             {% set max_oral_str = oral_limit|round(1)|string|replace('.0', '') %}
                                             {% set oral_val = student_marks.get('oral') %}
@@ -666,11 +690,12 @@
                                                        placeholder="OR" 
                                                        min="0" 
                                                        max="{{ max_oral_str }}" 
-                                                       class="marks-input component-input"
+                                                       class="marks-input component-input absent-lockable"
                                                        data-subject="{{ sub }}"
+                                                       data-student="{{ student.id }}"
                                                        data-type="oral"
                                                        style="width: 60px; padding: 6px;"
-                                                       {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                                       {% if is_disabled or is_locked or is_student_absent %}readonly tabindex="-1"{% endif %}>
                                             </td>
                                         {% endif %}
                                         {% if written_limit is not none %}
@@ -684,11 +709,12 @@
                                                        placeholder="WR" 
                                                        min="0" 
                                                        max="{{ max_written_str }}" 
-                                                       class="marks-input component-input"
+                                                       class="marks-input component-input absent-lockable"
                                                        data-subject="{{ sub }}"
+                                                       data-student="{{ student.id }}"
                                                        data-type="written"
                                                        style="width: 60px; padding: 6px;"
-                                                       {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                                       {% if is_disabled or is_locked or is_student_absent %}readonly tabindex="-1"{% endif %}>
                                             </td>
                                         {% endif %}
                                         {% if ct_limit is not none %}
@@ -702,14 +728,33 @@
                                                        placeholder="CT" 
                                                        min="0" 
                                                        max="{{ max_ct_str }}" 
-                                                       class="marks-input component-input"
+                                                       class="marks-input component-input absent-lockable"
                                                        data-subject="{{ sub }}"
+                                                       data-student="{{ student.id }}"
                                                        data-type="ct"
                                                        style="width: 60px; padding: 6px;"
-                                                       {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                                       {% if is_disabled or is_locked or is_student_absent %}readonly tabindex="-1"{% endif %}>
                                             </td>
                                         {% endif %}
                                     {% else %}
+                                        {# A4: AB checkbox for simple mark subjects #}
+                                        {% if not is_disabled and not is_locked %}
+                                        <td style="text-align:center; border-right:1px solid var(--border-color); padding:4px; vertical-align:middle;">
+                                            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;">
+                                                <input type="checkbox"
+                                                       name="absent_{{ student.id }}_{{ sub }}"
+                                                       value="1"
+                                                       class="absent-checkbox"
+                                                       data-student="{{ student.id }}"
+                                                       data-subject="{{ sub }}"
+                                                       {% if is_student_absent %}checked{% endif %}
+                                                       style="width:16px;height:16px;accent-color:#e74c3c;cursor:pointer;">
+                                                <span style="font-size:0.7em;font-weight:700;color:#e74c3c;">AB</span>
+                                            </label>
+                                        </td>
+                                        {% else %}
+                                        <td style="border-right:1px solid var(--border-color);"></td>
+                                        {% endif %}
                                         <td style="text-align: center; border-right: 2px solid var(--border-color); padding: 8px;">
                                             {% set mark_value = student_marks.get('obt') %}
                                             {% set mark_value_str = '' if mark_value is none else (mark_value|round(1)|string|replace('.0', '')) %}
@@ -725,16 +770,17 @@
                                                 {% endif %}
                                             {% endif %}
                                             <div style="position: relative; display: inline-block;">
-                                                <input type="number" 
-                                                       name="marks_{{ student.id }}_{{ sub }}" 
-                                                       value="{{ mark_value_str }}" 
-                                                       placeholder="-" 
-                                                       min="0" 
-                                                       max="{{ max_fm_val }}" 
-                                                       class="marks-input"
+                                                <input type="number"
+                                                       name="marks_{{ student.id }}_{{ sub }}"
+                                                       value="{{ mark_value_str }}"
+                                                       placeholder="-"
+                                                       min="0"
+                                                       max="{{ max_fm_val }}"
+                                                       class="marks-input absent-lockable"
+                                                       data-student="{{ student.id }}"
                                                        data-subject="{{ sub }}"
                                                        style="width: 100px; padding: 10px; font-size: 1.1em; border-radius: 4px !important;"
-                                                       {% if is_disabled or is_locked %}readonly tabindex="-1"{% endif %}>
+                                                       {% if is_disabled or is_locked or is_student_absent %}readonly tabindex="-1"{% endif %}>
                                                 {% if is_disabled or is_locked %}
                                                     <i data-lucide="lock" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; color: #cbd5e1;"></i>
                                                 {% endif %}
@@ -901,6 +947,38 @@
                     }
                 });
             }
+
+            // A4: AB checkbox toggle — lock/unlock related mark inputs in real-time
+            document.querySelectorAll('.absent-checkbox').forEach(function(cb) {
+                function applyAbsent(checkbox) {
+                    const studentId = checkbox.dataset.student;
+                    const subjectName = checkbox.dataset.subject;
+                    const isAbsent = checkbox.checked;
+                    // Find all lockable inputs for this student+subject
+                    document.querySelectorAll(`.absent-lockable[data-student="${studentId}"][data-subject="${subjectName}"]`).forEach(function(inp) {
+                        if (isAbsent) {
+                            inp.readOnly = true;
+                            inp.tabIndex = -1;
+                            inp.value = '';
+                            inp.style.background = '#fff5f5';
+                            inp.style.color = '#e74c3c';
+                            inp.style.fontWeight = '700';
+                            inp.placeholder = 'AB';
+                        } else {
+                            inp.readOnly = false;
+                            inp.tabIndex = 0;
+                            inp.style.background = '';
+                            inp.style.color = '';
+                            inp.style.fontWeight = '';
+                            inp.placeholder = '-';
+                        }
+                    });
+                    validateMarks();
+                }
+                cb.addEventListener('change', function() { applyAbsent(this); });
+                // Apply on page load for pre-checked boxes
+                if (cb.checked) applyAbsent(cb);
+            });
 
             // Restore and preserve horizontal scroll of the marks grid table
             const tableResp = document.querySelector('.table-responsive');

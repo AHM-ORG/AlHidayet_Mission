@@ -1,0 +1,534 @@
+def calculate_student_fees_breakdown(student, conn=None):
+    """
+    Returns a dictionary of line items and aggregated component totals:
+    - tuition_fee, transport_fee, lab_library_fee, academic_discount
+    - room_rent, mess_food_charges, utility_cost, security_deposit
+    - coaching_combo_fee, study_material_charges, exam_test_series_fee, combo_discount
+    - school_tax_rate, hostel_tax_rate, coaching_tax_rate
+    - school_revenue, hostel_revenue, coaching_revenue, tax_amount, total_fee
+    """
+    # 1. Base fields
+    tuition = float(student.get('tuition_fee') or 0.0)
+    transport = float(student.get('transport_fee') or 0.0)
+    lab_lib = float(student.get('lab_library_fee') or 0.0)
+    acad_disc = float(student.get('academic_discount') or 0.0)
+    
+    room_rent = float(student.get('room_rent') or 0.0)
+    mess = float(student.get('mess_food_charges') or 0.0)
+    utility = float(student.get('utility_cost') or 0.0)
+    deposit = float(student.get('security_deposit') or 0.0)
+    
+    coaching_combo = float(student.get('coaching_combo_fee') or 0.0)
+    materials = float(student.get('study_material_charges') or 0.0)
+    exams = float(student.get('exam_test_series_fee') or 0.0)
+    combo_disc = float(student.get('combo_discount') or 0.0)
+    
+    school_tax_rate = float(student.get('school_tax_rate') or 0.0)
+    hostel_tax_rate = float(student.get('hostel_tax_rate') or 0.05)
+    coaching_tax_rate = float(student.get('coaching_tax_rate') or 0.0)
+    
+    # Checkbox configurations (default to school active, others based on flags)
+    take_school = int(student.get('take_school') if student.get('take_school') is not None else 1)
+    take_coaching = int(student.get('take_coaching') or 0)
+    take_day_hostel = int(student.get('take_day_hostel') or 0)
+    take_car = int(student.get('take_car') or 0)
+    
+    cls_name = student.get('class')
+    branch = student.get('branch') or 'bhogram'
+    
+    # 2. Check if new line item fields are populated, if not, query fee_structures dynamically
+    if int(student.get('is_custom_fee') or 0) == 1:
+        # Check if the student has any custom component values set in the database:
+        has_custom_components = any([
+            float(student.get('tuition_fee') or 0.0) > 0.0,
+            float(student.get('transport_fee') or 0.0) > 0.0,
+            float(student.get('lab_library_fee') or 0.0) > 0.0,
+            float(student.get('academic_discount') or 0.0) > 0.0,
+            float(student.get('room_rent') or 0.0) > 0.0,
+            float(student.get('mess_food_charges') or 0.0) > 0.0,
+            float(student.get('utility_cost') or 0.0) > 0.0,
+            float(student.get('security_deposit') or 0.0) > 0.0,
+            float(student.get('coaching_combo_fee') or 0.0) > 0.0,
+            float(student.get('study_material_charges') or 0.0) > 0.0,
+            float(student.get('exam_test_series_fee') or 0.0) > 0.0,
+            float(student.get('combo_discount') or 0.0) > 0.0
+        ])
+        if not has_custom_components:
+            # If no components are set, map the flat monthly_fee to the main active program
+            flat_fee = float(student.get('monthly_fee') or 0.0)
+            tuition = 0.0
+            room_rent = 0.0
+            coaching_combo = 0.0
+            
+            if take_school:
+                tuition = flat_fee
+            elif take_day_hostel:
+                room_rent = flat_fee
+            elif take_coaching:
+                coaching_combo = flat_fee
+            else:
+                tuition = flat_fee # fallback
+                
+            transport = 0.0
+            lab_lib = 0.0
+            acad_disc = 0.0
+            mess = 0.0
+            utility = 0.0
+            deposit = 0.0
+            materials = 0.0
+            exams = 0.0
+            combo_disc = 0.0
+        has_line_items = True
+    else:
+        has_line_items = any([tuition, transport, lab_lib, acad_disc, room_rent, mess, utility, deposit, coaching_combo, materials, exams, combo_disc])
+    
+    if not has_line_items and cls_name:
+        try:
+            close_conn = False
+            active_conn = conn
+            if active_conn is None:
+                active_conn = get_db_connection()
+                active_conn.row_factory = sqlite3.Row
+                close_conn = True
+            
+            # Fetch school template if take_school is active
+            if take_school:
+                school_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day School Only'
+                ''', (cls_name, branch)).fetchone()
+                if school_struct:
+                    tuition = float(school_struct['tuition_fee'] or 0.0)
+                    transport = float(school_struct['transport_fee'] or 0.0)
+                    lab_lib = float(school_struct['lab_library_fee'] or 0.0)
+                    acad_disc = float(school_struct['academic_discount'] or 0.0)
+                    school_tax_rate = float(school_struct['school_tax_rate'] or 0.0)
+            
+            # Fetch hostel template if take_day_hostel is active
+            if take_day_hostel:
+                hostel_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day Hostel Only'
+                ''', (cls_name, branch)).fetchone()
+                if hostel_struct:
+                    room_rent = float(hostel_struct['room_rent'] or 0.0)
+                    mess = float(hostel_struct['mess_food_charges'] or 0.0)
+                    utility = float(hostel_struct['utility_cost'] or 0.0)
+                    deposit = float(hostel_struct['security_deposit'] or 0.0)
+                    hostel_tax_rate = float(hostel_struct['hostel_tax_rate'] or 0.05)
+                    
+            # Fetch coaching template if take_coaching is active
+            if take_coaching:
+                coaching_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'School + Coaching'
+                ''', (cls_name, branch)).fetchone()
+                if coaching_struct:
+                    coaching_combo = float(coaching_struct['coaching_combo_fee'] or 0.0)
+                    materials = float(coaching_struct['study_material_charges'] or 0.0)
+                    exams = float(coaching_struct['exam_test_series_fee'] or 0.0)
+                    combo_disc = float(coaching_struct['combo_discount'] or 0.0)
+                    coaching_tax_rate = float(coaching_struct['coaching_tax_rate'] or 0.0)
+                    
+            if close_conn:
+                active_conn.close()
+            has_line_items = True
+        except Exception as e:
+            print(f"Error loading fee structure from DB: {e}")
+            
+    # 3. Fallback to original columns if still empty
+    if not has_line_items:
+        m_fee = float(student.get('monthly_fee') or 0.0)
+        h_fee = float(student.get('hostel_fee') or 0.0)
+        
+        if take_day_hostel and not take_school:
+            room_rent = h_fee
+        elif take_school and take_coaching:
+            tuition = m_fee
+            coaching_combo = float(student.get('monthly_fee_coaching') or 0.0) or (m_fee * 0.5)
+        elif take_school:
+            tuition = m_fee
+            if take_day_hostel:
+                room_rent = h_fee
+
+    # 4. Zero out components if they are not selected in checkboxes
+    if not take_school:
+        tuition = 0.0
+        transport = 0.0
+        lab_lib = 0.0
+        acad_disc = 0.0
+    if not take_day_hostel:
+        room_rent = 0.0
+        mess = 0.0
+        utility = 0.0
+        deposit = 0.0
+    if not take_coaching:
+        coaching_combo = 0.0
+        materials = 0.0
+        exams = 0.0
+        combo_disc = 0.0
+
+    # 5. Sum component totals
+    school_total = tuition + transport + lab_lib - acad_disc
+    hostel_total = room_rent + mess + utility + deposit
+    coaching_total = coaching_combo + materials + exams - combo_disc
+    
+    # 6. Component Tax calculations (inclusive tax)
+    school_tax = school_total * (school_tax_rate / (1.0 + school_tax_rate))
+    hostel_tax = hostel_total * (hostel_tax_rate / (1.0 + hostel_tax_rate))
+    coaching_tax = coaching_total * (coaching_tax_rate / (1.0 + coaching_tax_rate))
+    
+    school_net = school_total - school_tax
+    hostel_net = hostel_total - hostel_tax
+    coaching_net = coaching_total - coaching_tax
+    
+    total = school_total + hostel_total + coaching_total
+    
+    if take_car:
+        total += 400.0
+        school_net += 400.0
+        
+    return {
+        'tuition_fee': tuition,
+        'transport_fee': transport,
+        'lab_library_fee': lab_lib,
+        'academic_discount': acad_disc,
+        'room_rent': room_rent,
+        'mess_food_charges': mess,
+        'utility_cost': utility,
+        'security_deposit': deposit,
+        'coaching_combo_fee': coaching_combo,
+        'study_material_charges': materials,
+        'exam_test_series_fee': exams,
+        'combo_discount': combo_disc,
+        'school_tax_rate': school_tax_rate,
+        'hostel_tax_rate': hostel_tax_rate,
+        'coaching_tax_rate': coaching_tax_rate,
+        'school_revenue': school_net,
+        'hostel_revenue': hostel_net,
+        'coaching_revenue': coaching_net,
+        'tax_amount': school_tax + hostel_tax + coaching_tax,
+        'total_fee': total
+    }
+
+@app.route('/admin/get-fees', methods=['GET', 'POST'])
+def get_fees():
+    if 'user' in session:
+        conn = get_db_connection()
+        role = session['role']
+        username = session['user']
+
+        if role in ['admin', 'teacher']:
+            if request.method == 'POST':
+                student_id = request.form['student_id']
+                amount = request.form['amount']
+                month = request.form['month']
+                year = request.form['year']
+                
+                # Check permissions for Branch Admin
+                if session.get('branch'):
+                    student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+                    if not student or student['branch'] != session['branch']:
+                        conn.close()
+                        flash('Permission denied: Student does not belong to your campus.')
+                        return redirect(url_for('get_fees'))
+
+                school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type = allocate_payment_components(conn, student_id, amount)
+
+                conn.execute('''
+                    INSERT INTO fees (student_id, amount, month, year, status, paid_at, school_revenue, hostel_revenue, coaching_revenue, tax_amount, readmission_revenue, enrollment_type)
+                    VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)
+                ''', (student_id, amount, month, year, school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type))
+                
+                record_ledger_payment(conn, student_id, amount)
+                
+                conn.commit()
+                send_activity_notification("Fee Collection", f"Collected fee of ₹{amount} for student ID {student_id} (Month: {month}, Year: {year}).")
+                flash('Fee collected successfully!')
+                conn.close()
+                return redirect(url_for('get_fees'))
+
+            if session.get('branch'):
+                students_raw = conn.execute('''
+                    SELECT u.id, u.username, si.*
+                    FROM users u 
+                    LEFT JOIN student_info si ON u.id = si.user_id 
+                    WHERE u.role = 'student' AND si.branch = ?
+                ''', (session['branch'],)).fetchall()
+                recent_fees = conn.execute('''
+                    SELECT f.*, u.username as student_name 
+                    FROM fees f 
+                    JOIN users u ON f.student_id = u.id 
+                    JOIN student_info si ON u.id = si.user_id
+                    WHERE si.branch = ?
+                    ORDER BY f.paid_at DESC
+                ''', (session['branch'],)).fetchall()
+            else:
+                students_raw = conn.execute('''
+                    SELECT u.id, u.username, si.*
+                    FROM users u 
+                    LEFT JOIN student_info si ON u.id = si.user_id 
+                    WHERE u.role = 'student'
+                ''').fetchall()
+                recent_fees = conn.execute('''
+                    SELECT f.*, u.username as student_name 
+                    FROM fees f 
+                    JOIN users u ON f.student_id = u.id 
+                    ORDER BY f.paid_at DESC
+                ''').fetchall()
+            students = resolve_student_default_fees(students_raw, conn)
+            conn.close()
+            return render_template('admin/get_fees.html', students=students, recent_fees=recent_fees, role=role)
+        
+        elif role == 'student':
+            my_fees = conn.execute('''
+                SELECT f.*, u.username as student_name 
+                FROM fees f 
+                JOIN users u ON f.student_id = u.id 
+                WHERE u.username = ?
+                ORDER BY f.paid_at DESC
+            ''', (username,)).fetchall()
+            
+            student_info = conn.execute('''
+                SELECT si.*
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE u.username = ?
+            ''', (username,)).fetchone()
+            
+            if student_info:
+                student_info_dict = resolve_student_default_fees([student_info], conn)[0]
+                if student_info_dict.get('monthly_fee') is None:
+                    student_info_dict['monthly_fee'] = 0.0
+                if student_info_dict.get('hostel_fee') is None:
+                    student_info_dict['hostel_fee'] = 0.0
+                if student_info_dict.get('remaining_fee') is None:
+                    student_info_dict['remaining_fee'] = 0.0
+            else:
+                student_info_dict = {'monthly_fee': 0.0, 'hostel_fee': 0.0, 'branch': '', 'remaining_fee': 0.0}
+            
+            conn.close()
+            return render_template(
+                'admin/get_fees.html',
+                recent_fees=my_fees,
+                role=role,
+                student_info=student_info_dict,
+                razorpay_key_id=RAZORPAY_KEY_ID,
+                username=username,
+                email='',
+                logo_url=LOGO_URL
+            )
+            
+    return redirect(url_for('home'))
+
+def sync_student_ledger_and_dues(conn, student_id, submitted_remaining_fee=None, *args, **kwargs):
+    is_manual_dues_change = kwargs.get('is_manual_dues_change', False)
+    if not is_manual_dues_change and args:
+        is_manual_dues_change = args[0]
+        
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+    if not student:
+        return
+        
+    student_dict = dict(student)
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 1] student_id={student_id} submitted_remaining_fee={submitted_remaining_fee} args={args} kwargs={kwargs}")
+        print(f"[DEBUG SYNC 2] student_dict={student_dict}")
+    
+    # 1. Recalculate what their current month/year billed fees SHOULD be
+    take_school = student_dict.get('take_school') or 0
+    take_coaching = student_dict.get('take_coaching') or 0
+    take_day_hostel = student_dict.get('take_day_hostel') or 0
+    take_car = student_dict.get('take_car') or 0
+    
+    # Get monthly fee breakdown
+    bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+    
+    # Monthly expected items
+    expected_monthly = {}
+    if take_school and bd['tuition_fee'] > 0.0:
+        expected_monthly['Monthly Tuition Fee'] = bd['tuition_fee']
+    if take_coaching and bd['coaching_combo_fee'] > 0.0:
+        expected_monthly['Monthly Coaching Fee'] = bd['coaching_combo_fee']
+    if take_day_hostel and bd['room_rent'] > 0.0:
+        expected_monthly['Monthly Hostel Fee'] = bd['room_rent']
+    if take_car:
+        flat_transport_fee = kwargs.get('flat_transport_fee')
+        if flat_transport_fee is None:
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+        expected_monthly['Monthly Transport Fee'] = flat_transport_fee
+        
+    # Get global max billing counts
+    max_month_end = kwargs.get('max_month_end')
+    if max_month_end is None:
+        max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+        
+    max_year_end = kwargs.get('max_year_end')
+    if max_year_end is None:
+        max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+    
+    curr_month_count = student_dict.get('month_end_billing_count') or 0
+    curr_year_count = student_dict.get('year_end_billing_count') or 0
+    
+    has_monthly_run = False
+    if curr_month_count < max_month_end:
+        has_monthly_run = True
+        conn.execute("UPDATE student_info SET month_end_billing_count = ? WHERE user_id = ?", (max_month_end, student_id))
+    elif curr_month_count > 0:
+        has_monthly_run = True
+        
+    has_year_end_run = False
+    if curr_year_count < max_year_end:
+        has_year_end_run = True
+        conn.execute("UPDATE student_info SET year_end_billing_count = ? WHERE user_id = ?", (max_year_end, student_id))
+    elif curr_year_count > 0:
+        has_year_end_run = True
+    
+    if has_monthly_run:
+        # Sync the current month's ledger entries
+        existing_entries = conn.execute('''
+            SELECT id, fee_type, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchall()
+        
+        existing_types = {e['fee_type']: e for e in existing_entries}
+        
+        for f_type, expected_amt in expected_monthly.items():
+            if f_type in existing_types:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    if float(entry['amount']) != expected_amt:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_amt, entry['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (expected_amt, student_id, f_type, month, year))
+            else:
+                if expected_amt > 0.0:
+                    conn.execute('''
+                        INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                        VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    conn.execute('''
+                        INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                        VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    
+        for f_type in existing_types:
+            if f_type not in expected_monthly:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (student_id, f_type, month, year))
+
+    # 2. Check Re-admission Fee (Year End)
+    expected_readm = float(student_dict.get('readmission_fee') or 0.0)
+    if not student_dict.get('is_custom_fee'):
+        matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+        if matrix:
+            if take_day_hostel:
+                expected_readm = float(matrix['hostel_readmission'] or 0.0)
+            elif take_coaching:
+                expected_readm = float(matrix['coaching_readmission'] or 0.0)
+            else:
+                expected_readm = float(matrix['school_readmission'] or 0.0)
+        else:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+            if cls_row:
+                if take_day_hostel:
+                    expected_readm = float(cls_row['readmission_fee_hostel'] or 0.0)
+                elif take_coaching:
+                    expected_readm = float(cls_row['readmission_fee_coaching'] or 0.0)
+                else:
+                    expected_readm = float(cls_row['readmission_fee_school'] or 0.0)
+
+    if has_year_end_run:
+        existing_readm = conn.execute('''
+            SELECT id, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND year = ? AND fee_type = 'Re-admission Fee'
+        ''', (student_id, year)).fetchone()
+        
+        if existing_readm:
+            if existing_readm['status'] == 'Unpaid/Pending':
+                if float(existing_readm['amount']) != expected_readm:
+                    if expected_readm > 0.0:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_readm, existing_readm['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (expected_readm, student_id, year))
+                    else:
+                        conn.execute("DELETE FROM student_ledger WHERE id = ?", (existing_readm['id'],))
+                        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (student_id, year))
+        else:
+            if expected_readm > 0.0:
+                conn.execute('''
+                    INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                    VALUES (?, 'Re-admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+                conn.execute('''
+                    INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                    VALUES (?, 'Charge', 'Re-admission Fee', ?, ?, ?, ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+
+    # 3. Calculate expected dues based on formula:
+    # total = prev_dues + monthly * total_monthly_trigger + re_admission * total_yearly_trigger - total_paid
+    monthly_fee_val = float(bd['total_fee'] or 0.0)
+    readmission_fee_val = float(student_dict.get('readmission_fee') or 0.0) if student_dict.get('is_custom_fee') == 1 else expected_readm
+        
+    billing_month_count = max_month_end if curr_month_count < max_month_end else curr_month_count
+    billing_year_count = max_year_end if curr_year_count < max_year_end else curr_year_count
+    
+    total_paid = conn.execute("SELECT SUM(amount) FROM fees WHERE student_id = ? AND status = 'Paid'", (student_id,)).fetchone()[0] or 0.0
+    prev_dues = float(student_dict.get('prev_dues') or 0.0)
+    
+    expected_remaining_fee = prev_dues + (monthly_fee_val * billing_month_count) + (readmission_fee_val * billing_year_count) - total_paid
+    if expected_remaining_fee < 0.0:
+        expected_remaining_fee = 0.0
+        
+    force_align = kwargs.get('force_align_prev_dues', False)
+    if (is_manual_dues_change or force_align) and submitted_remaining_fee is not None:
+        prev_dues = float(submitted_remaining_fee) - (monthly_fee_val * billing_month_count) - (readmission_fee_val * billing_year_count) + total_paid
+        conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (prev_dues, student_id))
+        expected_remaining_fee = float(submitted_remaining_fee)
+
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 3] expected_remaining_fee={expected_remaining_fee} prev_dues={prev_dues} billing_month_count={billing_month_count} billing_year_count={billing_year_count} total_paid={total_paid} monthly_fee_val={monthly_fee_val} readmission_fee_val={readmission_fee_val}")
+
+    # Recalculate sum of Unpaid/Pending ledger entries
+    unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+    
+    diff = expected_remaining_fee - unpaid_sum
+    if abs(diff) > 0.01:
+        if diff > 0:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, 'Balance Adjustment', ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', 'Balance Adjustment', ?, ?, ?, ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+        else:
+            unpaid_entries_desc = conn.execute('''
+                SELECT id, amount 
+                FROM student_ledger 
+                WHERE student_id = ? AND status = 'Unpaid/Pending'
+                ORDER BY id DESC
+            ''', (student_id,)).fetchall()
+            to_deduct = abs(diff)
+            for entry in unpaid_entries_desc:
+                if to_deduct <= 0:
+                    break
+                entry_amt = float(entry['amount'])
+                if to_deduct >= entry_amt:
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    to_deduct -= entry_amt
+                else:
+                    conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (entry_amt - to_deduct, entry['id']))
+                    to_deduct = 0.0
+        # Re-sum after adjustment (applies to both positive and negative directions)
+        unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+
+    conn.execute("UPDATE student_info SET remaining_fee = ? WHERE user_id = ?", (unpaid_sum, student_id))

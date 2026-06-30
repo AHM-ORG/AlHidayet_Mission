@@ -1,0 +1,36 @@
+    
+    transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+    flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+    
+    billed_count = 0
+    for student in students:
+        student_id = student['id']
+        class_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        take_school = student['take_school'] or 0
+        take_coaching = student['take_coaching'] or 0
+        take_day_hostel = student['take_day_hostel'] or 0
+        take_car = student['take_car'] or 0
+        
+        already_billed = conn.execute('''
+            SELECT id FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchone()
+        if already_billed:
+            continue
+            
+        student_dict = dict(student)
+        bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+        
+        school_fee = bd['tuition_fee'] if take_school else 0.0
+        coaching_fee = bd['coaching_combo_fee'] if take_coaching else 0.0
+        hostel_fee = bd['room_rent'] if take_day_hostel else 0.0
+        car_fee = flat_transport_fee if take_car else 0.0
+        
+        line_items = []
+        if school_fee > 0.0:
+            line_items.append(('Monthly Tuition Fee', school_fee))
+        if coaching_fee > 0.0:
+            line_items.append(('Monthly Coaching Fee', coaching_fee))
+        if hostel_fee > 0.0:
+            line_items.append(('Monthly Hostel Fee', hostel_fee))

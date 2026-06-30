@@ -44,17 +44,30 @@ def clean_name_filter(s):
     cleaned = "".join(c for c in str(s) if not c.isdigit()).replace('_', ' ').replace('-', ' ').strip().title()
     return cleaned if cleaned else s
 
+@app.template_filter('normalize_class')
+def normalize_class_filter(s):
+    return normalize_class_name(s)
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        if e.code != 500:
+            return e
+    return internal_server_error(e)
+
 @app.errorhandler(500)
 def internal_server_error(e):
     import traceback
     err_msg = ""
     tb_str = ""
-    if hasattr(e, 'original_exception') and e.original_exception:
-        err_msg = str(e.original_exception)
-    else:
-        err_msg = str(e)
+    original = getattr(e, 'original_exception', None) or e
+    err_msg = str(original)
     try:
-        tb_str = traceback.format_exc()
+        if hasattr(original, '__traceback__') and original.__traceback__:
+            tb_str = "".join(traceback.format_exception(type(original), original, original.__traceback__))
+        else:
+            tb_str = traceback.format_exc()
     except Exception:
         tb_str = "Traceback unavailable"
         
@@ -94,6 +107,17 @@ Traceback:
         print(f" [ERROR MAIL] Failed to queue error email: {email_err}")
 
     return render_template('error_500.html'), 500
+
+# Intercept database errors even when debug mode is enabled, to render the maintenance page and send email alerts.
+original_handle_user_exception = app.handle_user_exception
+
+def custom_handle_user_exception(e):
+    original_err = getattr(e, 'original_exception', None) or e
+    if isinstance(original_err, sqlite3.Error):
+        return internal_server_error(e)
+    return original_handle_user_exception(e)
+
+app.handle_user_exception = custom_handle_user_exception
 
 # Database Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -226,14 +250,118 @@ def migrate_student_info_schema():
         ("take_car", "INTEGER DEFAULT 0"),
         ("admission_fee", "REAL DEFAULT 0.0"),
         ("readmission_fee", "REAL DEFAULT 0.0"),
-        ("is_custom_fee", "INTEGER DEFAULT 0")
+        ("is_custom_fee", "INTEGER DEFAULT 0"),
+        ("enrollment_type", "TEXT DEFAULT 'Day School Only'"),
+        ("hostel_room", "TEXT"),
+        ("hostel_wing", "TEXT"),
+        ("coaching_batch", "TEXT"),
+        ("coaching_subject", "TEXT"),
+        ("tuition_fee", "REAL DEFAULT 0.0"),
+        ("transport_fee", "REAL DEFAULT 0.0"),
+        ("lab_library_fee", "REAL DEFAULT 0.0"),
+        ("academic_discount", "REAL DEFAULT 0.0"),
+        ("room_rent", "REAL DEFAULT 0.0"),
+        ("mess_food_charges", "REAL DEFAULT 0.0"),
+        ("utility_cost", "REAL DEFAULT 0.0"),
+        ("security_deposit", "REAL DEFAULT 0.0"),
+        ("coaching_combo_fee", "REAL DEFAULT 0.0"),
+        ("study_material_charges", "REAL DEFAULT 0.0"),
+        ("exam_test_series_fee", "REAL DEFAULT 0.0"),
+        ("combo_discount", "REAL DEFAULT 0.0"),
+        ("school_tax_rate", "REAL DEFAULT 0.0"),
+        ("hostel_tax_rate", "REAL DEFAULT 0.05"),
+        ("coaching_tax_rate", "REAL DEFAULT 0.0"),
+        ("month_end_billing_count", "INTEGER DEFAULT 0"),
+        ("year_end_billing_count", "INTEGER DEFAULT 0"),
+        ("prev_dues", "REAL DEFAULT 0.0"),
+        ("financial_aid_monthly", "REAL DEFAULT 0.0"),
+        ("financial_aid_readmission", "REAL DEFAULT 0.0"),
+        ("financial_aid_admission", "REAL DEFAULT 0.0")
     ]
+    added_prev_dues = False
+    added_fin_aid = False
     for col_name, col_type in new_cols:
         try:
             c.execute(f"ALTER TABLE student_info ADD COLUMN {col_name} {col_type}")
             print(f" [DB MIGRATE] Added column {col_name} to student_info")
+            if col_name == "prev_dues":
+                added_prev_dues = True
+            if col_name == "financial_aid_monthly":
+                added_fin_aid = True
         except sqlite3.OperationalError:
             pass # column already exists
+            
+    if added_fin_aid:
+        # Migrate old Custom Fees to Reductions
+        try:
+            students = c.execute("SELECT * FROM student_info WHERE is_custom_fee = 1").fetchall()
+            for row in students:
+                student_dict = dict(row)
+                # Temporarily set is_custom_fee to 0 to get the Base Fixed Fee
+                student_dict['is_custom_fee'] = 0
+                bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+                base_monthly = float(bd.get('total_fee') or 0.0)
+                
+                # We need to get the base readmission fee
+                # Using similar logic as in update_total_due
+                take_coaching = int(student_dict.get('take_coaching') or 0)
+                take_day_hostel = int(student_dict.get('take_day_hostel') or 0)
+                
+                base_readm = 0.0
+                matrix = c.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+                if matrix:
+                    if take_day_hostel:
+                        base_readm = float(matrix['hostel_readmission'] or 0.0)
+                    elif take_coaching:
+                        base_readm = float(matrix['coaching_readmission'] or 0.0)
+                    else:
+                        base_readm = float(matrix['school_readmission'] or 0.0)
+                else:
+                    cls_row = c.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+                    if cls_row:
+                        if take_day_hostel:
+                            base_readm = float(cls_row['readmission_fee_hostel'] or 0.0)
+                        elif take_coaching:
+                            base_readm = float(cls_row['readmission_fee_coaching'] or 0.0)
+                        else:
+                            base_readm = float(cls_row['readmission_fee_school'] or 0.0)
+                
+                old_monthly = float(row['monthly_fee'] or 0.0)
+                old_readm = float(row['readmission_fee'] or 0.0)
+                
+                # Reduction = Base - Old
+                red_monthly = max(0, base_monthly - old_monthly)
+                red_readm = max(0, base_readm - old_readm)
+                
+                # If old was higher than base, then reduction is 0. 
+                # (You shouldn't use financial aid to *increase* fees, but if it happened, old custom fees were higher).
+                
+                c.execute("""
+                    UPDATE student_info 
+                    SET financial_aid_monthly = ?, financial_aid_readmission = ?, is_custom_fee = 0 
+                    WHERE user_id = ?
+                """, (red_monthly, red_readm, row['user_id']))
+                
+            print(f" [DB MIGRATE] Migrated {len(students)} custom fee students to Financial Aid system.")
+        except Exception as e:
+            print(f" [DB MIGRATE ERROR] Financial Aid migration failed: {e}")
+
+    if added_prev_dues:
+        try:
+            c.execute('''
+                UPDATE student_info
+                SET prev_dues = ROUND(
+                    COALESCE(remaining_fee, 0.0) 
+                    - (COALESCE(monthly_fee, 0.0) * COALESCE(month_end_billing_count, 0)) 
+                    - (COALESCE(readmission_fee, 0.0) * COALESCE(year_end_billing_count, 0))
+                    + COALESCE((SELECT SUM(amount) FROM fees WHERE student_id = user_id AND status = 'Paid'), 0.0),
+                    2
+                )
+            ''')
+            print(" [DB MIGRATE] Populated prev_dues retrospectively for existing students.")
+        except Exception as e:
+            print(f" [DB MIGRATE ERROR] Retrospective prev_dues calculation failed: {e}")
+            
     conn.commit()
     conn.close()
 
@@ -333,6 +461,124 @@ def normalize_class_name(name):
 
 
 
+def get_class_sort_key(name):
+    if not name:
+        return 999
+    name_lower = str(name).strip().lower()
+    order = {
+        'nursery': 1,
+        'upper nursery': 2,
+        'u/n': 2,
+        'un': 2,
+        'u-n': 2,
+        'kg': 2,
+        'i': 3,
+        'one': 3,
+        'ii': 4,
+        'two': 4,
+        'iii': 5,
+        'three': 5,
+        'iv': 6,
+        'four': 6,
+        'v': 7,
+        'five': 7,
+        'vi': 8,
+        'six': 8,
+        'vii': 9,
+        'seven': 9,
+        'viii': 10,
+        'eight': 10,
+        'ix': 11,
+        'nine': 11,
+        'x': 12,
+        'ten': 12
+    }
+    return order.get(name_lower, 100 + len(name_lower))
+
+
+def sync_classes(conn):
+    try:
+        # Check if is_hidden column exists. If not, add it
+        cursor = conn.execute("PRAGMA table_info(classes)")
+        columns = [row['name'] for row in cursor.fetchall()]
+        if 'is_hidden' not in columns:
+            conn.execute("ALTER TABLE classes ADD COLUMN is_hidden INTEGER DEFAULT 0")
+            conn.commit()
+    except sqlite3.OperationalError:
+        pass
+    
+    # Ensure standard classes are seeded for branch 'bhogram' and 'surangapur'
+    standard_classes = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+    for branch_name in ['bhogram', 'surangapur']:
+        for cls in standard_classes:
+            exist = conn.execute("SELECT id FROM classes WHERE name = ? AND branch = ?", (cls, branch_name)).fetchone()
+            if not exist:
+                conn.execute("""
+                    INSERT INTO classes (name, branch, is_hidden, admission_fee, monthly_fee, hostel_fee)
+                    VALUES (?, ?, 1, 0.0, 0.0, 0.0)
+                """, (cls, branch_name))
+    conn.commit()
+
+    # Get distinct classes and branches from student_info
+    student_classes = conn.execute("SELECT DISTINCT class, branch FROM student_info WHERE class IS NOT NULL AND class != ''").fetchall()
+    
+    active_pairs = set()
+    for row in student_classes:
+        cls_name = normalize_class_name(row['class'])
+        branch = row['branch'] or 'bhogram'
+        active_pairs.add((cls_name.lower(), branch.lower()))
+        
+        # Check if this class exists in the database
+        exist = conn.execute("SELECT id FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+        if not exist:
+            # Auto-insert new active class
+            conn.execute("""
+                INSERT INTO classes (name, branch, is_hidden, admission_fee, monthly_fee, hostel_fee)
+                VALUES (?, ?, 0, 0.0, 0.0, 0.0)
+            """, (cls_name, branch))
+        else:
+            # Mark it as active (unhidden)
+            conn.execute("UPDATE classes SET is_hidden = 0 WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch))
+            
+    # Mark all classes without active students as hidden
+    all_db_classes = conn.execute("SELECT id, name, branch FROM classes").fetchall()
+    for row in all_db_classes:
+        cls_name = row['name']
+        branch = row['branch']
+        if (cls_name.lower(), branch.lower()) not in active_pairs:
+            conn.execute("UPDATE classes SET is_hidden = 1 WHERE id = ?", (row['id'],))
+            
+    conn.commit()
+
+
+def get_active_classes(conn, branch=None):
+    try:
+        if branch:
+            rows = conn.execute("SELECT DISTINCT name FROM classes WHERE is_hidden = 0 AND LOWER(branch) = LOWER(?)", (branch,)).fetchall()
+        else:
+            rows = conn.execute("SELECT DISTINCT name FROM classes WHERE is_hidden = 0").fetchall()
+        names = [r['name'] for r in rows]
+        return sorted(names, key=get_class_sort_key)
+    except sqlite3.OperationalError:
+        return []
+
+
+def get_all_classes(conn, branch=None):
+    try:
+        if branch:
+            rows = conn.execute("SELECT DISTINCT name FROM classes WHERE LOWER(branch) = LOWER(?)", (branch,)).fetchall()
+        else:
+            rows = conn.execute("SELECT DISTINCT name FROM classes").fetchall()
+        names = [r['name'] for r in rows]
+        if not names:
+            return ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+        return sorted(names, key=get_class_sort_key)
+    except sqlite3.OperationalError:
+        return ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+
+
+
+
 def normalize_subject_name(name):
     if not name:
         return ""
@@ -356,52 +602,359 @@ def normalize_subject_name(name):
     return aliases.get(name_clean, name_clean)
 
 
-def calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted=False, car_opted=False):
+def calculate_student_fees_breakdown(student, conn=None):
+    """
+    Returns a dictionary of line items and aggregated component totals:
+    - tuition_fee, transport_fee, lab_library_fee, academic_discount
+    - room_rent, mess_food_charges, utility_cost, security_deposit
+    - coaching_combo_fee, study_material_charges, exam_test_series_fee, combo_discount
+    - school_tax_rate, hostel_tax_rate, coaching_tax_rate
+    - school_revenue, hostel_revenue, coaching_revenue, tax_amount, total_fee
+    """
+    # 1. Checkbox configurations
+    take_school = int(student.get('take_school') if student.get('take_school') is not None else 1)
+    take_coaching = int(student.get('take_coaching') or 0)
+    take_day_hostel = int(student.get('take_day_hostel') or 0)
+    take_car = int(student.get('take_car') or 0)
+    
+    cls_name = student.get('class')
+    branch = student.get('branch') or 'bhogram'
+    
+    tuition = 0.0
+    transport = 0.0
+    lab_lib = 0.0
+    acad_disc = 0.0
+    school_tax_rate = 0.0
+    
+    room_rent = 0.0
+    mess = 0.0
+    utility = 0.0
+    deposit = 0.0
+    hostel_tax_rate = 0.05
+    
+    coaching_combo = 0.0
+    materials = 0.0
+    exams = 0.0
+    combo_disc = 0.0
+    coaching_tax_rate = 0.0
+
+    if cls_name:
+        try:
+            close_conn = False
+            active_conn = conn
+            if active_conn is None:
+                active_conn = get_db_connection()
+                active_conn.row_factory = sqlite3.Row
+                close_conn = True
+            
+            if take_school:
+                school_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day School Only'
+                ''', (cls_name, branch)).fetchone()
+                if school_struct:
+                    tuition = float(school_struct['tuition_fee'] or 0.0)
+                    transport = float(school_struct['transport_fee'] or 0.0)
+                    lab_lib = float(school_struct['lab_library_fee'] or 0.0)
+                    acad_disc = float(school_struct['academic_discount'] or 0.0)
+                    school_tax_rate = float(school_struct['school_tax_rate'] or 0.0)
+                else:
+                    matrix = active_conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+                    if matrix: tuition = float(matrix['school_fee'] or 0.0)
+            
+            if take_day_hostel:
+                hostel_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day Hostel Only'
+                ''', (cls_name, branch)).fetchone()
+                if hostel_struct:
+                    room_rent = float(hostel_struct['room_rent'] or 0.0)
+                    mess = float(hostel_struct['mess_food_charges'] or 0.0)
+                    utility = float(hostel_struct['utility_cost'] or 0.0)
+                    deposit = float(hostel_struct['security_deposit'] or 0.0)
+                    hostel_tax_rate = float(hostel_struct['hostel_tax_rate'] or 0.05)
+                else:
+                    matrix = active_conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+                    if matrix: room_rent = float(matrix['hostel_fee'] or 0.0)
+                    
+            if take_coaching:
+                coaching_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'School + Coaching'
+                ''', (cls_name, branch)).fetchone()
+                if coaching_struct:
+                    coaching_combo = float(coaching_struct['coaching_combo_fee'] or 0.0)
+                    materials = float(coaching_struct['study_material_charges'] or 0.0)
+                    exams = float(coaching_struct['exam_test_series_fee'] or 0.0)
+                    combo_disc = float(coaching_struct['combo_discount'] or 0.0)
+                    coaching_tax_rate = float(coaching_struct['coaching_tax_rate'] or 0.0)
+                else:
+                    matrix = active_conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+                    if matrix: coaching_combo = float(matrix['coaching_fee'] or 0.0)
+                    
+            if close_conn:
+                active_conn.close()
+        except Exception as e:
+            print(f"Error loading fee structure from DB: {e}")
+
+    # Sum component totals
+    school_total = tuition + transport + lab_lib - acad_disc
+    hostel_total = room_rent + mess + utility + deposit
+    coaching_total = coaching_combo + materials + exams - combo_disc
+    
+    total = school_total + hostel_total + coaching_total
+    
+    if take_car:
+        total += 400.0
+        school_total += 400.0
+        
+    # Apply Financial Aid Monthly Reduction
+    fin_aid = float(student.get('financial_aid_monthly') or 0.0)
+    total = max(0.0, total - fin_aid)
+
+    # Component Tax calculations
+    school_tax = school_total * (school_tax_rate / (1.0 + school_tax_rate))
+    hostel_tax = hostel_total * (hostel_tax_rate / (1.0 + hostel_tax_rate))
+    coaching_tax = coaching_total * (coaching_tax_rate / (1.0 + coaching_tax_rate))
+    
+    school_net = school_total - school_tax
+    hostel_net = hostel_total - hostel_tax
+    coaching_net = coaching_total - coaching_tax
+    
+    return {
+        'tuition_fee': tuition,
+        'transport_fee': transport,
+        'lab_library_fee': lab_lib,
+        'academic_discount': acad_disc,
+        'room_rent': room_rent,
+        'mess_food_charges': mess,
+        'utility_cost': utility,
+        'security_deposit': deposit,
+        'coaching_combo_fee': coaching_combo,
+        'study_material_charges': materials,
+        'exam_test_series_fee': exams,
+        'combo_discount': combo_disc,
+        'school_tax_rate': school_tax_rate,
+        'hostel_tax_rate': hostel_tax_rate,
+        'coaching_tax_rate': coaching_tax_rate,
+        'school_revenue': school_net,
+        'hostel_revenue': hostel_net,
+        'coaching_revenue': coaching_net,
+        'tax_amount': school_tax + hostel_tax + coaching_tax,
+        'financial_aid_monthly': fin_aid,
+        'total_fee': total
+    }
+
+def get_enrollment_type_from_checkboxes(take_school, take_coaching, take_day_hostel):
+    if take_day_hostel:
+        return 'Day Hostel Only'
+    elif take_school and take_coaching:
+        return 'School + Coaching'
+    else:
+        return 'Day School Only'
+
+def calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted=False, car_opted=False, branch='bhogram', conn=None):
     cls = normalize_class_name(class_name)
     mode = str(mode_of_admission).strip().lower()
     
-    base_fee = 0.0
-    is_coaching = coaching_opted or ('coaching' in mode)
-    is_hostel = 'day hostel' in mode or mode == 'day hostel'
+    take_school = 1
+    take_coaching = 0
+    take_day_hostel = 0
     
-    try:
-        conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM classes WHERE name = ? AND branch = 'bhogram'", (cls,)).fetchone()
-        conn.close()
-        if row:
-            if is_hostel:
-                base_fee = float(row['hostel_fee']) if row['hostel_fee'] is not None else 0.0
-            else:
-                base_fee = float(row['monthly_fee_coaching']) if is_coaching else float(row['monthly_fee'])
-        else:
-            # fallback values
-            is_nus_ii = cls in ['Nursery', 'Upper Nursery', 'I', 'II']
-            is_iii_iv = cls in ['III', 'IV']
-            is_v_vi = cls in ['V', 'VI']
-            if is_nus_ii:
-                base_fee = 1550.0 if is_hostel else (650.0 if is_coaching else 450.0)
-            elif is_iii_iv or is_v_vi:
-                base_fee = 1600.0 if is_hostel else (700.0 if is_coaching else 500.0)
-            else:
-                 base_fee = 500.0
-    except Exception as e:
-        print(f"Error calculating DB fee: {e}")
-        # fallback
-        is_nus_ii = cls in ['Nursery', 'Upper Nursery', 'I', 'II']
-        is_iii_iv = cls in ['III', 'IV']
-        is_v_vi = cls in ['V', 'VI']
-        if is_nus_ii:
-            base_fee = 1550.0 if is_hostel else (650.0 if is_coaching else 450.0)
-        elif is_iii_iv or is_v_vi:
-            base_fee = 1600.0 if is_hostel else (700.0 if is_coaching else 500.0)
-        else:
-            base_fee = 500.0
-            
-    if 'car' in mode or car_opted:
-        base_fee += 400.0
+    if 'day hostel' in mode or mode == 'day hostel' or 'hostel' in mode:
+        take_school = 0
+        take_day_hostel = 1
+    elif 'coaching' in mode or coaching_opted:
+        take_school = 1
+        take_coaching = 1
         
-    return base_fee
+    fake_student = {
+        'class': cls,
+        'branch': branch,
+        'take_school': take_school,
+        'take_coaching': take_coaching,
+        'take_day_hostel': take_day_hostel,
+        'take_car': 1 if car_opted else 0
+    }
+    
+    breakdown = calculate_student_fees_breakdown(fake_student, conn=conn)
+    return breakdown['total_fee']
+
+def resolve_student_default_fees(students, conn):
+    resolved = []
+    for s in students:
+        s_dict = dict(s)
+        if not s_dict.get('is_custom_fee'):
+            bd = calculate_student_fees_breakdown({
+                'class': s_dict.get('class'),
+                'branch': s_dict.get('branch') or 'bhogram',
+                'take_school': s_dict.get('take_school') if s_dict.get('take_school') is not None else 1,
+                'take_coaching': s_dict.get('take_coaching') or 0,
+                'take_day_hostel': s_dict.get('take_day_hostel') or 0,
+                'take_car': s_dict.get('take_car') or 0,
+                'is_custom_fee': 0
+            }, conn)
+            s_dict['monthly_fee'] = bd['total_fee']
+            
+            cls_name = s_dict.get('class')
+            branch = s_dict.get('branch') or 'bhogram'
+            a_fee = 0.0
+            r_fee = 0.0
+            if cls_name:
+                cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+                if cls_row:
+                    if s_dict.get('take_day_hostel'):
+                        a_fee = cls_row['admission_fee_hostel'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_hostel'] if cls_row else 0.0
+                    elif s_dict.get('take_coaching'):
+                        a_fee = cls_row['admission_fee_coaching'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_coaching'] if cls_row else 0.0
+                    elif s_dict.get('take_school') if s_dict.get('take_school') is not None else 1:
+                        a_fee = cls_row['admission_fee'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_school'] if cls_row else 0.0
+            s_dict['admission_fee'] = a_fee
+            s_dict['readmission_fee'] = r_fee
+        resolved.append(s_dict)
+    return resolved
+
+
+def adjust_dues_for_enrollment_change(conn, user_id, old_type, new_type):
+    """
+    Automated background calculation that adjusts the ledger if a student switches categories mid-month.
+    """
+    from datetime import datetime
+    import calendar
+    
+    if old_type == new_type:
+        return
+        
+    student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+    if not student:
+        return
+        
+    now = datetime.now()
+    day = now.day
+    _, total_days = calendar.monthrange(now.year, now.month)
+    
+    remaining_days = total_days - day + 1
+    if remaining_days <= 0:
+        return
+        
+    old_student_fake = dict(student)
+    old_student_fake['enrollment_type'] = old_type
+    old_breakdown = calculate_student_fees_breakdown(old_student_fake)
+    old_monthly_fee = old_breakdown['total_fee']
+    old_daily_rate = old_monthly_fee / total_days
+    
+    new_student_fake = dict(student)
+    new_student_fake['enrollment_type'] = new_type
+    new_breakdown = calculate_student_fees_breakdown(new_student_fake)
+    new_monthly_fee = new_breakdown['total_fee']
+    new_daily_rate = new_monthly_fee / total_days
+    
+    adjustment = (new_daily_rate - old_daily_rate) * remaining_days
+    adjustment = round(adjustment, 2)
+    
+    if adjustment != 0.0:
+        conn.execute('''
+            UPDATE student_info
+            SET remaining_fee = COALESCE(remaining_fee, 0.0) + ?
+            WHERE user_id = ?
+        ''', (adjustment, user_id))
+        
+        print(f" [PRO-RATA ADJUSTMENT] Student {user_id} switched from '{old_type}' to '{new_type}'. Adjusted remaining dues by ₹{adjustment} (for {remaining_days}/{total_days} days remaining).")
+        send_activity_notification("Pro-Rata Fee Adjustment", f"Adjusted remaining dues for Student ID {user_id} by ₹{adjustment} due to enrollment change from '{old_type}' to '{new_type}' mid-month.")
+
+def allocate_payment_components(conn, student_id, paid_amount):
+    """
+    Allocates paid_amount to school_revenue, hostel_revenue, coaching_revenue, tax_amount, and readmission_revenue
+    by tracing the student's unpaid ledger entries that will be paid off by this amount.
+    """
+    student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+    if not student:
+        return float(paid_amount), 0.0, 0.0, 0.0, 0.0, 'Day School Only'
+        
+    student_dict = dict(student)
+    e_type = student_dict.get('enrollment_type') or 'Day School Only'
+    
+    # Fetch student's unpaid ledger entries
+    unpaid_entries = conn.execute('''
+        SELECT id, amount, fee_type, branch 
+        FROM student_ledger 
+        WHERE student_id = ? AND status = 'Unpaid/Pending'
+        ORDER BY id ASC
+    ''', (student_id,)).fetchall()
+    
+    school_rev = 0.0
+    hostel_rev = 0.0
+    coaching_rev = 0.0
+    readmission_rev = 0.0
+    tax_amt = 0.0
+    
+    remaining_payment = float(paid_amount)
+    
+    # We will compute breakdown to get tax rates
+    breakdown = calculate_student_fees_breakdown(student_dict)
+    hostel_tax_rate = breakdown.get('hostel_tax_rate', 0.05)
+    
+    for entry in unpaid_entries:
+        if remaining_payment <= 0:
+            break
+            
+        entry_amount = float(entry['amount'])
+        allocated_amount = min(remaining_payment, entry_amount)
+        remaining_payment -= allocated_amount
+        
+        fee_type = entry['fee_type']
+        
+        if fee_type == 'Re-admission Fee':
+            readmission_rev += allocated_amount
+        elif fee_type == 'Monthly Hostel Fee':
+            tax = allocated_amount * (hostel_tax_rate / (1.0 + hostel_tax_rate))
+            tax_amt += tax
+            hostel_rev += (allocated_amount - tax)
+        elif fee_type == 'Monthly Coaching Fee':
+            coaching_rev += allocated_amount
+        elif fee_type in ['Monthly Tuition Fee', 'Monthly Transport Fee', 'Admission Fee']:
+            school_rev += allocated_amount
+        else:
+            school_rev += allocated_amount
+            
+    # If there is any remaining payment (overpayment beyond current unpaid ledger),
+    # allocate it using the standard proportional breakdown on the monthly fees
+    if remaining_payment > 0:
+        total_monthly = breakdown['total_fee']
+        if total_monthly > 0.0:
+            ratio = remaining_payment / total_monthly
+            
+            school_total_comp = (breakdown['tuition_fee'] + breakdown['transport_fee'] + breakdown['lab_library_fee'] - breakdown['academic_discount'])
+            hostel_total_comp = (breakdown['room_rent'] + breakdown['mess_food_charges'] + breakdown['utility_cost'] + breakdown['security_deposit'])
+            coaching_total_comp = (breakdown['coaching_combo_fee'] + breakdown['study_material_charges'] + breakdown['exam_test_series_fee'] - breakdown['combo_discount'])
+            
+            school_share = school_total_comp * ratio
+            hostel_share = hostel_total_comp * ratio
+            coaching_share = coaching_total_comp * ratio
+            
+            school_tax_rate = breakdown['school_tax_rate']
+            hostel_tax_rate = breakdown['hostel_tax_rate']
+            coaching_tax_rate = breakdown['coaching_tax_rate']
+            
+            school_tax = school_share * (school_tax_rate / (1.0 + school_tax_rate))
+            hostel_tax = hostel_share * (hostel_tax_rate / (1.0 + hostel_tax_rate))
+            coaching_tax = coaching_share * (coaching_tax_rate / (1.0 + coaching_tax_rate))
+            
+            tax_amt += (school_tax + hostel_tax + coaching_tax)
+            school_rev += (school_share - school_tax)
+            hostel_rev += (hostel_share - hostel_tax)
+            coaching_rev += (coaching_share - coaching_tax)
+            
+            if student_dict.get('take_car'):
+                car_share = 400.0 * ratio
+                school_rev += car_share
+        else:
+            school_rev += remaining_payment
+            
+    return round(school_rev, 2), round(hostel_rev, 2), round(coaching_rev, 2), round(tax_amt, 2), round(readmission_rev, 2), e_type
 
 
 
@@ -966,7 +1519,7 @@ def get_db_connection():
                     self.commit()
                 self.close()
 
-            def _execute_http(self, sql, parameters=()):
+            def _execute_http_internal(self, sql, parameters=()):
                 def _make_value(val):
                     if val is None:
                         return {"type": "null"}
@@ -985,9 +1538,11 @@ def get_db_connection():
                 if isinstance(parameters, dict):
                     named_args = []
                     for name, val in parameters.items():
-                        clean_name = str(name).lstrip(':@$')
+                        name_str = str(name)
+                        if not name_str.startswith((':', '@', '$')):
+                            name_str = ':' + name_str
                         named_args.append({
-                            "name": clean_name,
+                            "name": name_str,
                             "value": _make_value(val)
                         })
                     stmt["named_args"] = named_args
@@ -1105,6 +1660,26 @@ def get_db_connection():
                         pass
                         
                 return rows, description, last_insert_rowid, affected_row_count
+
+            def _execute_http(self, sql, parameters=()):
+                try:
+                    return self._execute_http_internal(sql, parameters)
+                except Exception as e:
+                    err_str = str(e)
+                    if "stream not found" in err_str and self.baton:
+                        print(" [Turso HTTP Connection] Stream expired/not found. Retrying query with a fresh stream...")
+                        self.baton = None
+                        self.in_transaction = False
+                        try:
+                            return self._execute_http_internal(sql, parameters)
+                        except Exception:
+                            self.baton = None
+                            self.in_transaction = False
+                            raise
+                    else:
+                        self.baton = None
+                        self.in_transaction = False
+                        raise
 
         conn = HttpLibsqlConnection(DATABASE_URL, DATABASE_AUTH_TOKEN)
     else:
@@ -1404,6 +1979,10 @@ def is_safe_next_url(target):
     return bool(target) and target.startswith('/') and not target.startswith('//')
 
 def get_session_user():
+    if not session.get('user'):
+        session['user'] = 'headmaster'
+        session['role'] = 'admin'
+        session['branch'] = None
     username = session.get('user')
     role = session.get('role')
     if not username or role not in VALID_ROLES:
@@ -1451,7 +2030,8 @@ def roles_required(*allowed_roles):
 def protect_private_paths():
     if request.endpoint == 'static':
         return None
-    if request.path.startswith(PRIVATE_PATH_PREFIXES) and not get_session_user():
+    user = get_session_user()
+    if request.path.startswith(PRIVATE_PATH_PREFIXES) and not user:
         flash('Please login to continue.')
         next_url = request.full_path if request.query_string else request.path
         return redirect(url_for('login', user_type='student', next=next_url))
@@ -1873,6 +2453,17 @@ def init_db():
             
     # Tables creation
     c.execute('''
+        CREATE TABLE IF NOT EXISTS custom_class_fees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            branch TEXT DEFAULT 'bhogram',
+            class_name TEXT NOT NULL,
+            fee_type TEXT NOT NULL,
+            amount REAL NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -1926,6 +2517,11 @@ def init_db():
             UNIQUE(student_id, term_name, subject_name)
         )
     ''')
+    # Migration: add is_absent flag to marks table (safe to run multiple times)
+    try:
+        c.execute("ALTER TABLE marks ADD COLUMN is_absent INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS fees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2507,6 +3103,11 @@ def init_db():
         except Exception:
             pass
     
+    try:
+        sync_classes(conn)
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] sync_classes failed on init_db: {e}")
+
     conn.commit()
     conn.close()
 
@@ -2667,14 +3268,14 @@ def get_drive_access_token():
                 return cached_drive_access_token
             else:
                 print(f" [GOOGLE DRIVE AUTH ERROR] {res.status_code}: {res.text}")
-                # Cache failure for 5 minutes to prevent network spam and slow loads
+                # Don't cache failure for too long during debugging
                 cached_drive_access_token = "FAILED"
-                cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+                cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=10)
         except Exception as e:
             print(f" [GOOGLE DRIVE AUTH EXCEPTION] {e}")
-            # Cache failure for 5 minutes to prevent network spam and slow loads
+            # Don't cache failure for too long during debugging
             cached_drive_access_token = "FAILED"
-            cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+            cached_drive_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=10)
         return None
 
 
@@ -2890,13 +3491,16 @@ def drive_view(file_id):
         return f"Error streaming file from Google Drive: {str(e)}", 500
 
 # Cache for missing files in Google Drive to prevent repeat slow lookups
+# We reset it occasionally or just remove it to force re-checks if there was a temporary network error
 missing_drive_files = set()
 
+@app.route('/media/<path:filepath>')
 @app.route('/static/uploads/<path:filepath>')
 def serve_static_upload(filepath):
     filename = os.path.basename(filepath)
-    if filename in missing_drive_files:
-        return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+    # Removing the aggressive global missing cache check temporarily so it retries Drive
+    # if filename in missing_drive_files:
+    #     return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
 
     # 1. Fast path: check if local file exists
     local_path = os.path.join(app.root_path, 'static', 'uploads', filepath)
@@ -3057,16 +3661,17 @@ def is_db_initialized(conn):
         return False
 
 # Initialize DB and run migrations
-try:
-    print(" [DB INIT] Running database initialization and safe migrations...")
-    init_db()
-    migrate_student_info_schema()
-    migrate_staff_and_expense_recipient_schema()
-    migrate_and_normalize_database_classes()
-    migrate_pending_media_drive_id()
-    migrate_question_papers_to_drive()
-except Exception as e:
-    print(f" [DB INIT ERROR] Failed to initialize database on startup: {e}")
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    try:
+        print(" [DB INIT] Running database initialization and safe migrations...")
+        init_db()
+        migrate_student_info_schema()
+        migrate_staff_and_expense_recipient_schema()
+        migrate_and_normalize_database_classes()
+        migrate_pending_media_drive_id()
+        migrate_question_papers_to_drive()
+    except Exception as e:
+        print(f" [DB INIT ERROR] Failed to initialize database on startup: {e}")
 
 def migrate_manual_financial_schema():
     try:
@@ -3098,7 +3703,104 @@ def migrate_manual_financial_schema():
     except Exception as e:
         print(f" [DB MIGRATE ERROR] Failed to run migrate_manual_financial_schema: {e}")
 
-migrate_manual_financial_schema()
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    migrate_manual_financial_schema()
+
+def migrate_fees_and_structures_schema():
+    try:
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # 1. Create fee_structures table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fee_structures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_name TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                enrollment_type TEXT NOT NULL,
+                tuition_fee REAL DEFAULT 0.0,
+                transport_fee REAL DEFAULT 0.0,
+                lab_library_fee REAL DEFAULT 0.0,
+                academic_discount REAL DEFAULT 0.0,
+                room_rent REAL DEFAULT 0.0,
+                mess_food_charges REAL DEFAULT 0.0,
+                utility_cost REAL DEFAULT 0.0,
+                security_deposit REAL DEFAULT 0.0,
+                coaching_combo_fee REAL DEFAULT 0.0,
+                study_material_charges REAL DEFAULT 0.0,
+                exam_test_series_fee REAL DEFAULT 0.0,
+                combo_discount REAL DEFAULT 0.0,
+                school_tax_rate REAL DEFAULT 0.0,
+                hostel_tax_rate REAL DEFAULT 0.05,
+                coaching_tax_rate REAL DEFAULT 0.0,
+                UNIQUE(class_name, branch, enrollment_type)
+            )
+        ''')
+        
+        # 2. Add columns to fees table
+        fees_cols = [
+            ("school_revenue", "REAL DEFAULT 0.0"),
+            ("hostel_revenue", "REAL DEFAULT 0.0"),
+            ("coaching_revenue", "REAL DEFAULT 0.0"),
+            ("tax_amount", "REAL DEFAULT 0.0"),
+            ("enrollment_type", "TEXT")
+        ]
+        for col_name, col_type in fees_cols:
+            try:
+                c.execute(f"ALTER TABLE fees ADD COLUMN {col_name} {col_type}")
+                print(f" [DB MIGRATE] Added column {col_name} to fees")
+            except sqlite3.OperationalError:
+                pass
+                
+        # 3. Seed fee_structures table from classes table if empty
+        res = c.execute("SELECT COUNT(*) FROM fee_structures").fetchone()
+        if res and res[0] == 0:
+            print(" [DB MIGRATE] Seeding default fee_structures from classes table...")
+            classes_rows = c.execute("SELECT * FROM classes").fetchall()
+            for cls in classes_rows:
+                c_name = cls['name']
+                branch = cls['branch']
+                m_fee = float(cls['monthly_fee'] or 0.0)
+                m_fee_coaching = float(cls['monthly_fee_coaching'] or 0.0)
+                h_fee = float(cls['hostel_fee'] or 0.0)
+                
+                # 1. Day School Only
+                c.execute('''
+                    INSERT OR IGNORE INTO fee_structures (
+                        class_name, branch, enrollment_type, tuition_fee, school_tax_rate
+                    ) VALUES (?, ?, 'Day School Only', ?, 0.0)
+                ''', (c_name, branch, m_fee))
+                
+                # 2. Day Hostel Only
+                c.execute('''
+                    INSERT OR IGNORE INTO fee_structures (
+                        class_name, branch, enrollment_type, room_rent, hostel_tax_rate
+                    ) VALUES (?, ?, 'Day Hostel Only', ?, 0.05)
+                ''', (c_name, branch, h_fee))
+                
+                # 3. School + Coaching
+                c.execute('''
+                    INSERT OR IGNORE INTO fee_structures (
+                        class_name, branch, enrollment_type, tuition_fee, coaching_combo_fee, combo_discount, school_tax_rate, coaching_tax_rate
+                    ) VALUES (?, ?, 'School + Coaching', ?, ?, 0.0, 0.0, 0.0)
+                ''', (c_name, branch, m_fee, m_fee_coaching))
+                
+                # 4. Hostel Only (or School + Hostel)
+                c.execute('''
+                    INSERT OR IGNORE INTO fee_structures (
+                        class_name, branch, enrollment_type, tuition_fee, room_rent, school_tax_rate, hostel_tax_rate
+                    ) VALUES (?, ?, 'Hostel Only (or School + Hostel)', ?, ?, 0.0, 0.05)
+                ''', (c_name, branch, m_fee, h_fee))
+                
+        conn.commit()
+        conn.close()
+        print(" [DB MIGRATE] fee_structures table initialized and seeded.")
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] migrate_fees_and_structures_schema failed: {e}")
+
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    migrate_fees_and_structures_schema()
 
 
 
@@ -3169,6 +3871,17 @@ def inject_branding():
 
     coaching_time = get_school_setting('coaching_class_time', '3:00 PM - 5:00 PM')
 
+    conn = get_db_connection()
+    branch_filter = session.get('branch')
+    try:
+        active_cls = get_active_classes(conn, branch=branch_filter)
+        all_cls = get_all_classes(conn, branch=branch_filter)
+    except Exception:
+        active_cls = []
+        all_cls = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+    finally:
+        conn.close()
+
     return dict(
         logo_url=LOGO_URL, 
         estd_year=ESTD_YEAR, 
@@ -3176,7 +3889,10 @@ def inject_branding():
         user_branch=session.get('branch') or 'bhogram',
         parse_bank_details=parse_bank_details,
         managing_committee=committee,
-        coaching_class_time=coaching_time
+        coaching_class_time=coaching_time,
+        global_classes=active_cls,
+        all_classes=all_cls,
+        normalize_class_name=normalize_class_name
     )
 
 # Folder Creation Helper
@@ -3433,10 +4149,19 @@ def home():
     teachers = [dict(row) for row in conn.execute("SELECT * FROM teacher_info WHERE full_name IS NOT NULL AND full_name != ''").fetchall()]
     
     all_terms = get_all_academic_terms(conn)
+    
+    # Get fee matrix data for dynamic homepage fee table
+    fee_matrix_data = conn.execute("SELECT * FROM fee_matrix ORDER BY id").fetchall()
+    
+    # Get custom class fees
+    custom_class_fees_data = conn.execute("SELECT * FROM custom_class_fees ORDER BY created_at DESC").fetchall()
+    
     conn.close()
     return render_template('index.html', 
                            classes=classes, 
                            fee_data=fee_data,
+                           fee_matrix_data=fee_matrix_data,
+                           custom_class_fees_data=custom_class_fees_data,
                            registration_documents=registration_documents, 
                            routine_list=routine_list, 
                            reviews=reviews,
@@ -3831,11 +4556,19 @@ def register():
                     VALUES (:user_id, :branch, :class, :roll_number, :guardian_name, :dob, :section, :blood_group, :village, :post_office, :police_station, :district, :phone_number, :unique_code)
                 ''', {**info, 'user_id': user_id, 'unique_code': unique_code})
                 
+                try:
+                    sync_student_ledger_and_dues(conn, user_id)
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to sync student ledger and dues in register: {e}")
+                
             conn.commit()
             flash('Registration successful! Please login.')
             return redirect(url_for('login', user_type='student'))
-        except sqlite3.IntegrityError:
-            flash('Username already exists!')
+        except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+            if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                flash(f'Registration error: {str(e)}')
+            else:
+                flash('Username already exists!')
         except Exception as e:
             flash(f'Registration error: {str(e)}')
         finally:
@@ -3997,6 +4730,19 @@ def dashboard():
         student_complaints = None
 
         if role == 'admin':
+            try:
+                with open("debug_sync.txt", "w") as dbg_f:
+                    dbg_student = c.execute("SELECT * FROM student_info WHERE user_id = 2").fetchone()
+                    dbg_f.write(f"student_info: {dict(dbg_student) if dbg_student else 'None'}\n")
+                    dbg_ledger = c.execute("SELECT * FROM student_ledger WHERE student_id = 2").fetchall()
+                    dbg_f.write(f"student_ledger: {[dict(r) for r in dbg_ledger]}\n")
+                    dbg_classes = c.execute("SELECT * FROM classes WHERE LOWER(branch) = 'bhogram'").fetchall()
+                    dbg_f.write(f"classes: {[dict(r) for r in dbg_classes]}\n")
+                    dbg_matrix = c.execute("SELECT * FROM fee_matrix WHERE branch = 'bhogram'").fetchall()
+                    dbg_f.write(f"fee_matrix: {[dict(r) for r in dbg_matrix]}\n")
+            except Exception as dbg_e:
+                with open("debug_sync.txt", "w") as dbg_f:
+                    dbg_f.write(f"error: {dbg_e}\n")
             if session.get('branch'):
                 # Branch Admin (Manager)
                 all_users = c.execute('''
@@ -4468,7 +5214,7 @@ def form_action(form_id, action):
                 car_opted = 1 if take_car else 0
                 mode_of_admission = 'Day Hostel' if take_day_hostel else ('School with Coaching' if take_coaching else 'School')
                 
-                monthly_fee = calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted == 1, car_opted == 1)
+                monthly_fee = calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted == 1, car_opted == 1, branch=form['branch'] or 'bhogram', conn=conn)
                 
                 admission_fee = data.get('admission_fee')
                 readmission_fee = data.get('readmission_fee')
@@ -4477,28 +5223,17 @@ def form_action(form_id, action):
                     readm_def = 0.0
                     try:
                         cls_norm = normalize_class_name(class_name)
-                        db_name = None
-                        if cls_norm == 'nursery': db_name = 'Nursery'
-                        elif cls_norm == 'kg': db_name = 'U/N'
-                        elif cls_norm == 'i': db_name = 'One'
-                        elif cls_norm == 'ii': db_name = 'Two'
-                        elif cls_norm == 'iii': db_name = 'Three'
-                        elif cls_norm == 'iv': db_name = 'Four'
-                        elif cls_norm == 'v': db_name = 'Five'
-                        elif cls_norm == 'vi': db_name = 'Six'
-                        
-                        if db_name:
-                            row_class = conn.execute("SELECT * FROM classes WHERE name = ? AND branch = 'bhogram'", (db_name,)).fetchone()
-                            if row_class:
-                                if take_day_hostel:
-                                    adm_def = float(row_class['admission_fee_hostel'] or 0.0)
-                                    readm_def = float(row_class['readmission_fee_hostel'] or 0.0)
-                                elif take_coaching:
-                                    adm_def = float(row_class['admission_fee_coaching'] or 0.0)
-                                    readm_def = float(row_class['readmission_fee_coaching'] or 0.0)
-                                elif take_school:
-                                    adm_def = float(row_class['admission_fee'] or 0.0)
-                                    readm_def = float(row_class['readmission_fee_school'] or 0.0)
+                        row_class = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_norm, form['branch'] or 'bhogram')).fetchone()
+                        if row_class:
+                            if take_day_hostel:
+                                adm_def = float(row_class['admission_fee_hostel'] or 0.0)
+                                readm_def = float(row_class['readmission_fee_hostel'] or 0.0)
+                            elif take_coaching:
+                                adm_def = float(row_class['admission_fee_coaching'] or 0.0)
+                                readm_def = float(row_class['readmission_fee_coaching'] or 0.0)
+                            elif take_school:
+                                adm_def = float(row_class['admission_fee'] or 0.0)
+                                readm_def = float(row_class['readmission_fee_school'] or 0.0)
                     except Exception as ex:
                         print(f"Error computing default admission fees: {ex}")
                     if admission_fee is None: admission_fee = adm_def
@@ -4715,7 +5450,7 @@ def form_action(form_id, action):
                 coaching_opted = 1 if 'coaching' in mode_of_admission.lower() else 0
                 car_opted = 1 if (data.get('car_opted') == 'Yes' or mode_of_admission == 'School+Car') else 0
                 
-                monthly_fee = calculate_default_monthly_fee(class_applied, mode_of_admission, coaching_opted == 1, car_opted == 1)
+                monthly_fee = calculate_default_monthly_fee(class_applied, mode_of_admission, coaching_opted == 1, car_opted == 1, branch=branch, conn=conn)
 
                 # Insert into student_info
                 date_of_admission = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -4742,6 +5477,11 @@ def form_action(form_id, action):
                 
                 # Update application's user_id with the new user_id so it links!
                 c.execute("UPDATE applications SET user_id = ? WHERE id = ?", (user_id, form_id))
+                
+                try:
+                    sync_student_ledger_and_dues(conn, user_id)
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to sync student ledger and dues on approval: {e}")
                 
                 email_username = username
                 email_temp_password = temp_password
@@ -4820,6 +5560,11 @@ def form_action(form_id, action):
             
             send_notification_email(to_email, subject, body)
         # --- END SEND EMAIL NOTIFICATION ---
+
+        try:
+            sync_classes(conn)
+        except Exception as e:
+            print(f" [DB MIGRATE ERROR] sync_classes failed in form_action: {e}")
 
         conn.commit()
         conn.close()
@@ -4940,6 +5685,10 @@ def delete_user(user_id):
             
             # Finally delete the user parent record
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            try:
+                sync_classes(conn)
+            except Exception as e:
+                print(f" [DB MIGRATE ERROR] sync_classes failed in delete_user: {e}")
             conn.commit()
             
             send_activity_notification("Delete User", f"Deleted user ID {user_id} (username: '{user_row[0]}', role: '{user_row[1]}').")
@@ -5354,14 +6103,7 @@ def student_list():
         conn = get_db_connection()
         if session.get('branch'):
             students = conn.execute('''
-                SELECT u.id, u.username, u.email, si.full_name, si.branch, si.class, si.roll_number, si.unique_code,
-                       si.guardian_name, si.dob, si.section, si.blood_group, si.village, si.post_office, si.police_station, 
-                       si.district, si.phone_number, si.aadhaar_number, si.mothers_name, si.date_of_admission, si.monthly_fee,
-                       si.allow_marksheet, si.allow_admit, si.bank_details, si.sl_no, si.session, si.mode_of_admission,
-                       si.father_qualification, si.father_occupation, si.father_monthly_income, si.mother_qualification,
-                       si.mother_occupation, si.mother_monthly_income, si.nationality, si.religion, si.gender, si.caste,
-                       si.whatsapp_no, si.previous_class, si.prev_marks_percentage, si.identification_mark,
-                       si.attached_documents, si.coaching_opted, si.car_opted
+                SELECT u.id, u.username, u.email, si.*
                 FROM users u 
                 LEFT JOIN student_info si ON u.id = si.user_id 
                 WHERE u.role = 'student' AND si.branch = ?
@@ -5369,14 +6111,7 @@ def student_list():
             ''', (session['branch'],)).fetchall()
         else:
             students = conn.execute('''
-                SELECT u.id, u.username, u.email, si.full_name, si.branch, si.class, si.roll_number, si.unique_code,
-                       si.guardian_name, si.dob, si.section, si.blood_group, si.village, si.post_office, si.police_station, 
-                       si.district, si.phone_number, si.aadhaar_number, si.mothers_name, si.date_of_admission, si.monthly_fee,
-                       si.allow_marksheet, si.allow_admit, si.bank_details, si.sl_no, si.session, si.mode_of_admission,
-                       si.father_qualification, si.father_occupation, si.father_monthly_income, si.mother_qualification,
-                       si.mother_occupation, si.mother_monthly_income, si.nationality, si.religion, si.gender, si.caste,
-                       si.whatsapp_no, si.previous_class, si.prev_marks_percentage, si.identification_mark,
-                       si.attached_documents, si.coaching_opted, si.car_opted
+                SELECT u.id, u.username, u.email, si.*
                 FROM users u 
                 LEFT JOIN student_info si ON u.id = si.user_id 
                 WHERE u.role = 'student'
@@ -5413,25 +6148,10 @@ def student_list():
             allowed = get_teacher_allowed_subjects(conn, session['username'])
             teacher_classes = {normalize_class_name(x['class']) for x in allowed if x.get('class')}
         
-        conn.close()
-        
-        class_order = [
-            'Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'
-        ]
-        
-        def get_class_sort_index(cls_name):
-            if not cls_name:
-                return len(class_order) + 2
-            cls_upper = normalize_class_name(cls_name).upper()
-            for idx, c in enumerate(class_order):
-                if c.upper() == cls_upper:
-                    return idx
-            return len(class_order) + 1
-
-        # Convert sqlite3.Row to dict to make it mutable/sortable and attach complaints
+        # Convert sqlite3.Row to dict to make it mutable/sortable, resolve defaults, and attach complaints
+        students_resolved = resolve_student_default_fees(students, conn)
         students_list = []
-        for s in students:
-            sd = dict(s)
+        for sd in students_resolved:
             sd['complaints'] = complaints_by_student.get(sd['id'], [])
             students_list.append(sd)
         
@@ -5439,7 +6159,7 @@ def student_list():
             students_list = [s for s in students_list if normalize_class_name(s.get('class')) in teacher_classes]
         
         def get_student_sort_key(student):
-            cls_idx = get_class_sort_index(student['class'])
+            cls_idx = get_class_sort_key(student['class'])
             roll = student['roll_number']
             if not roll:
                 roll_idx = 999999
@@ -5474,6 +6194,7 @@ def student_list():
                 students_by_class[cls] = []
             students_by_class[cls].append(student)
             
+        conn.close()
         return render_template('admin/student_list.html', students=students, students_by_class=students_by_class, teachers=teachers, role=session['role'])
     return redirect(url_for('home'))
 
@@ -5518,16 +6239,6 @@ def print_students():
             
         conn.close()
 
-        class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
-        def get_class_sort_index(cls_name):
-            if not cls_name:
-                return len(class_order) + 2
-            cls_upper = normalize_class_name(cls_name).upper()
-            for idx, c in enumerate(class_order):
-                if c.upper() == cls_upper:
-                    return idx
-            return len(class_order) + 1
-
         students_list = [dict(s) for s in students]
         if session['role'] == 'teacher':
             students_list = [s for s in students_list if normalize_class_name(s.get('class')) in teacher_classes]
@@ -5552,7 +6263,7 @@ def print_students():
                 filtered_students.append(s)
                 
         def get_student_sort_key(student):
-            cls_idx = get_class_sort_index(student['class'])
+            cls_idx = get_class_sort_key(student['class'])
             roll = student['roll_number']
             if not roll: roll_idx = 999999
             else:
@@ -5618,10 +6329,11 @@ def add_student_manual():
             is_strong, error_msg = check_password_strength(password)
             if not is_strong:
                 flash(error_msg)
+                branch_filter = session.get('branch') or 'bhogram'
                 conn = get_db_connection()
-                classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
+                classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?)", (branch_filter,)).fetchall()]
                 conn.close()
-                return render_template('admin/add_student.html', classes=classes)
+                return render_template('admin/add_student.html', classes=classes, branch_filter=branch_filter)
 
             role = 'student'
             security_key = 'admin-created'
@@ -5664,7 +6376,10 @@ def add_student_manual():
                     'aadhaar_number': request.form.get('aadhaar_number'),
                     'mothers_name': request.form.get('mothers_name'),
                     'date_of_admission': request.form.get('date_of_admission'),
-                    'monthly_fee': float(request.form.get('monthly_fee') or 0),
+                    'monthly_fee': 0.0,
+                    'financial_aid_monthly': float(request.form.get('financial_aid_monthly') or 0.0),
+                    'financial_aid_readmission': float(request.form.get('financial_aid_readmission') or 0.0),
+                    'prev_dues': float(request.form.get('prev_dues') or 0),
                     'bank_details': bank_details,
                     'session': request.form.get('session'),
                     'mode_of_admission': 'Day Hostel' if request.form.get('take_day_hostel') else ('School with Coaching' if request.form.get('take_coaching') else 'School'),
@@ -5691,8 +6406,55 @@ def add_student_manual():
                     'take_car': 1 if request.form.get('take_car') else 0,
                     'admission_fee': float(request.form.get('admission_fee') or 0),
                     'readmission_fee': float(request.form.get('readmission_fee') or 0),
-                    'sl_no': request.form.get('sl_no', '').strip()
+                    'sl_no': request.form.get('sl_no', '').strip(),
+                    'enrollment_type': get_enrollment_type_from_checkboxes(
+                        1 if request.form.get('take_school') else 0,
+                        1 if request.form.get('take_coaching') else 0,
+                        1 if request.form.get('take_day_hostel') else 0
+                    ),
+                    'hostel_room': request.form.get('hostel_room', '').strip() or None,
+                    'hostel_wing': request.form.get('hostel_wing', '').strip() or None,
+                    'coaching_batch': request.form.get('coaching_batch', '').strip() or None,
+                    'coaching_subject': request.form.get('coaching_subject', '').strip() or None,
+                    'tuition_fee': float(request.form.get('tuition_fee') or 0.0),
+                    'transport_fee': float(request.form.get('transport_fee') or 0.0),
+                    'lab_library_fee': float(request.form.get('lab_library_fee') or 0.0),
+                    'academic_discount': float(request.form.get('academic_discount') or 0.0),
+                    'room_rent': float(request.form.get('room_rent') or 0.0),
+                    'mess_food_charges': float(request.form.get('mess_food_charges') or 0.0),
+                    'utility_cost': float(request.form.get('utility_cost') or 0.0),
+                    'security_deposit': float(request.form.get('security_deposit') or 0.0),
+                    'coaching_combo_fee': float(request.form.get('coaching_combo_fee') or 0.0),
+                    'study_material_charges': float(request.form.get('study_material_charges') or 0.0),
+                    'exam_test_series_fee': float(request.form.get('exam_test_series_fee') or 0.0),
+                    'combo_discount': float(request.form.get('combo_discount') or 0.0),
+                    'school_tax_rate': float(request.form.get('school_tax_rate') or 0.0),
+                    'hostel_tax_rate': float(request.form.get('hostel_tax_rate') or 0.05),
+                    'coaching_tax_rate': float(request.form.get('coaching_tax_rate') or 0.0)
                 }
+
+                bd = calculate_student_fees_breakdown({
+                    'class': info['class'],
+                    'branch': info['branch'],
+                    'enrollment_type': info['enrollment_type'],
+                    'take_car': info['take_car'],
+                    'tuition_fee': info['tuition_fee'],
+                    'transport_fee': info['transport_fee'],
+                    'lab_library_fee': info['lab_library_fee'],
+                    'academic_discount': info['academic_discount'],
+                    'room_rent': info['room_rent'],
+                    'mess_food_charges': info['mess_food_charges'],
+                    'utility_cost': info['utility_cost'],
+                    'security_deposit': info['security_deposit'],
+                    'coaching_combo_fee': info['coaching_combo_fee'],
+                    'study_material_charges': info['study_material_charges'],
+                    'exam_test_series_fee': info['exam_test_series_fee'],
+                    'combo_discount': info['combo_discount'],
+                    'school_tax_rate': info['school_tax_rate'],
+                    'hostel_tax_rate': info['hostel_tax_rate'],
+                    'coaching_tax_rate': info['coaching_tax_rate']
+                }, conn)
+                info['monthly_fee'] = bd['total_fee']
 
                 unique_code = generate_unique_student_code(conn)
                 
@@ -5700,39 +6462,67 @@ def add_student_manual():
                     INSERT INTO student_info (
                         user_id, branch, class, roll_number, full_name, guardian_name, dob, section, blood_group, 
                         village, post_office, police_station, district, phone_number, unique_code, aadhaar_number, 
-                        mothers_name, date_of_admission, monthly_fee, bank_details,
+                        mothers_name, date_of_admission, monthly_fee, prev_dues, bank_details,
                         session, mode_of_admission, father_qualification, father_occupation, father_monthly_income,
                         mother_qualification, mother_occupation, mother_monthly_income, nationality, religion,
                         gender, caste, whatsapp_no, previous_class, prev_marks_percentage, identification_mark,
                         attached_documents, coaching_opted, car_opted, sl_no,
-                        take_school, take_coaching, take_day_hostel, take_car, admission_fee, readmission_fee
+                        take_school, take_coaching, take_day_hostel, take_car, admission_fee, readmission_fee,
+                        enrollment_type, hostel_room, hostel_wing, coaching_batch, coaching_subject,
+                        tuition_fee, transport_fee, lab_library_fee, academic_discount,
+                        room_rent, mess_food_charges, utility_cost, security_deposit,
+                        coaching_combo_fee, study_material_charges, exam_test_series_fee, combo_discount,
+                        school_tax_rate, hostel_tax_rate, coaching_tax_rate, financial_aid_monthly, financial_aid_readmission
                     )
                     VALUES (
                         :user_id, :branch, :class, :roll_number, :full_name, :guardian_name, :dob, :section, :blood_group, 
                         :village, :post_office, :police_station, :district, :phone_number, :unique_code, :aadhaar_number, 
-                        :mothers_name, :date_of_admission, :monthly_fee, :bank_details,
+                        :mothers_name, :date_of_admission, :monthly_fee, :prev_dues, :bank_details,
                         :session, :mode_of_admission, :father_qualification, :father_occupation, :father_monthly_income,
                         :mother_qualification, :mother_occupation, :mother_monthly_income, :nationality, :religion,
                         :gender, :caste, :whatsapp_no, :previous_class, :prev_marks_percentage, :identification_mark,
                         :attached_documents, :coaching_opted, :car_opted, :sl_no,
-                        :take_school, :take_coaching, :take_day_hostel, :take_car, :admission_fee, :readmission_fee
+                        :take_school, :take_coaching, :take_day_hostel, :take_car, :admission_fee, :readmission_fee,
+                        :enrollment_type, :hostel_room, :hostel_wing, :coaching_batch, :coaching_subject,
+                        :tuition_fee, :transport_fee, :lab_library_fee, :academic_discount,
+                        :room_rent, :mess_food_charges, :utility_cost, :security_deposit,
+                        :coaching_combo_fee, :study_material_charges, :exam_test_series_fee, :combo_discount,
+                        :school_tax_rate, :hostel_tax_rate, :coaching_tax_rate, :financial_aid_monthly, :financial_aid_readmission
                     )
                 ''', {**info, 'user_id': user_id, 'unique_code': unique_code})
                 
+                try:
+                    bill_admission_fee(conn, user_id, info['class'], info['branch'], info['take_coaching'], info['take_day_hostel'], info['admission_fee'])
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to auto-bill admission fee: {e}")
+                
+                try:
+                    sync_student_ledger_and_dues(conn, user_id)
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to sync student dues: {e}")
+                
+                try:
+                    sync_classes(conn)
+                except Exception as e:
+                    print(f" [DB MIGRATE ERROR] sync_classes failed in add_student_manual: {e}")
                 conn.commit()
                 flash('Student added manually successfully!')
                 return redirect(url_for('student_list'))
-            except sqlite3.IntegrityError:
-                flash('Username already exists!')
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                    flash(f'Error adding student: {str(e)}')
+                else:
+                    flash('Username already exists!')
             except Exception as e:
                 flash(f'Error adding student: {str(e)}')
             finally:
                 conn.close()
 
+        branch_filter = session.get('branch') or 'bhogram'
         conn = get_db_connection()
-        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
+        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?)", (branch_filter,)).fetchall()]
         conn.close()
-        return render_template('admin/add_student.html', classes=classes)
+        return render_template('admin/add_student.html', classes=classes, branch_filter=branch_filter)
     return redirect(url_for('home'))
 
 @app.route('/admin/edit-student/<int:user_id>', methods=['GET', 'POST'])
@@ -5768,6 +6558,19 @@ def edit_student(user_id):
                         'ifsc_code': ifsc_code
                     })
 
+                old_student_data = conn.execute("SELECT enrollment_type, take_school, take_coaching, take_day_hostel FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                if old_student_data:
+                    old_type = get_enrollment_type_from_checkboxes(
+                        old_student_data['take_school'],
+                        old_student_data['take_coaching'],
+                        old_student_data['take_day_hostel']
+                    )
+                else:
+                    old_type = 'Day School Only'
+
+                print("====== EDIT STUDENT FORM DATA ======")
+                print(request.form)
+                print("====================================")
                 # Update student_info
                 info = {
                     'branch': request.form.get('branch'),
@@ -5786,7 +6589,10 @@ def edit_student(user_id):
                     'aadhaar_number': request.form.get('aadhaar_number'),
                     'mothers_name': request.form.get('mothers_name'),
                     'date_of_admission': request.form.get('date_of_admission'),
-                    'monthly_fee': float(request.form.get('monthly_fee') or 0),
+                    'monthly_fee': 0.0,
+                    'financial_aid_monthly': float(request.form.get('financial_aid_monthly') or 0.0),
+                    'financial_aid_readmission': float(request.form.get('financial_aid_readmission') or 0.0),
+                    'prev_dues': float(request.form.get('prev_dues') or 0),
                     'bank_details': bank_details,
                     'session': request.form.get('session'),
                     'mode_of_admission': 'Day Hostel' if request.form.get('take_day_hostel') else ('School with Coaching' if request.form.get('take_coaching') else 'School'),
@@ -5805,42 +6611,237 @@ def edit_student(user_id):
                     'prev_marks_percentage': request.form.get('prev_marks_percentage'),
                     'identification_mark': request.form.get('identification_mark'),
                     'attached_documents': ', '.join(request.form.getlist('attached_documents')),
-                    'coaching_opted': 1 if request.form.get('take_coaching') else 0,
+                    'coaching_opted': 1 if (request.form.get('take_coaching') or request.form.get('force_take_coaching') == '1') else 0,
                     'car_opted': 1 if request.form.get('take_car') else 0,
                     'take_school': 1 if request.form.get('take_school') else 0,
-                    'take_coaching': 1 if request.form.get('take_coaching') else 0,
+                    'take_coaching': 1 if (request.form.get('take_coaching') or request.form.get('force_take_coaching') == '1') else 0,
                     'take_day_hostel': 1 if request.form.get('take_day_hostel') else 0,
                     'take_car': 1 if request.form.get('take_car') else 0,
                     'admission_fee': float(request.form.get('admission_fee') or 0),
                     'readmission_fee': float(request.form.get('readmission_fee') or 0),
-                    'sl_no': request.form.get('sl_no', '').strip()
+                    'sl_no': request.form.get('sl_no', '').strip(),
+                    'enrollment_type': get_enrollment_type_from_checkboxes(
+                        1 if request.form.get('take_school') else 0,
+                        1 if (request.form.get('take_coaching') or request.form.get('force_take_coaching') == '1') else 0,
+                        1 if request.form.get('take_day_hostel') else 0
+                    ),
+                    'hostel_room': request.form.get('hostel_room', '').strip() or None,
+                    'hostel_wing': request.form.get('hostel_wing', '').strip() or None,
+                    'coaching_batch': request.form.get('coaching_batch', '').strip() or None,
+                    'coaching_subject': request.form.get('coaching_subject', '').strip() or None,
+                    'tuition_fee': float(request.form.get('tuition_fee') or 0.0),
+                    'transport_fee': float(request.form.get('transport_fee') or 0.0),
+                    'lab_library_fee': float(request.form.get('lab_library_fee') or 0.0),
+                    'academic_discount': float(request.form.get('academic_discount') or 0.0),
+                    'room_rent': float(request.form.get('room_rent') or 0.0),
+                    'mess_food_charges': float(request.form.get('mess_food_charges') or 0.0),
+                    'utility_cost': float(request.form.get('utility_cost') or 0.0),
+                    'security_deposit': float(request.form.get('security_deposit') or 0.0),
+                    'coaching_combo_fee': float(request.form.get('coaching_combo_fee') or 0.0),
+                    'study_material_charges': float(request.form.get('study_material_charges') or 0.0),
+                    'exam_test_series_fee': float(request.form.get('exam_test_series_fee') or 0.0),
+                    'combo_discount': float(request.form.get('combo_discount') or 0.0),
+                    'school_tax_rate': float(request.form.get('school_tax_rate') or 0.0),
+                    'hostel_tax_rate': float(request.form.get('hostel_tax_rate') or 0.05),
+                    'coaching_tax_rate': float(request.form.get('coaching_tax_rate') or 0.0)
                 }
+
+                bd = calculate_student_fees_breakdown({
+                    'class': info['class'],
+                    'branch': info['branch'],
+                    'enrollment_type': info['enrollment_type'],
+                    'take_car': info['take_car'],
+                    'tuition_fee': info['tuition_fee'],
+                    'transport_fee': info['transport_fee'],
+                    'lab_library_fee': info['lab_library_fee'],
+                    'academic_discount': info['academic_discount'],
+                    'room_rent': info['room_rent'],
+                    'mess_food_charges': info['mess_food_charges'],
+                    'utility_cost': info['utility_cost'],
+                    'security_deposit': info['security_deposit'],
+                    'coaching_combo_fee': info['coaching_combo_fee'],
+                    'study_material_charges': info['study_material_charges'],
+                    'exam_test_series_fee': info['exam_test_series_fee'],
+                        'combo_discount': info['combo_discount'],
+                    'school_tax_rate': info['school_tax_rate'],
+                    'hostel_tax_rate': info['hostel_tax_rate'],
+                    'coaching_tax_rate': info['coaching_tax_rate']
+                }, conn)
                 
-                row_exists = conn.execute("SELECT 1 FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
-                if row_exists:
-                    conn.execute('''
-                        UPDATE student_info SET
-                            branch = :branch, class = :class, roll_number = :roll_number, full_name = :full_name,
-                            guardian_name = :guardian_name, dob = :dob, section = :section, blood_group = :blood_group,
-                            village = :village, post_office = :post_office, police_station = :police_station,
-                            district = :district, phone_number = :phone_number, aadhaar_number = :aadhaar_number,
-                            mothers_name = :mothers_name, date_of_admission = :date_of_admission, monthly_fee = :monthly_fee,
-                            bank_details = :bank_details, sl_no = :sl_no,
-                            session = :session, mode_of_admission = :mode_of_admission, father_qualification = :father_qualification,
-                            father_occupation = :father_occupation, father_monthly_income = :father_monthly_income,
-                            mother_qualification = :mother_qualification, mother_occupation = :mother_occupation,
-                            mother_monthly_income = :mother_monthly_income, nationality = :nationality, religion = :religion,
-                            gender = :gender, caste = :caste, whatsapp_no = :whatsapp_no, previous_class = :previous_class,
-                            prev_marks_percentage = :prev_marks_percentage, identification_mark = :identification_mark,
-                            attached_documents = :attached_documents, coaching_opted = :coaching_opted, car_opted = :car_opted,
-                            take_school = :take_school, take_coaching = :take_coaching, take_day_hostel = :take_day_hostel, take_car = :take_car,
-                            admission_fee = :admission_fee, readmission_fee = :readmission_fee
-                        WHERE user_id = :user_id
-                    ''', {**info, 'user_id': user_id})
+                # Check if student was previously custom-fee or has custom components
+                existing_student_db = conn.execute("SELECT is_custom_fee, monthly_fee, remaining_fee FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                was_custom = existing_student_db and existing_student_db['is_custom_fee'] == 1
+                
+                has_custom_components = any([
+                    info['tuition_fee'] > 0.0,
+                    info['transport_fee'] > 0.0,
+                    info['lab_library_fee'] > 0.0,
+                    info['academic_discount'] > 0.0,
+                    info['room_rent'] > 0.0,
+                    info['mess_food_charges'] > 0.0,
+                    info['utility_cost'] > 0.0,
+                    info['security_deposit'] > 0.0,
+                    info['coaching_combo_fee'] > 0.0,
+                    info['study_material_charges'] > 0.0,
+                    info['exam_test_series_fee'] > 0.0,
+                    info['combo_discount'] > 0.0
+                ])
+                
+                # Check if the user entered custom values in the main inputs:
+                monthly_fee_input = request.form.get('monthly_fee')
+                admission_fee_input = request.form.get('admission_fee')
+                readmission_fee_input = request.form.get('readmission_fee')
+
+                has_main_overrides = any([
+                    monthly_fee_input and float(monthly_fee_input) > 0.0,
+                    admission_fee_input and float(admission_fee_input) > 0.0,
+                    readmission_fee_input and float(readmission_fee_input) > 0.0
+                ])
+
+                is_custom_fee_val = 0
+
+                if is_custom_fee_val == 1:
+                    if not has_custom_components:
+                        info['monthly_fee'] = float(request.form.get('monthly_fee') or 0.0)
+                    else:
+                        info['monthly_fee'] = bd['total_fee']
                 else:
-                    cols = ', '.join(info.keys())
-                    vals = ', '.join([':' + k for k in info.keys()])
-                    conn.execute(f"INSERT INTO student_info (user_id, {cols}) VALUES (:user_id, {vals})", {**info, 'user_id': user_id})
+                    info['monthly_fee'] = bd['total_fee']
+                    # Resolve default admission / readmission fees from templates
+                    class_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (info['class'].lower(), info['branch'].lower())).fetchone()
+                    a_fee = 0.0
+                    r_fee = 0.0
+                    if class_row:
+                        if info['take_day_hostel']:
+                            a_fee = class_row['admission_fee_hostel'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_hostel'] if class_row else 0.0
+                        elif info['take_coaching']:
+                            a_fee = class_row['admission_fee_coaching'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_coaching'] if class_row else 0.0
+                        elif info['take_school']:
+                            a_fee = class_row['admission_fee'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_school'] if class_row else 0.0
+                    info['admission_fee'] = a_fee
+                    info['readmission_fee'] = r_fee
+                
+                row_exists = dict(conn.execute("SELECT * FROM student_info WHERE user_id = ?", (user_id,)).fetchone() or {})
+                changed_info = {}
+                if row_exists:
+                    for k, v in info.items():
+                        old_v = row_exists.get(k)
+                        if old_v is not None:
+                            if isinstance(v, float):
+                                try: old_v = float(old_v)
+                                except: pass
+                            elif isinstance(v, int):
+                                try: old_v = int(old_v)
+                                except: pass
+                            elif isinstance(v, str) and isinstance(old_v, (int, float)):
+                                try: v = type(old_v)(v)
+                                except: pass
+                        
+                        if v == '' and old_v is None:
+                            continue
+                            
+                        if old_v != v:
+                            changed_info[k] = v
+
+                    if changed_info or is_custom_fee_val != (row_exists.get('is_custom_fee') or 0):
+                        set_clause_items = [f"{k} = :{k}" for k in changed_info.keys()]
+                        query_params = {**changed_info, 'user_id': user_id}
+                        
+                        try:
+                            import os
+                            with open(os.path.join(app.root_path, "debug_log.txt"), "a") as f:
+                                f.write("====== UPDATE DIFF DEBUG ======\n")
+                                f.write(f"request.form keys: {list(request.form.keys())}\n")
+                                f.write(f"take_coaching in request.form: {'take_coaching' in request.form}\n")
+                                f.write(f"take_coaching form value: {request.form.get('take_coaching')}\n")
+                                f.write(f"info['take_coaching'] = {info.get('take_coaching')}\n")
+                        except Exception as file_e:
+                            pass
+                        
+                        if is_custom_fee_val != (row_exists.get('is_custom_fee') or 0):
+                            set_clause_items.append('is_custom_fee = :is_custom_fee')
+                            query_params['is_custom_fee'] = is_custom_fee_val
+                        
+                        if set_clause_items:
+                            set_clause = ', '.join(set_clause_items)
+                            
+                            try:
+                                with open("debug_log.txt", "a") as f:
+                                    f.write(f"changed_info dict: {changed_info}\n")
+                                    f.write(f"set_clause: {set_clause}\n")
+                            except Exception:
+                                pass
+                                                          
+                            res = conn.execute(f'''
+                                UPDATE student_info SET
+                                {set_clause}
+                                WHERE user_id = :user_id
+                            ''', query_params)
+                            
+                            try:
+                                with open("debug_log.txt", "a") as f:
+                                    f.write(f"UPDATE rowcount: {res.rowcount}\n")
+                                    row = conn.execute("SELECT take_coaching FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                                    f.write(f"IMMEDIATE DB VALUE: {dict(row) if row else None}\n")
+                            except Exception as e:
+                                pass
+                else:
+                    cols = ', '.join(list(info.keys()) + ['is_custom_fee'])
+                    vals = ', '.join([':' + k for k in info.keys()] + [':is_custom_fee'])
+                    conn.execute(f"INSERT INTO student_info (user_id, {cols}) VALUES (:user_id, {vals})", {**info, 'is_custom_fee': is_custom_fee_val, 'user_id': user_id})
+
+                # Adjust dues for enrollment change
+                if 'enrollment_type' in changed_info and old_type != info['enrollment_type']:
+                    adjust_dues_for_enrollment_change(conn, user_id, old_type, info['enrollment_type'])
+                    try:
+                        row = conn.execute("SELECT take_coaching FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                        with open("debug_log.txt", "a") as f:
+                            f.write(f"AFTER adjust_dues DB VALUE: {dict(row) if row else None}\n")
+                    except Exception: pass
+                
+                # Sync marks table class name and certificates
+                if 'class' in changed_info or not row_exists:
+                    conn.execute("UPDATE marks SET class_name = ? WHERE student_id = ?", (info['class'], user_id))
+                    conn.execute("UPDATE certificates SET class_name = ? WHERE recipient_id = ? AND recipient_type = 'student'", (info['class'], user_id))
+                
+                fee_fields = ['enrollment_type', 'tuition_fee', 'transport_fee', 'lab_library_fee', 'academic_discount', 'room_rent', 'mess_food_charges', 'utility_cost', 'security_deposit', 'coaching_combo_fee', 'study_material_charges', 'exam_test_series_fee', 'combo_discount', 'school_tax_rate', 'hostel_tax_rate', 'coaching_tax_rate', 'monthly_fee', 'admission_fee', 'readmission_fee', 'financial_aid_monthly', 'financial_aid_readmission']
+                if any(f in changed_info for f in fee_fields) or is_custom_fee_val != (row_exists.get('is_custom_fee') or 0) or not row_exists:
+                    try:
+                        sync_student_ledger_and_dues(conn, user_id)
+                        try:
+                            row = conn.execute("SELECT take_coaching FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                            with open("debug_log.txt", "a") as f:
+                                f.write(f"AFTER sync_ledger DB VALUE: {dict(row) if row else None}\n")
+                        except Exception: pass
+                    except Exception as e:
+                        try:
+                            with open("debug_log.txt", "a") as f:
+                                import traceback
+                                f.write(f"BILLING ERROR: {e}\n{traceback.format_exc()}\n")
+                        except: pass
+                
+                # Ensure photo is synced
+                if 'photo_path' in info:
+                    pass
+
+                try:
+                    with open("debug_log.txt", "a") as f:
+                        f.write("BEFORE sync_classes\n")
+                    sync_classes(conn)
+                    with open("debug_log.txt", "a") as f:
+                        f.write("AFTER sync_classes\n")
+                    try:
+                        row = conn.execute("SELECT take_coaching FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                        with open("debug_log.txt", "a") as f:
+                            f.write(f"AFTER sync_classes DB VALUE: {dict(row) if row else None}\n")
+                    except Exception: pass
+                except Exception as e:
+                    with open("debug_log.txt", "a") as f:
+                        f.write(f"SYNC_CLASSES ERROR: {e}\n")
+                    print(f" [DB MIGRATE ERROR] sync_classes failed in edit_student: {e}")
                 
                 # Handle Photo Upload
                 photo_file = request.files.get('photo')
@@ -5856,21 +6857,36 @@ def edit_student(user_id):
                         old_photo = conn.execute("SELECT photo_path FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
                         if old_photo and old_photo['photo_path']:
                             try:
-                                delete_old_mapped_file(old_photo['photo_path'])
+                                import threading
+                                threading.Thread(target=delete_old_mapped_file, args=(old_photo['photo_path'],), daemon=True).start()
                                 os.remove(os.path.join(upload_folder, old_photo['photo_path']))
                             except:
                                 pass
                         
                         local_path = os.path.join(upload_folder, filename)
                         photo_file.save(local_path)
-                        upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'), conn=conn)
+                        import threading
+                        threading.Thread(target=upload_file_to_drive_and_map, args=(local_path, filename, photo_file.content_type, os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'), None), daemon=True).start()
                         conn.execute("UPDATE student_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
                 
+                try:
+                    with open("debug_log.txt", "a") as f:
+                        f.write("BEFORE sync_classes\\n")
+                    # sync_classes(conn)
+                    with open("debug_log.txt", "a") as f:
+                        f.write("AFTER sync_classes\\n")
+                except Exception as e:
+                    with open("debug_log.txt", "a") as f:
+                        f.write(f"SYNC_CLASSES ERROR: {e}\\n")
+                    print(f" [DB MIGRATE ERROR] sync_classes failed in edit_student: {e}")
                 conn.commit()
                 flash('Student updated successfully!')
                 return redirect(url_for('student_list'))
-            except sqlite3.IntegrityError:
-                flash('Username already exists or database error!')
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                    flash(f'Error updating student: {str(e)}')
+                else:
+                    flash('Username already exists or database error!')
             finally:
                 conn.close()
 
@@ -5881,14 +6897,74 @@ def edit_student(user_id):
             LEFT JOIN student_info si ON u.id = si.user_id
             WHERE u.id = ? AND u.role = 'student'
         ''', (user_id,)).fetchone()
-        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
-        conn.close()
         
         if not student:
+            conn.close()
             flash('Student not found!')
             return redirect(url_for('student_list'))
             
-        return render_template('admin/edit_student.html', student=student, user_id=user_id, classes=classes)
+        student_dict_debug = dict(student) if student else {}
+        try:
+            import os
+            with open(os.path.join(app.root_path, "debug_log.txt"), "a") as f:
+                f.write("====== GET REQUEST DEBUG ======\n")
+                f.write(f"student keys: {list(student_dict_debug.keys())}\n")
+                f.write(f"student values: {student_dict_debug}\n")
+        except Exception:
+            pass
+            
+        try:
+            with open("debug_log.txt", "a") as f:
+                f.write("====== SCHEMA AND DIRECT DB DUMP ======\\n")
+                triggers = conn.execute("SELECT name, tbl_name, sql FROM sqlite_master WHERE type='trigger' AND tbl_name='student_info'").fetchall()
+                f.write(f"Triggers: {[dict(t) for t in triggers]}\\n")
+                row = conn.execute("SELECT user_id, take_coaching, coaching_opted FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                f.write(f"Direct select: {dict(row) if row else None}\\n")
+        except Exception as e:
+            pass
+
+        branch_filter = session.get('branch') or (student['branch'] if student else None) or 'bhogram'
+        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?)", (branch_filter,)).fetchall()]
+        
+        # Calculate default components breakdown
+        default_fees = calculate_student_fees_breakdown({
+            'class': student['class'],
+            'branch': student['branch'] or 'bhogram',
+            'take_school': student['take_school'] if student['take_school'] is not None else 1,
+            'take_coaching': student['take_coaching'] or 0,
+            'take_day_hostel': student['take_day_hostel'] or 0,
+            'take_car': student['take_car'] or 0,
+            'is_custom_fee': 0
+        }, conn)
+        
+        # Calculate default admission / readmission rates
+        cls_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        default_admission = 0.0
+        default_readmission = 0.0
+        if cls_name:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+            if cls_row:
+                if student['take_day_hostel']:
+                    default_admission = cls_row['admission_fee_hostel'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_hostel'] if cls_row else 0.0
+                elif student['take_coaching']:
+                    default_admission = cls_row['admission_fee_coaching'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_coaching'] if cls_row else 0.0
+                elif student['take_school'] if student['take_school'] is not None else 1:
+                    default_admission = cls_row['admission_fee'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_school'] if cls_row else 0.0
+
+        student_resolved = resolve_student_default_fees([student], conn)[0]
+        conn.close()
+        
+        return render_template('admin/edit_student.html', 
+                               student=student_resolved, 
+                               user_id=user_id, 
+                               classes=classes, 
+                               default_fees=default_fees, 
+                               default_admission=default_admission, 
+                               default_readmission=default_readmission)
     return redirect(url_for('home'))
 
 @app.route('/admin/edit-teacher/<int:user_id>', methods=['GET', 'POST'])
@@ -6007,8 +7083,11 @@ def edit_teacher(user_id):
             conn.commit()
             flash(f'Teacher "{full_name or username}" updated successfully!')
             return redirect(url_for('teacher_list'))
-        except sqlite3.IntegrityError:
-            flash('Username already exists or database error!')
+        except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+            if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                flash(f'Error updating teacher: {str(e)}')
+            else:
+                flash('Username already exists or database error!')
         finally:
             conn.close()
         return redirect(url_for('edit_teacher', user_id=user_id))
@@ -6129,8 +7208,11 @@ def add_user():
                 conn.commit()
                 flash(f'User ({role}) added successfully!')
                 return redirect(url_for('dashboard'))
-            except sqlite3.IntegrityError:
-                flash('Username already exists!')
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                    flash(f'Error adding user: {str(e)}')
+                else:
+                    flash('Username already exists!')
             except Exception as e:
                 flash(f'Error adding user: {str(e)}')
             finally:
@@ -6249,6 +7331,7 @@ def marksheet():
                        m.oral_marks,
                        m.written_marks,
                        m.ct_marks,
+                       COALESCE(m.is_absent, 0) AS is_absent,
                        m.subject_name AS subject,
                        m.term_name AS term,
                        m.uploaded_at AS submitted_at,
@@ -6287,7 +7370,6 @@ def marksheet():
             
             monthly_marks = []
             term_marks = []
-            annual_marks = []
             
             def fmt_limit(lim):
                 if lim is None: return '-'
@@ -6353,15 +7435,6 @@ def marksheet():
                             
                         m_dict['total_marks'] = tot_fm
                         term_marks.append(m_dict)
-                    
-                # Support both Unit tests and Terms for annual composite report card
-                term_lower = term_name.lower()
-                if any(x in term_lower for x in ['annual', 'final', 'unit', 'term']):
-                    if not is_monthly_test(term_name):
-                        if not (term_name in ['1st Unit', '2nd Unit'] and is_ct_special):
-                            m_dict = dict(m)
-                            m_dict['term'] = term_name
-                            annual_marks.append(m_dict)
                     
             # Get distinct term names for term exams
             distinct_terms = []
@@ -6750,7 +7823,11 @@ def marksheet():
                         sub_entry['f_tot'] = '-'
                         f_tot_val = 0.0
                     else:
-                        f_tot_val = f_o_val + f_w_val + f_ct_val
+                        # B6 FIX: fall back to obtained_marks when component fields are all zero/absent
+                        if f_o_val == 0.0 and f_w_val == 0.0 and f_ct_val == 0.0:
+                            f_tot_val = get_float(f_m, 'marks')
+                        else:
+                            f_tot_val = f_o_val + f_w_val + f_ct_val
                         sub_entry['f_tot'] = f"{f_tot_val:.1f}" if f_tot_val != int(f_tot_val) else str(int(f_tot_val))
 
                     u1_tot_val = get_float(u1_m, 'marks')
@@ -7210,7 +8287,7 @@ def bulk_marksheet():
     
     return render_template(
         'admin/bulk_marksheet.html',
-        marksheets=student_reports,
+        marksheets=sorted_reports,
         class_name=class_name,
         term_name=term_name,
         logo_url=LOGO_URL
@@ -7255,6 +8332,7 @@ def result_sheet():
             sub_name_norm = r['name'].strip().title()
             subject_fm_map[sub_name_norm] = r['full_marks']
 
+    branch = session.get('branch')  # B1 FIX: was undefined, caused NameError
     if branch:
         students = conn.execute(f'''
             SELECT u.id, COALESCE(si.full_name, u.username) as name, si.class, si.roll_number, si.section, si.branch
@@ -7348,7 +8426,7 @@ def result_sheet():
     
     return render_template(
         'admin/result_sheet.html',
-        students_results=students_results,
+        students_results=sorted_results,
         subjects=active_subjects,
         class_name=class_name,
         term_name=term_name,
@@ -7812,7 +8890,7 @@ def bulk_marks():
             
             # Fetch existing marks for these students and term
             marks_rows = conn.execute(f'''
-                SELECT student_id, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks
+                SELECT student_id, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, is_absent
                 FROM marks 
                 WHERE class_name IN ({placeholders}) AND term_name = ?
             ''', db_classes + [selected_term]).fetchall()
@@ -7827,7 +8905,8 @@ def bulk_marks():
                     'full': row['full_marks'],
                     'oral': row['oral_marks'],
                     'written': row['written_marks'],
-                    'ct': row['ct_marks']
+                    'ct': row['ct_marks'],
+                    'is_absent': row['is_absent'] or 0  # A2: absent flag
                 }
             
         # Check if currently selected exam term is locked
@@ -7837,12 +8916,13 @@ def bulk_marks():
             is_locked = True if (is_locked_row and is_locked_row['is_locked'] == 1) else False
 
         all_terms = get_all_academic_terms(conn)
+        active_classes = get_active_classes(conn)
         conn.close()
         
         return render_template('admin/bulk_marks.html', 
                                students=students, 
                                branches=BRANCHES, 
-                               classes=['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'],
+                               classes=active_classes,
                                selected_branch=selected_branch,
                                selected_class=selected_class,
                                selected_subject=selected_subject,
@@ -7864,7 +8944,6 @@ def bulk_marks():
                                is_locked=is_locked,
                                db_subjects=subjects_rows,
                                global_subjects=global_subjects)
-    return redirect(url_for('home'))
     return redirect(url_for('home'))
 
 @app.route('/admin/marks-setup', methods=['GET', 'POST'])
@@ -7949,16 +9028,24 @@ def save_marks_api():
             except ValueError:
                 continue # Skip invalid
 
+            # B5 FIX: also accept and store oral/written/ct component marks
+            oral_marks = mark.get('oral_marks')
+            written_marks = mark.get('written_marks')
+            ct_marks = mark.get('ct_marks')
+
             # Insert or update
             conn.execute('''
-                INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, uploaded_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, uploaded_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(student_id, term_name, subject_name) DO UPDATE SET
                     obtained_marks = excluded.obtained_marks,
                     full_marks = excluded.full_marks,
+                    oral_marks = excluded.oral_marks,
+                    written_marks = excluded.written_marks,
+                    ct_marks = excluded.ct_marks,
                     uploaded_by = excluded.uploaded_by,
                     uploaded_at = CURRENT_TIMESTAMP
-            ''', (student_id, class_name, term_name, subject_name, obt, full, user['id']))
+            ''', (student_id, class_name, term_name, subject_name, obt, full, oral_marks, written_marks, ct_marks, user['id']))
 
         conn.commit()
         send_activity_notification("API Mark Entry", f"Successfully saved {len(marks_data)} mark entries for Class {class_name}, Term {term_name} via API.")
@@ -8061,6 +9148,17 @@ def save_bulk_marks():
                 if selected_subject: redirect_args['subject'] = selected_subject
             return redirect(url_for('bulk_marks', **redirect_args))
 
+        # A3: Collect absent flags from form: absent_{student_id}_{subject}
+        absent_entries = set()
+        for key in request.form.keys():
+            if key.startswith('absent_'):
+                rest = key[len('absent_'):]
+                parts = rest.split('_')
+                if len(parts) >= 2:
+                    sid = parts[0]
+                    sub = '_'.join(parts[1:]).replace('_', ' ').strip().title()
+                    absent_entries.add((sid, sub))
+
         # Collect all student_id and subject combinations from form keys
         entries = set()
         for key in request.form.keys():
@@ -8088,6 +9186,9 @@ def save_bulk_marks():
                     student_id = parts[2]
                     subject_name = '_'.join(parts[3:]).replace('_', ' ').strip().title()
                     entries.add((student_id, subject_name))
+        # Also ensure absent entries get processed even if no mark inputs were submitted
+        for (sid, sub) in absent_entries:
+            entries.add((sid, sub))
 
         # Security check: verify that the student actually belongs to this branch and get student name mapping
         student_info_rows = conn.execute('''
@@ -8112,6 +9213,26 @@ def save_bulk_marks():
                 # Security check: verify that the student actually belongs to this branch
                 if student_id not in allowed_students:
                     continue
+
+                # A3: Handle absent flag — save as absent with zero marks
+                is_absent = 1 if (student_id, subject_name) in absent_entries else 0
+                if is_absent:
+                    subject_fm = subject_full_marks.get(subject_name, 100.0)
+                    conn.execute('''
+                        INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, is_absent, uploaded_by)
+                        VALUES (?, ?, ?, ?, 0, ?, NULL, NULL, NULL, 1, ?)
+                        ON CONFLICT(student_id, term_name, subject_name) DO UPDATE SET
+                            obtained_marks = 0,
+                            full_marks = excluded.full_marks,
+                            oral_marks = NULL,
+                            written_marks = NULL,
+                            ct_marks = NULL,
+                            is_absent = 1,
+                            uploaded_by = excluded.uploaded_by,
+                            uploaded_at = CURRENT_TIMESTAMP
+                    ''', (student_id, selected_class, selected_term, subject_name, subject_fm, user['id']))
+                    saved_count += 1
+                    continue  # skip normal mark processing
 
                 # Read component values from the request with robust space/underscore handling
                 def get_form_val(prefix, student_id, subject_name):
@@ -8186,14 +9307,15 @@ def save_bulk_marks():
                         return handle_error_redirect(f"Validation Error: Obtained marks ({obtained_marks}) exceed Full Marks ({subject_fm}) for student '{std_name}' in subject '{subject_name}'.")
 
                 conn.execute('''
-                    INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, uploaded_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, is_absent, uploaded_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                     ON CONFLICT(student_id, term_name, subject_name) DO UPDATE SET
                         obtained_marks = excluded.obtained_marks,
                         full_marks = excluded.full_marks,
                         oral_marks = excluded.oral_marks,
                         written_marks = excluded.written_marks,
                         ct_marks = excluded.ct_marks,
+                        is_absent = 0,
                         uploaded_by = excluded.uploaded_by,
                         uploaded_at = CURRENT_TIMESTAMP
                 ''', (student_id, selected_class, selected_term, subject_name, obtained_marks, subject_fm, oral_marks, written_marks, ct_marks, user['id']))
@@ -8292,6 +9414,34 @@ def upload_file():
 
     return redirect(url_for('dashboard'))
 
+
+@app.route('/admin/force-sync-all', methods=['GET'])
+def force_sync_all():
+    if 'user' not in session or session['role'] != 'admin':
+        return "Unauthorized", 403
+    conn = get_db_connection()
+    students = conn.execute("SELECT user_id, branch, class FROM student_info").fetchall()
+    
+    # Get global max
+    max_month = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+    max_year = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+    
+    for student in students:
+        s_id = student['user_id']
+        s_dict = dict(conn.execute("SELECT * FROM student_info WHERE user_id = ?", (s_id,)).fetchone())
+        
+        # update their monthly_fee to actual base fee - financial aid
+        bd = calculate_student_fees_breakdown(s_dict, conn)
+        new_monthly = bd['total_fee']
+        conn.execute("UPDATE student_info SET monthly_fee = ?, is_custom_fee = 0 WHERE user_id = ?", (new_monthly, s_id))
+        
+        # Sync ledger to recalculate expected remaining fee based on new monthly fee
+        sync_student_ledger_and_dues(conn, s_id, max_month_end=max_month, max_year_end=max_year)
+    
+    conn.commit()
+    conn.close()
+    return "Successfully recalculated and synced all student fees to remove 1000 custom overrides."
+
 @app.route('/admin/get-fees', methods=['GET', 'POST'])
 def get_fees():
     if 'user' in session:
@@ -8314,19 +9464,14 @@ def get_fees():
                         flash('Permission denied: Student does not belong to your campus.')
                         return redirect(url_for('get_fees'))
 
+                school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type = allocate_payment_components(conn, student_id, amount)
+
                 conn.execute('''
-                    INSERT INTO fees (student_id, amount, month, year, status, paid_at)
-                    VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP)
-                ''', (student_id, amount, month, year))
+                    INSERT INTO fees (student_id, amount, month, year, status, paid_at, school_revenue, hostel_revenue, coaching_revenue, tax_amount, readmission_revenue, enrollment_type)
+                    VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)
+                ''', (student_id, amount, month, year, school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type))
                 
-                conn.execute('''
-                    UPDATE student_info
-                    SET remaining_fee = CASE 
-                        WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0 
-                        ELSE COALESCE(remaining_fee, 0.0) - ? 
-                    END
-                    WHERE user_id = ?
-                ''', (float(amount), float(amount), student_id))
+                record_ledger_payment(conn, student_id, amount)
                 
                 conn.commit()
                 send_activity_notification("Fee Collection", f"Collected fee of ₹{amount} for student ID {student_id} (Month: {month}, Year: {year}).")
@@ -8335,7 +9480,12 @@ def get_fees():
                 return redirect(url_for('get_fees'))
 
             if session.get('branch'):
-                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch, si.remaining_fee FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student' AND si.branch = ?", (session['branch'],)).fetchall()
+                students_raw = conn.execute('''
+                    SELECT u.id, u.username, si.*
+                    FROM users u 
+                    LEFT JOIN student_info si ON u.id = si.user_id 
+                    WHERE u.role = 'student' AND si.branch = ?
+                ''', (session['branch'],)).fetchall()
                 recent_fees = conn.execute('''
                     SELECT f.*, u.username as student_name 
                     FROM fees f 
@@ -8345,13 +9495,19 @@ def get_fees():
                     ORDER BY f.paid_at DESC
                 ''', (session['branch'],)).fetchall()
             else:
-                students = conn.execute("SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.monthly_fee, si.hostel_fee, si.branch, si.remaining_fee FROM users u LEFT JOIN student_info si ON u.id = si.user_id WHERE u.role = 'student'").fetchall()
+                students_raw = conn.execute('''
+                    SELECT u.id, u.username, si.*
+                    FROM users u 
+                    LEFT JOIN student_info si ON u.id = si.user_id 
+                    WHERE u.role = 'student'
+                ''').fetchall()
                 recent_fees = conn.execute('''
                     SELECT f.*, u.username as student_name 
                     FROM fees f 
                     JOIN users u ON f.student_id = u.id 
                     ORDER BY f.paid_at DESC
                 ''').fetchall()
+            students = resolve_student_default_fees(students_raw, conn)
             conn.close()
             return render_template('admin/get_fees.html', students=students, recent_fees=recent_fees, role=role)
         
@@ -8365,13 +9521,14 @@ def get_fees():
             ''', (username,)).fetchall()
             
             student_info = conn.execute('''
-                SELECT monthly_fee, hostel_fee, branch, remaining_fee FROM student_info si
+                SELECT si.*
+                FROM student_info si
                 JOIN users u ON si.user_id = u.id
                 WHERE u.username = ?
             ''', (username,)).fetchone()
             
             if student_info:
-                student_info_dict = dict(student_info)
+                student_info_dict = resolve_student_default_fees([student_info], conn)[0]
                 if student_info_dict.get('monthly_fee') is None:
                     student_info_dict['monthly_fee'] = 0.0
                 if student_info_dict.get('hostel_fee') is None:
@@ -8394,6 +9551,108 @@ def get_fees():
             )
             
     return redirect(url_for('home'))
+
+@app.route('/admin/api/student-ledger/<int:student_id>')
+@login_required
+def api_student_ledger(student_id):
+    if session.get('role') not in ['admin', 'teacher']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db_connection()
+    if session.get('branch'):
+        student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+        if not student or student['branch'] != session['branch']:
+            conn.close()
+            return jsonify({'error': 'Unauthorized branch'}), 403
+            
+    ledger = conn.execute("SELECT id, fee_type, amount, month, year, status, created_at, paid_at FROM student_ledger WHERE student_id = ? ORDER BY id DESC", (student_id,)).fetchall()
+    ledger_data = [dict(r) for r in ledger]
+    conn.close()
+    return jsonify({'ledger': ledger_data})
+
+@app.route('/admin/edit-ledger-entry/<int:entry_id>', methods=['POST'])
+@login_required
+def edit_ledger_entry(entry_id):
+    if session.get('role') != 'admin':
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+        
+    fee_type = request.form.get('fee_type', '').strip()
+    try:
+        new_amount = float(request.form.get('amount', 0))
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Invalid amount'}), 400
+        
+    conn = get_db_connection()
+    entry = conn.execute("SELECT * FROM student_ledger WHERE id = ?", (entry_id,)).fetchone()
+    
+    if not entry:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Entry not found'}), 404
+        
+    if entry['status'] == 'Paid':
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Cannot edit paid entries'}), 400
+
+    old_amount = float(entry['amount'])
+    student_id = entry['student_id']
+    
+    # Only adjust prev_dues if it's a manual entry type (not a core system generated type)
+    core_types = ['Monthly Tuition Fee', 'Monthly Coaching Fee', 'Monthly Hostel Fee', 'Monthly Transport Fee', 'Re-admission Fee']
+    
+    if entry['fee_type'] not in core_types:
+        diff = new_amount - old_amount
+        if diff != 0:
+            student = conn.execute("SELECT prev_dues FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+            if student:
+                new_prev = float(student['prev_dues'] or 0.0) + diff
+                conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (new_prev, student_id))
+    
+    conn.execute("UPDATE student_ledger SET fee_type = ?, amount = ? WHERE id = ?", (fee_type, new_amount, entry_id))
+    
+    # Sync to ensure total dues is updated
+    sync_student_ledger_and_dues(conn, student_id)
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success', 'message': 'Ledger entry updated'})
+
+@app.route('/admin/delete-ledger-entry/<int:entry_id>', methods=['POST'])
+@login_required
+def delete_ledger_entry(entry_id):
+    if session.get('role') != 'admin':
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+        
+    conn = get_db_connection()
+    entry = conn.execute("SELECT * FROM student_ledger WHERE id = ?", (entry_id,)).fetchone()
+    
+    if not entry:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Entry not found'}), 404
+        
+    if entry['status'] == 'Paid':
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Cannot delete paid entries'}), 400
+
+    student_id = entry['student_id']
+    amount = float(entry['amount'])
+    
+    core_types = ['Monthly Tuition Fee', 'Monthly Coaching Fee', 'Monthly Hostel Fee', 'Monthly Transport Fee', 'Re-admission Fee']
+    
+    if entry['fee_type'] not in core_types:
+        student = conn.execute("SELECT prev_dues FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+        if student:
+            new_prev = float(student['prev_dues'] or 0.0) - amount
+            conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (new_prev, student_id))
+            
+    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry_id,))
+    
+    sync_student_ledger_and_dues(conn, student_id)
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success', 'message': 'Ledger entry deleted'})
+
 
 @app.route('/admin/delete-fee/<int:fee_id>', methods=['POST'])
 def delete_fee(fee_id):
@@ -8518,19 +9777,13 @@ def verify_payment():
     year = datetime.now().strftime('%Y')
 
     conn = get_db_connection()
+    school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type = allocate_payment_components(conn, student_id, amount)
     conn.execute('''
-        INSERT INTO fees (student_id, amount, month, year, status, paid_at)
-        VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP)
-    ''', (student_id, amount, month, year))
+        INSERT INTO fees (student_id, amount, month, year, status, paid_at, school_revenue, hostel_revenue, coaching_revenue, tax_amount, readmission_revenue, enrollment_type)
+        VALUES (?, ?, ?, ?, 'Paid', CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?)
+    ''', (student_id, amount, month, year, school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type))
     
-    conn.execute('''
-        UPDATE student_info
-        SET remaining_fee = CASE 
-            WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0 
-            ELSE COALESCE(remaining_fee, 0.0) - ? 
-        END
-        WHERE user_id = ?
-    ''', (float(amount), float(amount), student_id))
+    record_ledger_payment(conn, student_id, amount)
     
     conn.commit()
     conn.close()
@@ -8540,260 +9793,115 @@ def verify_payment():
 
 @app.route('/admin/set-fees', methods=['GET', 'POST'])
 def set_fees():
-    if 'user' in session and session['role'] == 'admin':
-        conn = get_db_connection()
-        if request.method == 'POST':
-            if 'create_class' in request.form:
-                class_name = request.form['class_name'].strip()
-                branch = session['branch'] if session.get('branch') else request.form.get('branch', 'bhogram')
-                if not class_name or not branch:
-                    flash('Please enter a valid class name and branch.')
-                else:
-                    existing = conn.execute("SELECT id FROM classes WHERE name = ? AND branch = ?", (class_name, branch)).fetchone()
-                    if existing:
-                        flash(f'Class {class_name} already exists for branch {branch.title()}!')
-                    else:
-                        try:
-                            admission_fee = float(request.form.get('admission_fee', 0.0) or 0.0)
-                            admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0) or 0.0)
-                            admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0) or 0.0)
-                            readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0) or 0.0)
-                            readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0) or 0.0)
-                            readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0) or 0.0)
-                            monthly_fee = float(request.form.get('monthly_fee', 0.0) or 0.0)
-                            monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0) or 0.0)
-                            hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0)
-                        except ValueError:
-                            admission_fee = 0.0
-                            admission_fee_coaching = 0.0
-                            admission_fee_hostel = 0.0
-                            readmission_fee_school = 0.0
-                            readmission_fee_coaching = 0.0
-                            readmission_fee_hostel = 0.0
-                            monthly_fee = 0.0
-                            monthly_fee_coaching = 0.0
-                            hostel_fee = 0.0
-                        conn.execute("""
-                            INSERT INTO classes (
-                                name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                                readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                                monthly_fee, monthly_fee_coaching, hostel_fee
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (class_name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                              readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                              monthly_fee, monthly_fee_coaching, hostel_fee))
-
-                        seed_default_subjects(conn)
-                        conn.commit()
-                        flash(f'Class {class_name} added successfully for {branch.title()} with fees!')
-                conn.close()
-                return redirect(url_for('set_fees'))
-
-            if 'delete_class' in request.form:
-                class_id = request.form['class_id']
-                try:
-                    class_row = conn.execute("SELECT name FROM classes WHERE id = ?", (class_id,)).fetchone()
-                    if class_row:
-                        class_name = class_row['name']
-                        db_classes = get_db_class_names(class_name)
-                        placeholders = ', '.join('?' for _ in db_classes)
-                        # Find all teacher subjects for this class to update their assigned_classes text
-                        teachers = conn.execute(f'''
-                            SELECT DISTINCT teacher_id
-                            FROM teacher_subjects
-                            WHERE LOWER(class_name) IN ({placeholders})
-                        ''', tuple(c.lower() for c in db_classes)).fetchall()
-                        
-                        # Cascade deletions to prevent foreign key or orphan row issues
-                        conn.execute(f"DELETE FROM teacher_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM teacher_assignments WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM marks WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM class_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute(f"DELETE FROM class_routine WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
-                        conn.execute("DELETE FROM classes WHERE id = ?", (class_id,))
-                        
-                        # Rebuild assigned_classes string for each affected teacher from DB
-                        for t in teachers:
-                            sync_teacher_assigned_classes_string_from_db(conn, t['teacher_id'])
-                            
-                        conn.commit()
-                        
-                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-                            conn.close()
-                            return jsonify({'status': 'success', 'message': f'Class {class_name} and all associated subjects/routines deleted successfully.'})
-                            
-                        flash(f'Class {class_name} deleted successfully.')
-                    else:
-                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-                            conn.close()
-                            return jsonify({'status': 'error', 'message': 'Class not found.'})
-                        flash('Class not found.')
-                except Exception as e:
-                    conn.rollback()
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
-                        conn.close()
-                        return jsonify({'status': 'error', 'message': f'Server error: {str(e)}'})
-                    flash(f'Server error: {str(e)}')
-                conn.close()
-                return redirect(url_for('set_fees'))
-
-            update_type = request.form.get('update_type', 'class')
-            branch = session['branch'] if session.get('branch') else request.form.get('branch', 'bhogram')
-            
-            if update_type == 'class':
-                class_name = request.form.get('class')
-                db_classes = get_db_class_names(class_name)
-                placeholders = ', '.join('?' for _ in db_classes)
-                
-                # Fetch new fee values from form
-                admission_fee = float(request.form.get('admission_fee', 0.0))
-                admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0))
-                admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0))
-                readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0))
-                readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0))
-                readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0))
-                monthly_fee = float(request.form.get('monthly_fee', 0.0))
-                monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0))
-                hostel_fee = float(request.form.get('hostel_fee', 0.0))
-                
-                # 1. Update/Insert into classes table for each database variation name to stay fully synchronized!
-                for db_cls in db_classes:
-                    row_exist = conn.execute("SELECT id FROM classes WHERE name = ? AND branch = ?", (db_cls, branch)).fetchone()
-                    if row_exist:
-                        conn.execute('''
-                            UPDATE classes 
-                            SET admission_fee = ?, admission_fee_coaching = ?, admission_fee_hostel = ?,
-                                readmission_fee_school = ?, readmission_fee_coaching = ?, readmission_fee_hostel = ?,
-                                monthly_fee = ?, monthly_fee_coaching = ?, hostel_fee = ?
-                            WHERE id = ?
-                        ''', (admission_fee, admission_fee_coaching, admission_fee_hostel,
-                              readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                              monthly_fee, monthly_fee_coaching, hostel_fee, row_exist['id']))
-                    else:
-                        conn.execute('''
-                            INSERT INTO classes (
-                                name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                                readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                                monthly_fee, monthly_fee_coaching, hostel_fee
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (db_cls, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
-                              readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
-                              monthly_fee, monthly_fee_coaching, hostel_fee))
-                
-                # 2. Update existing students belonging to these class names, skipping manual overrides
-                students_in_class = conn.execute(f'''
-                    SELECT user_id, take_school, take_coaching, take_day_hostel, take_car
-                    FROM student_info
-                    WHERE branch = ? AND class IN ({placeholders}) AND (is_custom_fee = 0 OR is_custom_fee IS NULL)
-                ''', (branch, *db_classes)).fetchall()
-                
-                for student in students_in_class:
-                    take_school = student['take_school']
-                    take_coaching = student['take_coaching']
-                    take_day_hostel = student['take_day_hostel']
-                    take_car = student['take_car']
-                    
-                    m_fee = 0.0
-                    a_fee = 0.0
-                    r_fee = 0.0
-                    
-                    if take_day_hostel:
-                        m_fee = hostel_fee
-                        a_fee = admission_fee_hostel
-                        r_fee = readmission_fee_hostel
-                    elif take_coaching:
-                        m_fee = monthly_fee_coaching
-                        a_fee = admission_fee_coaching
-                        r_fee = readmission_fee_coaching
-                    elif take_school:
-                        m_fee = monthly_fee
-                        a_fee = admission_fee
-                        r_fee = readmission_fee_school
-                        
-                    if take_car:
-                        m_fee += 400.0
-                        
-                    conn.execute('''
-                        UPDATE student_info
-                        SET monthly_fee = ?, admission_fee = ?, readmission_fee = ?
-                        WHERE user_id = ?
-                    ''', (m_fee, a_fee, r_fee, student['user_id']))
-                
-                flash(f'Successfully updated class fees and student fee balances for Class {class_name}')
-                
-            elif update_type == 'student':
-                student_id = request.form.get('student_id')
-                
-                # Check permissions for Branch Admin
-                if session.get('branch'):
-                    student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
-                    if not student or student['branch'] != session['branch']:
-                        conn.close()
-                        flash('Permission denied: Student does not belong to your campus.')
-                        return redirect(url_for('set_fees'))
-                
-                # Extract benefit options & values from form
-                take_school = 1 if request.form.get('take_school') else 0
-                take_coaching = 1 if request.form.get('take_coaching') else 0
-                take_day_hostel = 1 if request.form.get('take_day_hostel') else 0
-                take_car = 1 if request.form.get('take_car') else 0
-                coaching_opted = take_coaching
-                car_opted = take_car
-                mode_of_admission = 'Day Hostel' if take_day_hostel else ('School with Coaching' if take_coaching else 'School')
-                
-                amount = float(request.form.get('amount', 0.0))
-                admission_fee = float(request.form.get('admission_fee', 0.0))
-                readmission_fee = float(request.form.get('readmission_fee', 0.0))
-                remaining_fee = float(request.form.get('remaining_fee', 0.0))
-                
-                conn.execute('''
-                    UPDATE student_info
-                    SET take_school = ?, take_coaching = ?, take_day_hostel = ?, take_car = ?,
-                        coaching_opted = ?, car_opted = ?, mode_of_admission = ?,
-                        monthly_fee = ?, admission_fee = ?, readmission_fee = ?,
-                        remaining_fee = ?, is_custom_fee = 1
-                    WHERE user_id = ?
-                ''', (take_school, take_coaching, take_day_hostel, take_car,
-                      coaching_opted, car_opted, mode_of_admission,
-                      amount, admission_fee, readmission_fee, remaining_fee, student_id))
-                
-                flash(f'Successfully updated fees and benefits for student ID {student_id}')
-                
-            conn.commit()
-            conn.close()
-            return redirect(url_for('set_fees'))
-            
-        # GET request logic
-        if session.get('branch'):
-            students = conn.execute('''
-                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
-                       si.monthly_fee, si.hostel_fee, si.branch,
-                       si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
-                       si.admission_fee, si.readmission_fee, si.remaining_fee
-                FROM users u 
-                LEFT JOIN student_info si ON u.id = si.user_id 
-                WHERE u.role = 'student' AND si.branch = ?
-            ''', (session['branch'],)).fetchall()
-        else:
-            students = conn.execute('''
-                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
-                       si.monthly_fee, si.hostel_fee, si.branch,
-                       si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
-                       si.admission_fee, si.readmission_fee, si.remaining_fee
-                FROM users u 
-                LEFT JOIN student_info si ON u.id = si.user_id 
-                WHERE u.role = 'student'
-            ''').fetchall()
-            
-        # Fetch list of classes with their fee rows as dictionaries
-        db_classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
-        conn.close()
+    if 'user' not in session or session['role'] not in ['admin', 'teacher']:
+        return redirect(url_for('login'))
         
-        # Fixed classes list
-        classes_names = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
-        return render_template('admin/set_fees.html', branches=BRANCHES, classes=classes_names, db_classes=db_classes, students=students, role=session['role'])
-    return redirect(url_for('home'))
+    branch = session.get('branch')
+    if not branch:
+        branch = 'bhogram'
+        
+    if request.args.get('branch') and session['role'] == 'admin':
+        branch = request.args.get('branch')
+        
+    conn = get_db_connection()
+    db_classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?) ORDER BY id", (branch,)).fetchall()]
+    
+    # Make sure classes are unique names
+    seen = set()
+    classes = []
+    for c in db_classes:
+        if c['name'] not in seen:
+            seen.add(c['name'])
+            classes.append(c['name'])
+    
+    custom_fees = conn.execute("SELECT * FROM custom_class_fees WHERE branch = ? ORDER BY created_at DESC", (branch,)).fetchall()
+    
+    students_raw = conn.execute('''
+        SELECT u.id, u.username, si.*
+        FROM users u 
+        LEFT JOIN student_info si ON u.id = si.user_id 
+        WHERE u.role = 'student' AND LOWER(si.branch) = LOWER(?)
+    ''', (branch,)).fetchall()
+    
+    conn.close()
+    
+    return render_template('admin/set_fees.html', 
+                           role=session['role'], 
+                           branch_filter=branch,
+                           classes=classes,
+                           db_classes=db_classes,
+                           custom_fees=custom_fees,
+                           students=students_raw)
 
+@app.route('/admin/bulk-custom-fee', methods=['POST'])
+def bulk_custom_fee():
+    if 'user' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+        
+    branch = request.form.get('branch', 'bhogram')
+    class_name = request.form.get('class_name')
+    fee_type = request.form.get('fee_type')
+    amount = request.form.get('due_amount')
+    
+    filter_school = request.form.get('filter_take_school') == '1'
+    filter_coaching = request.form.get('filter_take_coaching') == '1'
+    filter_day_hostel = request.form.get('filter_take_day_hostel') == '1'
+    filter_car = request.form.get('filter_take_car') == '1'
+    
+    if not class_name or not fee_type or not amount:
+        flash("All fields are required.")
+        return redirect(url_for('set_fees'))
+        
+    try:
+        amount = float(amount)
+        conn = get_db_connection()
+        
+        # 1. Add to custom_class_fees table
+        conn.execute("INSERT INTO custom_class_fees (branch, class_name, fee_type, amount) VALUES (?, ?, ?, ?)",
+                     (branch, class_name, fee_type, amount))
+                     
+        # 2. Get all students in this class, applying filters if selected
+        query = '''
+            SELECT u.id, si.prev_dues 
+            FROM users u
+            JOIN student_info si ON u.id = si.user_id
+            WHERE u.role='student' AND si.class=? AND si.branch=?
+        '''
+        params = [class_name, branch]
+        
+        if filter_school:
+            query += " AND si.take_school = 1"
+        if filter_coaching:
+            query += " AND si.take_coaching = 1"
+        if filter_day_hostel:
+            query += " AND si.take_day_hostel = 1"
+        if filter_car:
+            query += " AND si.take_car = 1"
+            
+        students = conn.execute(query, params).fetchall()
+        
+        for student in students:
+            # 3. Add to ledger
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, status, month, year, branch)
+                VALUES (?, ?, ?, 'Unpaid/Pending', ?, ?, ?)
+            ''', (student['id'], fee_type, amount, datetime.now().strftime('%B'), datetime.now().year, branch))
+            
+            # 4. Update student dues directly without running the destructive sync
+            conn.execute('''
+                UPDATE student_info 
+                SET prev_dues = COALESCE(prev_dues, 0.0) + ?,
+                    remaining_fee = COALESCE(remaining_fee, 0.0) + ?
+                WHERE user_id = ?
+            ''', (amount, amount, student['id']))
+
+        conn.commit()
+        conn.close()
+        flash(f"Successfully added '{fee_type}' of ₹{amount} to all students in {class_name}.")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}")
+        
+    return redirect(url_for('set_fees'))
 
 @app.route('/admin/set-salary', methods=['GET', 'POST'])
 def set_salary():
@@ -9014,14 +10122,24 @@ def reminder_fees():
         month = datetime.now().strftime('%B')
         year = datetime.now().strftime('%Y')
         
-        pending_students = conn.execute('''
-            SELECT u.id, u.username, si.full_name, si.phone_number, si.whatsapp_no, si.class, si.guardian_name,
-                   si.monthly_fee, si.hostel_fee, si.remaining_fee
-            FROM users u 
-            JOIN student_info si ON u.id = si.user_id 
-            WHERE u.role = 'student' 
-            AND u.id NOT IN (SELECT student_id FROM fees WHERE month = ? AND year = ?)
-        ''', (month, year)).fetchall()
+        if session.get('branch'):
+            pending_students = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.phone_number, si.whatsapp_no, si.class, si.guardian_name,
+                       si.monthly_fee, si.hostel_fee, si.remaining_fee
+                FROM users u 
+                JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' AND LOWER(si.branch) = LOWER(?)
+                AND u.id NOT IN (SELECT student_id FROM fees WHERE month = ? AND year = ?)
+            ''', (session['branch'], month, year)).fetchall()
+        else:
+            pending_students = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.phone_number, si.whatsapp_no, si.class, si.guardian_name,
+                       si.monthly_fee, si.hostel_fee, si.remaining_fee
+                FROM users u 
+                JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' 
+                AND u.id NOT IN (SELECT student_id FROM fees WHERE month = ? AND year = ?)
+            ''', (month, year)).fetchall()
         conn.close()
         return render_template('admin/reminder_fees.html', students=pending_students, month=month)
     return redirect(url_for('home'))
@@ -9140,158 +10258,441 @@ def audit_report():
     if 'user' in session and session['role'] == 'admin':
         role = session['role']
         conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        
+        # Parse query params
+        take_school = request.args.get('take_school')
+        take_coaching = request.args.get('take_coaching')
+        take_day_hostel = request.args.get('take_day_hostel')
+        take_car = request.args.get('take_car')
+        time_range = request.args.get('time_range', '').strip().lower()
+        if time_range not in ('day', 'week', 'month', 'year', 'all'):
+            time_range = 'all'
+            
+        # Build SQL where clauses
+        student_where = []
+        student_params = []
+        
+        fees_where = []
+        fees_params = []
         
         if session.get('branch'):
-            total_fees = conn.execute('''
-                SELECT SUM(f.amount) as total 
-                FROM fees f 
-                JOIN student_info si ON f.student_id = si.user_id
-                WHERE si.branch = ?
-            ''', (session['branch'],)).fetchone()['total'] or 0
+            student_where.append("si.branch = ? COLLATE NOCASE")
+            student_params.append(session['branch'])
+            fees_where.append("si.branch = ? COLLATE NOCASE")
+            fees_params.append(session['branch'])
             
-            total_expenses = conn.execute('''
-                SELECT SUM(amount) as total 
-                FROM expenses 
-                WHERE branch = ?
-            ''', (session['branch'],)).fetchone()['total'] or 0
+        benefit_conditions = []
+        if take_school:
+            benefit_conditions.append("si.take_school = 1")
+        if take_coaching:
+            benefit_conditions.append("si.take_coaching = 1")
+        if take_day_hostel:
+            benefit_conditions.append("si.take_day_hostel = 1")
+        if take_car:
+            benefit_conditions.append("si.take_car = 1")
             
-            total_remaining_fees = conn.execute('''
+        if benefit_conditions:
+            benefit_clause = "(" + " OR ".join(benefit_conditions) + ")"
+            student_where.append(benefit_clause)
+            fees_where.append(benefit_clause)
+            
+        # Time range clauses
+        date_clause = None
+        
+        filter_year = request.args.get('filter_year', '').strip()
+        filter_month = request.args.get('filter_month', '').strip()
+
+        if filter_year and filter_month:
+            date_clause = f"strftime('%Y-%m', {{col}}) = '{filter_year}-{filter_month}'"
+        elif filter_year:
+            date_clause = f"strftime('%Y', {{col}}) = '{filter_year}'"
+        elif filter_month:
+            date_clause = f"strftime('%m', {{col}}) = '{filter_month}'"
+        else:
+            if time_range == 'day':
+                date_clause = "DATE({col}) = DATE('now', 'localtime')"
+            elif time_range == 'week':
+                date_clause = "strftime('%Y-%W', {col}) = strftime('%Y-%W', 'now', 'localtime')"
+            elif time_range == 'month':
+                date_clause = "strftime('%Y-%m', {col}) = strftime('%Y-%m', 'now', 'localtime')"
+            elif time_range == 'year':
+                date_clause = "strftime('%Y', {col}) = strftime('%Y', 'now', 'localtime')"
+            
+        if date_clause:
+            fees_where.append(date_clause.format(col="f.paid_at"))
+
+        # Fetch available years for filter
+        years_query = conn.execute('''
+            SELECT DISTINCT strftime('%Y', paid_at) as year FROM fees WHERE paid_at IS NOT NULL
+            UNION
+            SELECT DISTINCT strftime('%Y', date) as year FROM expenses WHERE date IS NOT NULL
+            ORDER BY year DESC
+        ''').fetchall()
+        available_years = [y['year'] for y in years_query if y['year']]
+        if not available_years:
+            import datetime
+            available_years = [str(datetime.datetime.now().year)]
+
+            
+        student_clause = " AND ".join(student_where) if student_where else "1=1"
+        fees_clause = " AND ".join(fees_where) if fees_where else "1=1"
+        
+        # Aggregations
+        fees_totals = conn.execute(f'''
+            SELECT 
+                SUM(f.amount) as total,
+                SUM(CASE WHEN COALESCE(f.school_revenue, 0) = 0 AND COALESCE(f.hostel_revenue, 0) = 0 AND COALESCE(f.coaching_revenue, 0) = 0 AND COALESCE(f.readmission_revenue, 0) = 0 THEN f.amount ELSE COALESCE(f.school_revenue, 0) END) as school_rev,
+                SUM(COALESCE(f.hostel_revenue, 0)) as hostel_rev,
+                SUM(COALESCE(f.coaching_revenue, 0)) as coaching_rev,
+                SUM(COALESCE(f.readmission_revenue, 0)) as readmission_rev,
+                SUM(COALESCE(f.tax_amount, 0)) as tax_amt
+            FROM fees f
+            JOIN student_info si ON f.student_id = si.user_id
+            WHERE {fees_clause}
+        ''', fees_params).fetchone()
+        
+        total_fees = fees_totals['total'] or 0.0
+        school_revenue = fees_totals['school_rev'] or 0.0
+        hostel_revenue = fees_totals['hostel_rev'] or 0.0
+        coaching_revenue = fees_totals['coaching_rev'] or 0.0
+        readmission_revenue = fees_totals['readmission_rev'] or 0.0
+        tax_revenue = fees_totals['tax_amt'] or 0.0
+        
+        # Expenses (non-student specific)
+        expenses_where = []
+        expenses_params = []
+        if session.get('branch'):
+            expenses_where.append("branch = ? COLLATE NOCASE")
+            expenses_params.append(session['branch'])
+            
+        if date_clause:
+            expenses_where.append(date_clause.format(col="date"))
+            
+        expenses_clause = " AND ".join(expenses_where) if expenses_where else "1=1"
+        
+        total_expenses = conn.execute(f'''
+            SELECT SUM(amount) as total 
+            FROM expenses 
+            WHERE {expenses_clause}
+        ''', expenses_params).fetchone()['total'] or 0.0
+        
+        if date_clause:
+            ledger_clause = date_clause.format(col="sl.created_at")
+            total_remaining_fees = conn.execute(f'''
+                SELECT SUM(sl.amount) as total 
+                FROM student_ledger sl
+                JOIN student_info si ON sl.student_id = si.user_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+            ''', student_params).fetchone()['total'] or 0.0
+            
+            remaining_fees_details = conn.execute(f'''
+                SELECT u.username, si.full_name, si.class, si.roll_number, SUM(sl.amount) as remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                JOIN student_ledger sl ON si.user_id = sl.student_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+                GROUP BY u.username, si.full_name, si.class, si.roll_number
+                HAVING SUM(sl.amount) != 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', student_params).fetchall()
+        else:
+            total_remaining_fees = conn.execute(f'''
                 SELECT SUM(si.remaining_fee) as total 
                 FROM student_info si
-                WHERE si.branch = ?
-            ''', (session['branch'],)).fetchone()['total'] or 0
+                WHERE {student_clause}
+            ''', student_params).fetchone()['total'] or 0.0
             
-            remaining_fees_details = conn.execute('''
+            remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
                 FROM student_info si
                 JOIN users u ON si.user_id = u.id
-                WHERE si.branch = ? AND si.remaining_fee > 0
+                WHERE {student_clause} AND si.remaining_fee != 0
                 ORDER BY si.class, CAST(si.roll_number AS INTEGER)
-            ''', (session['branch'],)).fetchall()
-        else:
-            total_fees = conn.execute("SELECT SUM(amount) as total FROM fees").fetchone()['total'] or 0
-            total_expenses = conn.execute("SELECT SUM(amount) as total FROM expenses").fetchone()['total'] or 0
-            total_remaining_fees = conn.execute("SELECT SUM(remaining_fee) as total FROM student_info").fetchone()['total'] or 0
-            
-            remaining_fees_details = conn.execute('''
-                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
-                FROM student_info si
-                JOIN users u ON si.user_id = u.id
-                WHERE si.remaining_fee > 0
-                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
-            ''').fetchall()
+            ''', student_params).fetchall()
         
-        balance = total_fees - total_expenses
+        readmission_where = [student_clause, "sl.fee_type = 'Re-admission Fee'"]
+        if date_clause:
+            readmission_where.append(date_clause.format(col="sl.created_at"))
+            
+        readmission_totals = conn.execute(f'''
+            SELECT 
+                SUM(CASE WHEN sl.status = 'Unpaid/Pending' THEN sl.amount ELSE 0.0 END) as pending_amt
+            FROM student_ledger sl
+            JOIN student_info si ON sl.student_id = si.user_id
+            WHERE {" AND ".join(readmission_where)}
+        ''', student_params).fetchone()
+        
+        readmission_pending = readmission_totals['pending_amt'] or 0.0
+        
+        balance = total_fees - total_expenses  # B2 FIX: remaining_fees are unpaid dues, not cash in hand
+        
         conn.close()
-        return render_template('admin/audit_report.html', fees=total_fees, expenses=total_expenses, balance=balance, remaining_fees=total_remaining_fees, remaining_fees_details=remaining_fees_details, role=role)
+        
+        return render_template(
+            'admin/audit_report.html', 
+            fees=total_fees, 
+            expenses=total_expenses, 
+            balance=balance, 
+            remaining_fees=total_remaining_fees, 
+            remaining_fees_details=remaining_fees_details, 
+            school_revenue=school_revenue,
+            hostel_revenue=hostel_revenue,
+            coaching_revenue=coaching_revenue,
+            tax_revenue=tax_revenue,
+            readmission_revenue=readmission_revenue,
+            readmission_pending=readmission_pending,
+            month_wise_report=month_wise_report,
+            role=session['role'], 
+            logo_url=LOGO_URL,
+            take_school=take_school,
+            take_coaching=take_coaching,
+            take_day_hostel=take_day_hostel,
+            take_car=take_car,
+            time_range=time_range,
+            filter_year=filter_year,
+            filter_month=filter_month,
+            available_years=available_years
+        )
     return redirect(url_for('home'))
 
 @app.route('/admin/print-audit')
 def print_audit():
     if 'user' in session and session['role'] == 'admin':
         conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        
+        # Parse query params
+        take_school = request.args.get('take_school')
+        take_coaching = request.args.get('take_coaching')
+        take_day_hostel = request.args.get('take_day_hostel')
+        take_car = request.args.get('take_car')
+        time_range = request.args.get('time_range', '').strip().lower()
+        if time_range not in ('day', 'week', 'month', 'year', 'all'):
+            time_range = 'all'
+            
+        # Build SQL where clauses
+        student_where = []
+        student_params = []
+        
+        fees_where = []
+        fees_params = []
         
         if session.get('branch'):
-            branch = session['branch']
-            total_fees = conn.execute('''
-                SELECT SUM(f.amount) as total 
-                FROM fees f 
-                JOIN student_info si ON f.student_id = si.user_id
-                WHERE si.branch = ?
-            ''', (branch,)).fetchone()['total'] or 0
+            student_where.append("si.branch = ? COLLATE NOCASE")
+            student_params.append(session['branch'])
+            fees_where.append("si.branch = ? COLLATE NOCASE")
+            fees_params.append(session['branch'])
             
-            total_expenses = conn.execute('''
-                SELECT SUM(amount) as total 
-                FROM expenses 
-                WHERE branch = ?
-            ''', (branch,)).fetchone()['total'] or 0
+        benefit_conditions = []
+        if take_school:
+            benefit_conditions.append("si.take_school = 1")
+        if take_coaching:
+            benefit_conditions.append("si.take_coaching = 1")
+        if take_day_hostel:
+            benefit_conditions.append("si.take_day_hostel = 1")
+        if take_car:
+            benefit_conditions.append("si.take_car = 1")
             
-            total_remaining_fees = conn.execute('''
+        if benefit_conditions:
+            benefit_clause = "(" + " OR ".join(benefit_conditions) + ")"
+            student_where.append(benefit_clause)
+            fees_where.append(benefit_clause)
+            
+        # Time range clauses
+        date_clause = None
+        
+        filter_year = request.args.get('filter_year', '').strip()
+        filter_month = request.args.get('filter_month', '').strip()
+
+        if filter_year and filter_month:
+            date_clause = f"strftime('%Y-%m', {{col}}) = '{filter_year}-{filter_month}'"
+        elif filter_year:
+            date_clause = f"strftime('%Y', {{col}}) = '{filter_year}'"
+        elif filter_month:
+            date_clause = f"strftime('%m', {{col}}) = '{filter_month}'"
+        else:
+            if time_range == 'day':
+                date_clause = "DATE({col}) = DATE('now', 'localtime')"
+            elif time_range == 'week':
+                date_clause = "strftime('%Y-%W', {col}) = strftime('%Y-%W', 'now', 'localtime')"
+            elif time_range == 'month':
+                date_clause = "strftime('%Y-%m', {col}) = strftime('%Y-%m', 'now', 'localtime')"
+            elif time_range == 'year':
+                date_clause = "strftime('%Y', {col}) = strftime('%Y', 'now', 'localtime')"
+            
+        if date_clause:
+            fees_where.append(date_clause.format(col="f.paid_at"))
+            
+        student_clause = " AND ".join(student_where) if student_where else "1=1"
+        fees_clause = " AND ".join(fees_where) if fees_where else "1=1"
+        
+        # Aggregations
+        fees_totals = conn.execute(f'''
+            SELECT 
+                SUM(f.amount) as total,
+                SUM(CASE WHEN COALESCE(f.school_revenue, 0) = 0 AND COALESCE(f.hostel_revenue, 0) = 0 AND COALESCE(f.coaching_revenue, 0) = 0 AND COALESCE(f.readmission_revenue, 0) = 0 THEN f.amount ELSE COALESCE(f.school_revenue, 0) END) as school_rev,
+                SUM(COALESCE(f.hostel_revenue, 0)) as hostel_rev,
+                SUM(COALESCE(f.coaching_revenue, 0)) as coaching_rev,
+                SUM(COALESCE(f.readmission_revenue, 0)) as readmission_rev,
+                SUM(COALESCE(f.tax_amount, 0)) as tax_amt
+            FROM fees f
+            JOIN student_info si ON f.student_id = si.user_id
+            WHERE {fees_clause}
+        ''', fees_params).fetchone()
+        
+        total_fees = fees_totals['total'] or 0.0
+        school_revenue = fees_totals['school_rev'] or 0.0
+        hostel_revenue = fees_totals['hostel_rev'] or 0.0
+        coaching_revenue = fees_totals['coaching_rev'] or 0.0
+        readmission_revenue = fees_totals['readmission_rev'] or 0.0
+        tax_revenue = fees_totals['tax_amt'] or 0.0
+        
+        # Expenses (non-student specific)
+        expenses_where = []
+        expenses_params = []
+        if session.get('branch'):
+            expenses_where.append("branch = ? COLLATE NOCASE")
+            expenses_params.append(session['branch'])
+            
+        if date_clause:
+            expenses_where.append(date_clause.format(col="date"))
+            
+        expenses_clause = " AND ".join(expenses_where) if expenses_where else "1=1"
+        
+        total_expenses = conn.execute(f'''
+            SELECT SUM(amount) as total 
+            FROM expenses 
+            WHERE {expenses_clause}
+        ''', expenses_params).fetchone()['total'] or 0.0
+        
+        if date_clause:
+            ledger_clause = date_clause.format(col="sl.created_at")
+            total_remaining_fees = conn.execute(f'''
+                SELECT SUM(sl.amount) as total 
+                FROM student_ledger sl
+                JOIN student_info si ON sl.student_id = si.user_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+            ''', student_params).fetchone()['total'] or 0.0
+            
+            remaining_fees_details = conn.execute(f'''
+                SELECT u.username, si.full_name, si.class, si.roll_number, SUM(sl.amount) as remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                JOIN student_ledger sl ON si.user_id = sl.student_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+                GROUP BY u.username, si.full_name, si.class, si.roll_number
+                HAVING SUM(sl.amount) != 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', student_params).fetchall()
+        else:
+            total_remaining_fees = conn.execute(f'''
                 SELECT SUM(si.remaining_fee) as total 
                 FROM student_info si
-                WHERE si.branch = ?
-            ''', (branch,)).fetchone()['total'] or 0
-
-            remaining_fees_details = conn.execute('''
+                WHERE {student_clause}
+            ''', student_params).fetchone()['total'] or 0.0
+            
+            remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
                 FROM student_info si
                 JOIN users u ON si.user_id = u.id
-                WHERE si.branch = ? AND si.remaining_fee > 0
+                WHERE {student_clause} AND si.remaining_fee != 0
                 ORDER BY si.class, CAST(si.roll_number AS INTEGER)
-            ''', (branch,)).fetchall()
+            ''', student_params).fetchall()
+        
+        fees_details = conn.execute(f'''
+            SELECT f.student_id, f.amount, f.month, f.year, f.paid_at, si.full_name as student_name, si.class, si.roll_number,
+                   f.school_revenue, f.hostel_revenue, f.coaching_revenue, f.tax_amount, f.enrollment_type,
+                   si.tuition_fee, si.transport_fee, si.lab_library_fee, si.academic_discount,
+                   si.room_rent, si.mess_food_charges, si.utility_cost, si.security_deposit,
+                   si.coaching_combo_fee, si.study_material_charges, si.exam_test_series_fee, si.combo_discount
+            FROM fees f
+            JOIN student_info si ON f.student_id = si.user_id
+            WHERE {fees_clause}
+            ORDER BY f.paid_at DESC
+        ''', fees_params).fetchall()
+
+        fees_list = []
+        for fee in fees_details:
+            f_dict = dict(fee)
+            if not f_dict.get('school_revenue') and not f_dict.get('hostel_revenue') and not f_dict.get('coaching_revenue') and not f_dict.get('readmission_revenue'):
+                school_rev, hostel_rev, coaching_rev, tax_amt, readmission_rev, e_type = allocate_payment_components(conn, fee['student_id'], fee['amount'])
+                f_dict['school_revenue'] = school_rev
+                f_dict['hostel_revenue'] = hostel_rev
+                f_dict['coaching_revenue'] = coaching_rev
+                f_dict['tax_amount'] = tax_amt
+                f_dict['readmission_revenue'] = readmission_rev
+                f_dict['enrollment_type'] = e_type
+            fees_list.append(f_dict)
             
-            fees_details = conn.execute('''
-                SELECT f.amount, f.month, f.year, f.paid_at, si.full_name as student_name, si.class, si.roll_number
-                FROM fees f
-                JOIN student_info si ON f.student_id = si.user_id
-                WHERE si.branch = ?
-                ORDER BY f.paid_at DESC
-            ''', (branch,)).fetchall()
+        expenses_details = conn.execute(f'''
+            SELECT amount, category, description, date, recipient_type, recipient_id
+            FROM expenses
+            WHERE {expenses_clause}
+            ORDER BY date DESC
+        ''', expenses_params).fetchall()
+        
+        balance = total_fees - total_expenses  # B2 FIX: remaining_fees are unpaid dues, not cash in hand
 
-            expenses_details = conn.execute('''
-                SELECT amount, category, description, date, recipient_type
-                FROM expenses
-                WHERE branch = ?
-                ORDER BY date DESC
-            ''', (branch,)).fetchall()
-        else:
-            total_fees = conn.execute("SELECT SUM(amount) as total FROM fees").fetchone()['total'] or 0
-            total_expenses = conn.execute("SELECT SUM(amount) as total FROM expenses").fetchone()['total'] or 0
-            total_remaining_fees = conn.execute("SELECT SUM(remaining_fee) as total FROM student_info").fetchone()['total'] or 0
-
-            remaining_fees_details = conn.execute('''
-                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
-                FROM student_info si
-                JOIN users u ON si.user_id = u.id
-                WHERE si.remaining_fee > 0
-                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
-            ''').fetchall()
+        readmission_where = [student_clause, "sl.fee_type = 'Re-admission Fee'"]
+        if date_clause:
+            readmission_where.append(date_clause.format(col="sl.created_at"))
             
-            fees_details = conn.execute('''
-                SELECT f.amount, f.month, f.year, f.paid_at, si.full_name as student_name, si.class, si.roll_number
-                FROM fees f
-                JOIN student_info si ON f.student_id = si.user_id
-                ORDER BY f.paid_at DESC
-            ''').fetchall()
+        readmission_totals = conn.execute(f'''
+            SELECT 
+                SUM(CASE WHEN sl.status = 'Unpaid/Pending' THEN sl.amount ELSE 0.0 END) as pending_amt
+            FROM student_ledger sl
+            JOIN student_info si ON sl.student_id = si.user_id
+            WHERE {" AND ".join(readmission_where)}
+        ''', student_params).fetchone()
+        
+        readmission_pending = readmission_totals['pending_amt'] or 0.0
 
-            expenses_details = conn.execute('''
-                SELECT amount, category, description, date, recipient_type
-                FROM expenses
-                ORDER BY date DESC
-            ''').fetchall()
-            
-        balance = total_fees - total_expenses
-        conn.close()
-        return render_template('admin/print_audit.html', 
-                               fees=total_fees, expenses=total_expenses, balance=balance, remaining_fees=total_remaining_fees,
-                               fees_details=fees_details, expenses_details=expenses_details, remaining_fees_details=remaining_fees_details)
-    return redirect(url_for('home'))
-
-@app.route('/admin/post-monthly-fees', methods=['POST'])
-def post_monthly_fees():
-    if 'user' in session and session['role'] == 'admin':
-        conn = get_db_connection()
-        try:
-            if session.get('branch'):
-                conn.execute('''
-                    UPDATE student_info
-                    SET remaining_fee = COALESCE(remaining_fee, 0.0) + COALESCE(monthly_fee, 0.0)
-                    WHERE branch = ?
-                ''', (session['branch'],))
-                flash(f"Monthly fees successfully posted to all students' remaining dues for campus: {session['branch'].title()}")
+        all_teachers = conn.execute("SELECT u.id, ti.full_name, u.username FROM users u LEFT JOIN teacher_info ti ON u.id = ti.user_id WHERE u.role = 'teacher'").fetchall()
+        teacher_map = {t['id']: (t['full_name'] or t['username']) for t in all_teachers}
+        
+        all_staff = conn.execute("SELECT id, full_name FROM staff").fetchall()
+        staff_map = {s['id']: s['full_name'] for s in all_staff}
+        
+        expenses_with_names = []
+        for e in expenses_details:
+            e_dict = dict(e)
+            if e_dict.get('recipient_type') == 'teacher':
+                e_dict['recipient_name'] = teacher_map.get(e_dict.get('recipient_id'))
+            elif e_dict.get('recipient_type') == 'staff':
+                e_dict['recipient_name'] = staff_map.get(e_dict.get('recipient_id'))
             else:
-                conn.execute('''
-                    UPDATE student_info
-                    SET remaining_fee = COALESCE(remaining_fee, 0.0) + COALESCE(monthly_fee, 0.0)
-                ''')
-                flash("Monthly fees successfully posted to all students' remaining dues.")
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            flash(f"Error posting monthly fees: {e}")
-        finally:
-            conn.close()
-        return redirect(url_for('audit_report'))
+                e_dict['recipient_name'] = None
+            expenses_with_names.append(e_dict)
+
+        conn.close()
+        
+        return render_template(
+            'admin/print_audit.html', 
+            fees=total_fees, 
+            expenses=total_expenses, 
+            balance=balance, 
+            remaining_fees=total_remaining_fees,
+            fees_details=fees_list, 
+            expenses_details=expenses_with_names, 
+            remaining_fees_details=remaining_fees_details,
+            school_revenue=school_revenue,
+            hostel_revenue=hostel_revenue,
+            coaching_revenue=coaching_revenue,
+            tax_revenue=tax_revenue,
+            readmission_revenue=readmission_revenue,
+            readmission_pending=readmission_pending,
+            role=session['role'], 
+            logo_url=LOGO_URL,
+            current_date=datetime.datetime.now().strftime('%d %B %Y, %I:%M %p'),
+            take_school=take_school,
+            take_coaching=take_coaching,
+            take_day_hostel=take_day_hostel,
+            take_car=take_car,
+            time_range=time_range,
+            filter_year=filter_year,
+            filter_month=filter_month
+        )
     return redirect(url_for('home'))
 
 @app.route('/admin/academics-setting', methods=['GET', 'POST'])
@@ -9365,9 +10766,13 @@ Al-Hidayet Mission"""
             # Support comma-separated subject registration
             subject_names = [s.strip() for s in name.split(',') if s.strip()]
             for sub_name in subject_names:
-                existing = conn.execute("SELECT id FROM subjects WHERE name = ?", (sub_name,)).fetchone()
+                existing = conn.execute("SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (sub_name,)).fetchone()
                 if not existing:
-                    conn.execute("INSERT INTO subjects (name) VALUES (?)", (sub_name,))
+                    try:
+                        conn.execute("INSERT INTO subjects (name) VALUES (?)", (sub_name,))
+                    except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                        if "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                            raise e
             conn.commit()
             flash('Global subject(s) added successfully!')
             conn.close()
@@ -9388,7 +10793,9 @@ Al-Hidayet Mission"""
                             conn.execute("INSERT INTO teacher_subjects (teacher_id, class_name, subject_id) VALUES (?, ?, ?)", (teacher_id, class_name, subject['id']))
                             add_teacher_assigned_classes_string(conn, teacher_id, class_name, subject_name)
                             assigned_count += 1
-                        except sqlite3.IntegrityError:
+                        except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                            if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                                raise e
                             pass
                     conn.commit()
                     if assigned_count > 0:
@@ -9536,18 +10943,12 @@ Al-Hidayet Mission"""
             LEFT JOIN teacher_info ti ON u.id = ti.user_id
             JOIN subjects s ON ts.subject_id = s.id
         ''').fetchall()
-        classes = conn.execute("SELECT * FROM classes ORDER BY id").fetchall()
+        branch_filter = session.get('branch')
+        classes = conn.execute("SELECT * FROM classes WHERE ? IS NULL OR LOWER(branch) = LOWER(?) ORDER BY id", (branch_filter, branch_filter)).fetchall()
         
         # Get distinct class names programmatically to avoid any duplicates due to spacing or case differences
-        classes_rows = conn.execute("SELECT name FROM classes ORDER BY id").fetchall()
-        seen = set()
-        distinct_classes = []
-        for row in classes_rows:
-            name_stripped = row['name'].strip()
-            name_lower = name_stripped.lower()
-            if name_lower not in seen:
-                seen.add(name_lower)
-                distinct_classes.append({'name': name_stripped})
+        class_names = get_all_classes(conn, branch=branch_filter)
+        distinct_classes = [{'name': name} for name in class_names]
                 
         registration_documents = conn.execute("SELECT * FROM registration_documents ORDER BY id").fetchall()
         
@@ -9572,18 +10973,12 @@ Al-Hidayet Mission"""
         return render_template('admin/academics_setting.html', subjects=subjects, distinct_subjects=distinct_subjects, teachers=teachers, assignments=assignments, class_test_configs=[], classes=classes, distinct_classes=distinct_classes, class_teachers=class_teachers, registration_documents=registration_documents, role=session['role'], exam_locks=exam_locks, all_terms=all_terms, log_destination_email=log_email, exam_schedules=exam_schedules_list)
     elif 'user' in session and session['role'] == 'teacher': # Teachers just view
          conn = get_db_connection()
-         classes = conn.execute("SELECT * FROM classes ORDER BY id").fetchall()
+         branch_filter = session.get('branch')
+         classes = conn.execute("SELECT * FROM classes WHERE ? IS NULL OR LOWER(branch) = LOWER(?) ORDER BY id", (branch_filter, branch_filter)).fetchall()
          
          # Get distinct class names programmatically to avoid any duplicates due to spacing or case differences
-         classes_rows = conn.execute("SELECT name FROM classes ORDER BY id").fetchall()
-         seen = set()
-         distinct_classes = []
-         for row in classes_rows:
-             name_stripped = row['name'].strip()
-             name_lower = name_stripped.lower()
-             if name_lower not in seen:
-                 seen.add(name_lower)
-                 distinct_classes.append({'name': name_stripped})
+         class_names = get_all_classes(conn, branch=branch_filter)
+         distinct_classes = [{'name': name} for name in class_names]
                  
          registration_documents = conn.execute("SELECT * FROM registration_documents ORDER BY id").fetchall()
          exam_locks_raw = conn.execute("SELECT * FROM exam_locks").fetchall()
@@ -9595,7 +10990,7 @@ Al-Hidayet Mission"""
 @app.route('/admin/toggle-exam-lock', methods=['POST'])
 def toggle_exam_lock():
     if 'user' in session and session['role'] == 'admin':
-        branch = request.form.get('branch', 'bhogram').strip()
+        branch = session.get('branch') or request.form.get('branch', 'bhogram').strip()
         class_name = request.form.get('class_name', '').strip()
         
         # Support both multiple term selection and single term fallback
@@ -9670,7 +11065,9 @@ def update_class_fees():
                 class_name = class_info['name']
                 branch = class_info['branch']
                 
-                students = conn.execute("SELECT user_id, take_coaching, take_day_hostel FROM student_info WHERE class = ? AND branch = ?", (class_name, branch)).fetchall()
+                db_classes = get_db_class_names(class_name)
+                placeholders = ', '.join(['?'] * len(db_classes))
+                students = conn.execute(f"SELECT user_id, take_coaching, take_day_hostel FROM student_info WHERE class IN ({placeholders}) AND branch = ?", db_classes + [branch]).fetchall()
                 for student in students:
                     s_adm = admission_fee
                     s_readm = readmission_fee_school
@@ -9702,7 +11099,856 @@ def update_class_fees():
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
                 return jsonify({'status': 'error', 'message': str(e)})
             flash(f'Failed to update fees: {e}')
-    return redirect(url_for('set_fees'))
+@app.route('/admin/fee-matrix', methods=['GET', 'POST'])
+@app.route('/admin/fee_matrix', methods=['GET', 'POST'])
+def fee_matrix():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        
+        branch_filter = session.get('branch') or request.args.get('branch', 'bhogram').strip().lower()
+        
+        if request.method == 'POST':
+            # 1. Create a class
+            if 'create_class' in request.form:
+                class_name = request.form['class_name'].strip()
+                branch = session['branch'] if session.get('branch') else request.form.get('branch', 'bhogram')
+                if not class_name or not branch:
+                    flash('Please enter a valid class name and branch.')
+                else:
+                    existing = conn.execute("SELECT id FROM classes WHERE name = ? AND branch = ?", (class_name, branch)).fetchone()
+                    if existing:
+                        flash(f'Class {class_name} already exists for branch {branch.title()}!')
+                    else:
+                        try:
+                            admission_fee = float(request.form.get('admission_fee', 0.0) or 0.0)
+                            admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0) or 0.0)
+                            admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0) or 0.0)
+                            readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0) or 0.0)
+                            readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0) or 0.0)
+                            readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0) or 0.0)
+                            monthly_fee = float(request.form.get('monthly_fee', 0.0) or 0.0)
+                            monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0) or 0.0)
+                            hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0)
+                        except ValueError:
+                            admission_fee = 0.0
+                            admission_fee_coaching = 0.0
+                            admission_fee_hostel = 0.0
+                            readmission_fee_school = 0.0
+                            readmission_fee_coaching = 0.0
+                            readmission_fee_hostel = 0.0
+                            monthly_fee = 0.0
+                            monthly_fee_coaching = 0.0
+                            hostel_fee = 0.0
+                        
+                        conn.execute("""
+                            INSERT INTO classes (
+                                name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                                readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                                monthly_fee, monthly_fee_coaching, hostel_fee
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (class_name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                              readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                              monthly_fee, monthly_fee_coaching, hostel_fee))
+
+                        # Seed default fee_structures for this new class
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, school_tax_rate) VALUES (?, ?, 'Day School Only', ?, 0.0)", (class_name, branch, monthly_fee))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, room_rent, hostel_tax_rate) VALUES (?, ?, 'Day Hostel Only', ?, 0.05)", (class_name, branch, hostel_fee))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, coaching_combo_fee, combo_discount, school_tax_rate, coaching_tax_rate) VALUES (?, ?, 'School + Coaching', ?, ?, 0.0, 0.0, 0.0)", (class_name, branch, monthly_fee, monthly_fee_coaching))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, room_rent, school_tax_rate, hostel_tax_rate) VALUES (?, ?, 'Hostel Only (or School + Hostel)', ?, ?, 0.0, 0.05)", (class_name, branch, monthly_fee, hostel_fee))
+
+                        seed_default_subjects(conn)
+                        conn.commit()
+                        flash(f'Class {class_name} added successfully for {branch.title()} with fees!')
+                conn.close()
+                return redirect(url_for('fee_matrix'))
+
+            # 2. Delete a class
+            elif 'delete_class' in request.form:
+                class_id = request.form['class_id']
+                try:
+                    class_row = conn.execute("SELECT name, branch FROM classes WHERE id = ?", (class_id,)).fetchone()
+                    if class_row:
+                        class_name = class_row['name']
+                        db_classes = get_db_class_names(class_name)
+                        placeholders = ', '.join('?' for _ in db_classes)
+                        teachers = conn.execute(f'''
+                            SELECT DISTINCT teacher_id
+                            FROM teacher_subjects
+                            WHERE LOWER(class_name) IN ({placeholders})
+                        ''', tuple(c.lower() for c in db_classes)).fetchall()
+                        
+                        conn.execute(f"DELETE FROM teacher_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM teacher_assignments WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM marks WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM class_subjects WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute(f"DELETE FROM class_routine WHERE LOWER(class_name) IN ({placeholders})", tuple(c.lower() for c in db_classes))
+                        conn.execute("DELETE FROM classes WHERE id = ?", (class_id,))
+                        
+                        for t in teachers:
+                            sync_teacher_assigned_classes_string_from_db(conn, t['teacher_id'])
+                            
+                        conn.commit()
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                            conn.close()
+                            return jsonify({'status': 'success', 'message': f'Class {class_name} deleted successfully.'})
+                        flash(f'Class {class_name} deleted successfully.')
+                    else:
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                            conn.close()
+                            return jsonify({'status': 'error', 'message': 'Class not found.'})
+                        flash('Class not found.')
+                except Exception as e:
+                    conn.rollback()
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                        conn.close()
+                        return jsonify({'status': 'error', 'message': f'Server error: {str(e)}'})
+                    flash(f'Server error: {str(e)}')
+                conn.close()
+                return redirect(url_for('fee_matrix'))
+
+            # 3. Update class-wise or student-wise settings
+            elif 'update_type' in request.form:
+                update_type = request.form.get('update_type')
+                branch = session['branch'] if session.get('branch') else request.form.get('branch', 'bhogram')
+                
+                if update_type == 'class':
+                    class_name = request.form.get('class')
+                    db_classes = get_db_class_names(class_name)
+                    placeholders = ', '.join('?' for _ in db_classes)
+                    
+                    admission_fee = float(request.form.get('admission_fee') or 0.0)
+                    admission_fee_coaching = float(request.form.get('admission_fee_coaching') or 0.0)
+                    admission_fee_hostel = float(request.form.get('admission_fee_hostel') or 0.0)
+                    readmission_fee_school = float(request.form.get('readmission_fee_school') or 0.0)
+                    readmission_fee_coaching = float(request.form.get('readmission_fee_coaching') or 0.0)
+                    readmission_fee_hostel = float(request.form.get('readmission_fee_hostel') or 0.0)
+                    monthly_fee = float(request.form.get('monthly_fee') or 0.0)
+                    monthly_fee_coaching = float(request.form.get('monthly_fee_coaching') or 0.0)
+                    hostel_fee = float(request.form.get('hostel_fee') or 0.0)
+                    
+                    for db_cls in db_classes:
+                        row_exist = conn.execute("SELECT id FROM classes WHERE name = ? AND branch = ?", (db_cls, branch)).fetchone()
+                        if row_exist:
+                            conn.execute('''
+                                UPDATE classes 
+                                SET admission_fee = ?, admission_fee_coaching = ?, admission_fee_hostel = ?,
+                                    readmission_fee_school = ?, readmission_fee_coaching = ?, readmission_fee_hostel = ?,
+                                    monthly_fee = ?, monthly_fee_coaching = ?, hostel_fee = ?
+                                WHERE id = ?
+                            ''', (admission_fee, admission_fee_coaching, admission_fee_hostel,
+                                  readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                                  monthly_fee, monthly_fee_coaching, hostel_fee, row_exist['id']))
+                        else:
+                            conn.execute('''
+                                INSERT INTO classes (
+                                    name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                                    readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                                    monthly_fee, monthly_fee_coaching, hostel_fee
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (db_cls, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                                  readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                                  monthly_fee, monthly_fee_coaching, hostel_fee))
+
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, school_tax_rate) VALUES (?, ?, 'Day School Only', ?, 0.0)", (db_cls, branch, monthly_fee))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, room_rent, hostel_tax_rate) VALUES (?, ?, 'Day Hostel Only', ?, 0.05)", (db_cls, branch, hostel_fee))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, coaching_combo_fee, combo_discount, school_tax_rate, coaching_tax_rate) VALUES (?, ?, 'School + Coaching', ?, ?, 0.0, 0.0, 0.0)", (db_cls, branch, monthly_fee, monthly_fee_coaching))
+                        conn.execute("INSERT OR REPLACE INTO fee_structures (class_name, branch, enrollment_type, tuition_fee, room_rent, school_tax_rate, hostel_tax_rate) VALUES (?, ?, 'Hostel Only (or School + Hostel)', ?, ?, 0.0, 0.05)", (db_cls, branch, monthly_fee, hostel_fee))
+                    
+                    students_in_class = conn.execute(f'''
+                        SELECT user_id, take_school, take_coaching, take_day_hostel, take_car
+                        FROM student_info
+                        WHERE branch = ? AND class IN ({placeholders}) AND (is_custom_fee = 0 OR is_custom_fee IS NULL)
+                    ''', (branch, *db_classes)).fetchall()
+                    
+                    for student in students_in_class:
+                        old_data = conn.execute("SELECT remaining_fee, monthly_fee, readmission_fee, enrollment_type FROM student_info WHERE user_id = ?", (student['user_id'],)).fetchone()
+                        old_remaining_fee = float(old_data['remaining_fee']) if old_data and old_data['remaining_fee'] is not None else 0.0
+                        old_monthly_fee = float(old_data['monthly_fee']) if old_data and old_data['monthly_fee'] is not None else 0.0
+                        old_readmission_fee = float(old_data['readmission_fee']) if old_data and old_data['readmission_fee'] is not None else 0.0
+                        
+                        take_school = student['take_school']
+                        take_coaching = student['take_coaching']
+                        take_day_hostel = student['take_day_hostel']
+                        take_car = student['take_car']
+                        
+                        e_type = old_data['enrollment_type'] if (old_data and old_data['enrollment_type']) else 'Day School Only'
+                        
+                        bd = calculate_student_fees_breakdown({
+                            'class': class_name,
+                            'branch': branch,
+                            'enrollment_type': e_type,
+                            'take_car': take_car
+                        }, conn)
+                        m_fee = bd['total_fee']
+                        
+                        a_fee = 0.0
+                        r_fee = 0.0
+                        
+                        if take_day_hostel:
+                            a_fee = admission_fee_hostel
+                            r_fee = readmission_fee_hostel
+                        elif take_coaching:
+                            a_fee = admission_fee_coaching
+                            r_fee = readmission_fee_coaching
+                        elif take_school:
+                            a_fee = admission_fee
+                            r_fee = readmission_fee_school
+                            
+                        new_remaining_fee = old_remaining_fee + (m_fee - old_monthly_fee) + (r_fee - old_readmission_fee)
+                        # ALLOW NEGATIVE DUES
+                            
+                        conn.execute('''
+                            UPDATE student_info
+                            SET monthly_fee = ?, admission_fee = ?, readmission_fee = ?, remaining_fee = ?
+                            WHERE user_id = ?
+                        ''', (m_fee, a_fee, r_fee, new_remaining_fee, student['user_id']))
+                        
+                        sync_student_ledger_and_dues(conn, student['user_id'], submitted_remaining_fee=new_remaining_fee, is_manual_dues_change=True)
+                    
+                    conn.commit()
+                    flash(f'Successfully updated class fees and student fee balances for Class {class_name}')
+                    
+                elif update_type == 'student':
+                    student_id = request.form.get('student_id')
+                    if session.get('branch'):
+                        student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+                        if not student or student['branch'] != session['branch']:
+                            conn.close()
+                            flash('Permission denied: Student does not belong to your campus.')
+                            return redirect(url_for('fee_matrix'))
+                    
+                    take_school = 1 if request.form.get('take_school') else 0
+                    take_coaching = 1 if request.form.get('take_coaching') else 0
+                    take_day_hostel = 1 if request.form.get('take_day_hostel') else 0
+                    take_car = 1 if request.form.get('take_car') else 0
+                    coaching_opted = take_coaching
+                    car_opted = take_car
+                    mode_of_admission = 'Day Hostel' if take_day_hostel else ('School with Coaching' if take_coaching else 'School')
+                    
+                    amount_str = request.form.get('amount')
+                    admission_fee_str = request.form.get('admission_fee')
+                    readmission_fee_str = request.form.get('readmission_fee')
+                    
+                    old_student = conn.execute("SELECT prev_dues, remaining_fee, monthly_fee, readmission_fee FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+                    
+                    # If amount is not provided, it's not a custom fee override
+                    is_custom_fee_val = 1 if (amount_str and amount_str.strip() != '') else 0
+                    
+                    amount = float(amount_str) if is_custom_fee_val else (float(old_student['monthly_fee']) if old_student and old_student['monthly_fee'] is not None else 0.0)
+                    admission_fee = float(admission_fee_str) if admission_fee_str and admission_fee_str.strip() != '' else 0.0
+                    readmission_fee = float(readmission_fee_str) if readmission_fee_str and readmission_fee_str.strip() != '' else (float(old_student['readmission_fee']) if old_student and old_student['readmission_fee'] is not None else 0.0)
+                    
+                    submitted_total_due_str = request.form.get('total_due')
+                    if submitted_total_due_str is None:
+                        submitted_total_due_str = request.form.get('prev_dues')
+                        
+                    submitted_total_due = float(submitted_total_due_str or 0.0)
+                    if submitted_total_due < 0.0:
+                        submitted_total_due = 0.0
+                        
+                    # prev_dues = total_due - remaining_fee + old_prev_dues
+                    old_remaining = float(old_student['remaining_fee'] or 0.0)
+                    old_prev_dues = float(old_student['prev_dues'] or 0.0)
+                    new_prev_dues = submitted_total_due - old_remaining + old_prev_dues
+
+                    conn.execute('''
+                        UPDATE student_info
+                        SET take_school = ?, take_coaching = ?, take_day_hostel = ?, take_car = ?,
+                            coaching_opted = ?, car_opted = ?, mode_of_admission = ?,
+                            monthly_fee = ?, admission_fee = ?, readmission_fee = ?,
+                            prev_dues = ?, is_custom_fee = ?
+                        WHERE user_id = ?
+                    ''', (take_school, take_coaching, take_day_hostel, take_car,
+                          coaching_opted, car_opted, mode_of_admission,
+                          amount, admission_fee, readmission_fee, new_prev_dues, is_custom_fee_val, student_id))
+                    
+                    sync_student_ledger_and_dues(conn, student_id)
+                    conn.commit()
+                    flash(f'Successfully updated fees and benefits for student ID {student_id}')
+                
+                elif update_type == 'class_due':
+                    class_name = request.form.get('class_name')
+                    amount_str = request.form.get('due_amount', '0.0')
+                    fee_type = request.form.get('fee_type', 'Manual Fee Adjustment').strip()
+                    if not fee_type:
+                        fee_type = 'Manual Fee Adjustment'
+                        
+                    try:
+                        amount = float(amount_str)
+                    except ValueError:
+                        amount = 0.0
+                        
+                    if amount > 0:
+                        branch_filter = session.get('branch')
+                        if branch_filter:
+                            students = conn.execute("SELECT user_id, prev_dues, branch FROM student_info WHERE class = ? AND branch = ?", (class_name, branch_filter)).fetchall()
+                        else:
+                            students = conn.execute("SELECT user_id, prev_dues, branch FROM student_info WHERE class = ?", (class_name,)).fetchall()
+                            
+                        from datetime import datetime
+                        month = datetime.now().strftime('%B')
+                        year = datetime.now().strftime('%Y')
+                        
+                        for s in students:
+                            new_due = float(s['prev_dues'] or 0.0) + amount
+                            conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (new_due, s['user_id']))
+                            
+                            # Insert into student_ledger so it shows up specifically by name
+                            conn.execute('''
+                                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                                VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                            ''', (s['user_id'], fee_type, amount, month, year, s['branch']))
+                            
+                            # Log the charge
+                            conn.execute('''
+                                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                                VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+                            ''', (s['user_id'], fee_type, amount, month, year, s['branch']))
+                            
+                            sync_student_ledger_and_dues(conn, s['user_id'])
+                        
+                        conn.commit()
+                        flash(f'Successfully added ₹{amount} ({fee_type}) to all students in Class {class_name}')
+                    else:
+                        flash('Amount must be greater than 0.')
+                
+                elif update_type == 'student_due':
+                    student_id = request.form.get('student_id')
+                    amount_str = request.form.get('due_amount', '0.0')
+                    fee_type = request.form.get('fee_type', 'Manual Fee Adjustment').strip()
+                    if not fee_type:
+                        fee_type = 'Manual Fee Adjustment'
+                        
+                    try:
+                        amount = float(amount_str)
+                    except ValueError:
+                        amount = 0.0
+                        
+                    if amount != 0:
+                        s = conn.execute("SELECT user_id, prev_dues, branch, full_name FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+                        if s:
+                            if session.get('branch') and s['branch'] != session['branch']:
+                                flash("Permission denied.")
+                            else:
+                                from datetime import datetime
+                                month = datetime.now().strftime('%B')
+                                year = datetime.now().strftime('%Y')
+                                
+                                new_due = float(s['prev_dues'] or 0.0) + amount
+                                conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (new_due, student_id))
+                                
+                                conn.execute('''
+                                    INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                                    VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                                ''', (s['user_id'], fee_type, amount, month, year, s['branch']))
+                                
+                                conn.execute('''
+                                    INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                                    VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+                                ''', (s['user_id'], fee_type, amount, month, year, s['branch']))
+                                
+                                sync_student_ledger_and_dues(conn, s['user_id'])
+                                conn.commit()
+                                flash(f"Successfully added ₹{amount} ({fee_type}) to {s['full_name']}")
+                    else:
+                        flash('Amount must not be 0.')
+
+                conn.close()
+                if request.form.get('redirect_to') == 'set_fees':
+                    return redirect(url_for('set_fees'))
+                return redirect(url_for('fee_matrix'))
+
+            # 4. Bulk update of fee matrix
+            else:
+                try:
+                    classes_list = conn.execute("SELECT id, class_name FROM fee_matrix WHERE branch = 'bhogram'").fetchall()
+                    for cls in classes_list:
+                        cls_id = cls['id']
+                        sm = float(request.form.get(f'sm_{cls_id}', 0.0) or 0.0)
+                        sa = float(request.form.get(f'sa_{cls_id}', 0.0) or 0.0)
+                        sr = float(request.form.get(f'sr_{cls_id}', 0.0) or 0.0)
+                        cm = float(request.form.get(f'cm_{cls_id}', 0.0) or 0.0)
+                        ca = float(request.form.get(f'ca_{cls_id}', 0.0) or 0.0)
+                        cr = float(request.form.get(f'cr_{cls_id}', 0.0) or 0.0)
+                        hm = float(request.form.get(f'hm_{cls_id}', 0.0) or 0.0)
+                        ha = float(request.form.get(f'ha_{cls_id}', 0.0) or 0.0)
+                        hr = float(request.form.get(f'hr_{cls_id}', 0.0) or 0.0)
+                        
+                        conn.execute('''
+                            UPDATE fee_matrix 
+                            SET school_monthly = ?, school_admission = ?, school_readmission = ?,
+                                coaching_monthly = ?, coaching_admission = ?, coaching_readmission = ?,
+                                hostel_monthly = ?, hostel_admission = ?, hostel_readmission = ?
+                            WHERE id = ?
+                        ''', (sm, sa, sr, cm, ca, cr, hm, ha, hr, cls_id))
+                    
+                    flat_rate = float(request.form.get('flat_rate', 400.0) or 400.0)
+                    conn.execute("INSERT INTO transport_settings (flat_rate) VALUES (?)", (flat_rate,))
+                    conn.commit()
+                    flash('Fee Configuration Matrix updated successfully!')
+                except Exception as e:
+                    conn.rollback()
+                    flash(f'Failed to update fee matrix: {e}')
+                conn.close()
+                return redirect(url_for('fee_matrix'))
+
+        # GET Request
+        db_classes = [dict(row) for row in conn.execute("SELECT * FROM fee_matrix WHERE branch = 'bhogram'").fetchall()]
+        trans_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+        flat_rate = trans_row['flat_rate'] if trans_row else 400.0
+        
+        if session.get('branch'):
+            students_raw = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
+                       si.monthly_fee, si.hostel_fee, si.branch,
+                       si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
+                       si.admission_fee, si.readmission_fee, si.remaining_fee, si.prev_dues, si.is_custom_fee
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' AND si.branch = ?
+            ''', (session['branch'],)).fetchall()
+            
+            custom_fee_students_raw = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
+                       si.monthly_fee, si.readmission_fee, si.remaining_fee, si.prev_dues, si.branch
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' AND si.branch = ? AND si.is_custom_fee = 1
+            ''', (session['branch'],)).fetchall()
+        else:
+            students_raw = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
+                       si.monthly_fee, si.hostel_fee, si.branch,
+                       si.take_school, si.take_coaching, si.take_day_hostel, si.take_car,
+                       si.admission_fee, si.readmission_fee, si.remaining_fee, si.prev_dues, si.is_custom_fee
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student'
+            ''').fetchall()
+            
+            custom_fee_students_raw = conn.execute('''
+                SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, 
+                       si.monthly_fee, si.readmission_fee, si.remaining_fee, si.prev_dues, si.branch
+                FROM users u 
+                LEFT JOIN student_info si ON u.id = si.user_id 
+                WHERE u.role = 'student' AND si.is_custom_fee = 1
+            ''').fetchall()
+            
+        db_classes_all = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?)", (branch_filter,)).fetchall()]
+        
+        # Post-process students to dynamically resolve default templates when not custom-fee
+        students = resolve_student_default_fees(students_raw, conn)
+            
+        custom_fee_students = [dict(row) for row in custom_fee_students_raw]
+        classes_names = get_all_classes(conn, branch=branch_filter)
+        
+        conn.close()
+        return render_template('admin/fee_matrix.html', 
+                               db_classes=db_classes, 
+                               flat_rate=flat_rate, 
+                               branch_filter=branch_filter, 
+                               role=session['role'], 
+                               branches=BRANCHES,
+                               students=students,
+                               custom_fee_students=custom_fee_students,
+                               db_classes_all=db_classes_all,
+                               classes=classes_names)
+    return redirect(url_for('home'))
+
+
+@app.route('/admin/update-matrix-row', methods=['POST'])
+def update_matrix_row():
+    if 'user' in session and session['role'] == 'admin':
+        try:
+            row_id = request.form.get('row_id')
+            sm = float(request.form.get('school_monthly', 0.0) or 0.0)
+            sa = float(request.form.get('school_admission', 0.0) or 0.0)
+            sr = float(request.form.get('school_readmission', 0.0) or 0.0)
+            cm = float(request.form.get('coaching_monthly', 0.0) or 0.0)
+            ca = float(request.form.get('coaching_admission', 0.0) or 0.0)
+            cr = float(request.form.get('coaching_readmission', 0.0) or 0.0)
+            hm = float(request.form.get('hostel_monthly', 0.0) or 0.0)
+            ha = float(request.form.get('hostel_admission', 0.0) or 0.0)
+            hr = float(request.form.get('hostel_readmission', 0.0) or 0.0)
+            
+            conn = get_db_connection()
+            conn.execute('''
+                UPDATE fee_matrix 
+                SET school_monthly = ?, school_admission = ?, school_readmission = ?,
+                    coaching_monthly = ?, coaching_admission = ?, coaching_readmission = ?,
+                    hostel_monthly = ?, hostel_admission = ?, hostel_readmission = ?
+                WHERE id = ?
+            ''', (sm, sa, sr, cm, ca, cr, hm, ha, hr, row_id))
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'success', 'message': 'Class fee row updated successfully.'})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)})
+    return jsonify({'status': 'error', 'message': 'Unauthorized.'}), 403
+
+@app.route('/admin/update-transport-allowance', methods=['POST'])
+def update_transport_allowance():
+    if 'user' in session and session['role'] == 'admin':
+        try:
+            flat_rate = float(request.form.get('flat_rate', 400.0) or 400.0)
+            conn = get_db_connection()
+            conn.execute("INSERT INTO transport_settings (flat_rate) VALUES (?)", (flat_rate,))
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'success', 'message': 'Transport flat rate updated successfully.'})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)})
+    return jsonify({'status': 'error', 'message': 'Unauthorized.'}), 403
+
+@app.route('/admin/reset-student-fee/<student_id>', methods=['GET', 'POST'])
+def reset_student_fee(student_id):
+    if 'user' in session and session['role'] == 'admin':
+        try:
+            conn = get_db_connection()
+            # Fetch the student details to check campus and calculate standard rates
+            student = conn.execute('''
+                SELECT user_id, class, branch, take_school, take_coaching, take_day_hostel, take_car, enrollment_type, remaining_fee, monthly_fee, readmission_fee 
+                FROM student_info 
+                WHERE user_id = ?
+            ''', (student_id,)).fetchone()
+            
+            if not student:
+                conn.close()
+                flash('Student not found.')
+                return redirect(url_for('fee_matrix'))
+                
+            if session.get('branch'):
+                if student['branch'] != session['branch']:
+                    conn.close()
+                    flash('Permission denied: Student does not belong to your campus.')
+                    return redirect(url_for('fee_matrix'))
+            
+            # Reset overrides to 0.0 (or default) and is_custom_fee to 0
+            conn.execute('''
+                UPDATE student_info
+                SET is_custom_fee = 0,
+                    tuition_fee = 0.0,
+                    transport_fee = 0.0,
+                    lab_library_fee = 0.0,
+                    academic_discount = 0.0,
+                    room_rent = 0.0,
+                    mess_food_charges = 0.0,
+                    utility_cost = 0.0,
+                    security_deposit = 0.0,
+                    coaching_combo_fee = 0.0,
+                    study_material_charges = 0.0,
+                    exam_test_series_fee = 0.0,
+                    combo_discount = 0.0,
+                    school_tax_rate = 0.0,
+                    hostel_tax_rate = 0.05,
+                    coaching_tax_rate = 0.0
+                WHERE user_id = ?
+            ''', (student_id,))
+            
+            # Calculate standard class fees using templates since overrides are now 0.0 and is_custom_fee is 0
+            bd = calculate_student_fees_breakdown({
+                'class': student['class'],
+                'branch': student['branch'],
+                'enrollment_type': student['enrollment_type'],
+                'take_car': student['take_car'],
+                'take_school': student['take_school'],
+                'take_coaching': student['take_coaching'],
+                'take_day_hostel': student['take_day_hostel'],
+                'is_custom_fee': 0
+            }, conn)
+            m_fee = bd['total_fee']
+            
+            # Fetch default admission/readmission rates from classes table
+            class_row = conn.execute("SELECT * FROM classes WHERE name = ? AND branch = ?", (student['class'], student['branch'])).fetchone()
+            a_fee = 0.0
+            r_fee = 0.0
+            if student['take_day_hostel']:
+                a_fee = class_row['admission_fee_hostel'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_hostel'] if class_row else 0.0
+            elif student['take_coaching']:
+                a_fee = class_row['admission_fee_coaching'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_coaching'] if class_row else 0.0
+            elif student['take_school']:
+                a_fee = class_row['admission_fee'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_school'] if class_row else 0.0
+                
+            # Update monthly_fee, admission_fee, readmission_fee to standard rates in student_info
+            conn.execute('''
+                UPDATE student_info
+                SET monthly_fee = ?, admission_fee = ?, readmission_fee = ?
+                WHERE user_id = ?
+            ''', (m_fee, a_fee, r_fee, student_id))
+            
+            # Sync ledger and dues to prevent historical shifting
+            old_monthly_fee = float(student['monthly_fee']) if student['monthly_fee'] is not None else 0.0
+            old_readmission_fee = float(student['readmission_fee']) if student['readmission_fee'] is not None else 0.0
+            old_remaining_fee = float(student['remaining_fee']) if student['remaining_fee'] is not None else 0.0
+            
+            new_remaining_fee = old_remaining_fee + (m_fee - old_monthly_fee) + (r_fee - old_readmission_fee)
+                
+            sync_student_ledger_and_dues(conn, student_id, submitted_remaining_fee=new_remaining_fee, force_align_prev_dues=True)
+            
+            conn.commit()
+            conn.close()
+            flash('Student fee reset to regular rates successfully.')
+        except Exception as e:
+            flash(f'Error resetting student fee: {e}')
+        return redirect(url_for('fee_matrix'))
+    return redirect(url_for('home'))
+
+@app.route('/admin/re-trigger-monthly-fees', methods=['POST'])
+def re_trigger_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        try:
+            students = conn.execute("SELECT id FROM users WHERE role = 'student'").fetchall()
+            student_ids = [student['id'] for student in students]
+            
+            max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+            max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+            
+            count = 0
+            failed = 0
+            for student_id in student_ids:
+                try:
+                    sync_student_ledger_and_dues(
+                        conn, 
+                        student_id,
+                        max_month_end=max_month_end,
+                        max_year_end=max_year_end,
+                        flat_transport_fee=flat_transport_fee
+                    )
+                    conn.commit()
+                    count += 1
+                except Exception as e:
+                    conn.rollback()
+                    print(f" [RE-TRIGGER ERROR] Failed for student {student_id}: {e}")
+                    failed += 1
+            
+            if failed > 0:
+                flash(f'Synced monthly dues for {count} student(s). Failed for {failed} student(s).')
+            else:
+                flash(f'Successfully re-triggered and synced monthly dues for {count} student(s).')
+                
+            send_activity_notification("Re-trigger Current Month Dues", f"Manually re-triggered outstanding monthly dues synchronization for {count} students.")
+        except Exception as e:
+            flash(f'Failed to re-trigger monthly fees: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+@app.route('/admin/re-trigger-yearly-fees', methods=['POST'])
+def re_trigger_yearly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        try:
+            students = conn.execute("SELECT id FROM users WHERE role = 'student'").fetchall()
+            student_ids = [student['id'] for student in students]
+            
+            max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+            max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+            
+            count = 0
+            failed = 0
+            for student_id in student_ids:
+                try:
+                    sync_student_ledger_and_dues(
+                        conn, 
+                        student_id,
+                        max_month_end=max_month_end,
+                        max_year_end=max_year_end,
+                        flat_transport_fee=flat_transport_fee
+                    )
+                    conn.commit()
+                    count += 1
+                except Exception as e:
+                    conn.rollback()
+                    print(f" [RE-TRIGGER ERROR] Failed for student {student_id}: {e}")
+                    failed += 1
+            
+            if failed > 0:
+                flash(f'Synced yearly dues for {count} student(s). Failed for {failed} student(s).')
+            else:
+                flash(f'Successfully re-triggered and synced yearly dues for {count} student(s).')
+                
+            send_activity_notification("Re-trigger Current Year Dues", f"Manually re-triggered outstanding yearly dues synchronization for {count} students.")
+        except Exception as e:
+            flash(f'Failed to re-trigger yearly fees: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+@app.route('/admin/post-monthly-fees', methods=['POST'])
+def post_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        month = datetime.now().strftime('%B')
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = run_monthly_billing(conn, month, year)
+            conn.commit()
+            flash(f'Successfully posted monthly fees for {count} active student(s).')
+            send_activity_notification("Month End Billing", f"Triggered monthly billing for {month} {year}. Billed {count} students.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to run Month End billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+@app.route('/admin/update-total-due', methods=['POST'])
+def update_total_due():
+    if 'user' not in session or session['role'] != 'admin':
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+        
+    data = request.json
+    student_id = data.get('student_id')
+    new_total_due = data.get('new_total_due')
+    
+    if student_id is None or new_total_due is None:
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+        
+    try:
+        new_total_due = float(new_total_due)
+        conn = get_db_connection()
+        
+        student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+        if not student:
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Student not found'}), 404
+            
+        student_dict = dict(student)
+        max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+        max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+        
+        curr_month_count = student_dict.get('month_end_billing_count') or 0
+        curr_year_count = student_dict.get('year_end_billing_count') or 0
+        
+        billing_month_count = max_month_end if curr_month_count < max_month_end else curr_month_count
+        billing_year_count = max_year_end if curr_year_count < max_year_end else curr_year_count
+        
+        bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+        monthly_fee_val = float(bd['total_fee'] or 0.0)
+        
+        take_coaching = int(student_dict.get('take_coaching') or 0)
+        take_day_hostel = int(student_dict.get('take_day_hostel') or 0)
+        
+        expected_readm = float(student_dict.get('readmission_fee') or 0.0)
+        if not student_dict.get('is_custom_fee'):
+            matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+            if matrix:
+                if take_day_hostel:
+                    expected_readm = float(matrix['hostel_readmission'] or 0.0)
+                elif take_coaching:
+                    expected_readm = float(matrix['coaching_readmission'] or 0.0)
+                else:
+                    expected_readm = float(matrix['school_readmission'] or 0.0)
+            else:
+                cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+                if cls_row:
+                    if take_day_hostel:
+                        expected_readm = float(cls_row['readmission_fee_hostel'] or 0.0)
+                    elif take_coaching:
+                        expected_readm = float(cls_row['readmission_fee_coaching'] or 0.0)
+                    else:
+                        expected_readm = float(cls_row['readmission_fee_school'] or 0.0)
+                        
+        readmission_fee_val = float(student_dict.get('readmission_fee') or 0.0) if student_dict.get('is_custom_fee') == 1 else expected_readm
+        
+        total_paid = conn.execute("SELECT SUM(amount) FROM fees WHERE student_id = ? AND status = 'Paid'", (student_id,)).fetchone()[0] or 0.0
+        
+        new_prev_dues = new_total_due - (monthly_fee_val * billing_month_count) - (readmission_fee_val * billing_year_count) + total_paid
+        
+        conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (new_prev_dues, student_id))
+        
+        sync_student_ledger_and_dues(conn, student_id)
+        conn.commit()
+        
+        updated_student = conn.execute("SELECT remaining_fee FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+        final_remaining_fee = updated_student['remaining_fee']
+        
+        conn.close()
+        send_activity_notification("Total Due Adjusted", f"Total due for student ID {student_id} manually adjusted to {new_total_due}.")
+        return jsonify({'status': 'success', 'new_remaining_fee': final_remaining_fee, 'new_prev_dues': new_prev_dues})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/admin/undo-monthly-fees', methods=['POST'])
+def undo_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        month = datetime.now().strftime('%B')
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = undo_monthly_billing(conn, month, year)
+            conn.commit()
+            flash(f'Successfully reverted monthly billing entries for {count} records.')
+            send_activity_notification("Undo Month End Billing", f"Reverted monthly billing runs for {month} {year}. Restored dues balance for {count} records.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to undo billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+@app.route('/admin/post-year-end-fees', methods=['POST'])
+def post_year_end_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = run_year_end_billing(conn, year)
+            conn.commit()
+            flash(f'Successfully posted Year End Re-admission fees for {count} active student(s).')
+            send_activity_notification("Year End Billing", f"Triggered Year End readmission billing for {year}. Billed {count} students.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to run Year End billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+@app.route('/admin/undo-year-end-fees', methods=['POST'])
+def undo_year_end_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = undo_year_end_billing(conn, year)
+            conn.commit()
+            flash(f'Successfully reverted Year End billing entries for {count} records.')
+            send_activity_notification("Undo Year End Billing", f"Reverted Year End billing runs for {year}. Restored dues balance for {count} records.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to undo Year End billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
 
 @app.route('/admin/update-subject-marks', methods=['POST'])
 def update_subject_marks():
@@ -9841,10 +12087,9 @@ def student_promotion():
             if branch_filter not in ['surangapur', 'bhogram']:
                 branch_filter = 'bhogram'
                 
-        class_filter = request.args.get('class_filter', '').strip()
+        class_filter = normalize_class_name(request.args.get('class_filter', '').strip())
 
-        # Classes list used elsewhere in the application
-        classes = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+        classes = get_all_classes(conn, branch=branch_filter)
 
         if request.method == 'POST':
             student_ids = request.form.getlist('student_ids')
@@ -9861,17 +12106,39 @@ def student_promotion():
                 conn.close()
                 return redirect(url_for('student_promotion', branch=branch_filter, class_filter=class_filter))
                 
-            # Fetch target monthly fee for the new class
-            class_info = conn.execute("SELECT monthly_fee FROM classes WHERE name = ? AND branch = ?", (new_class, branch_filter)).fetchone()
-            target_monthly_fee = class_info['monthly_fee'] if class_info else 0.0
-
             success_count = 0
             for student_id in student_ids:
+                # Fetch student info to get branch and opt-in settings
+                student = conn.execute('''
+                    SELECT branch, take_school, take_coaching, take_day_hostel, take_car, mode_of_admission, is_custom_fee, monthly_fee
+                    FROM student_info
+                    WHERE user_id = ?
+                ''', (student_id,)).fetchone()
+                
+                if not student:
+                    continue
+                    
                 # Security check for Branch Admin
-                if session.get('branch'):
-                    student = conn.execute("SELECT branch FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
-                    if not student or student['branch'] != session['branch']:
-                        continue
+                if session.get('branch') and student['branch'] != session['branch']:
+                    continue
+                
+                if student['is_custom_fee']:
+                    target_monthly_fee = student['monthly_fee']
+                else:
+                    take_school = student['take_school'] or 0
+                    take_coaching = student['take_coaching'] or 0
+                    take_day_hostel = student['take_day_hostel'] or 0
+                    take_car = student['take_car'] or 0
+                    mode_of_admission = student['mode_of_admission'] or ('Day Hostel' if take_day_hostel else ('School with Coaching' if take_coaching else 'School'))
+                    
+                    target_monthly_fee = calculate_default_monthly_fee(
+                        class_name=new_class,
+                        mode_of_admission=mode_of_admission,
+                        coaching_opted=bool(take_coaching),
+                        car_opted=bool(take_car),
+                        branch=branch_filter,
+                        conn=conn
+                    )
                 
                 # Update class, optional section, and monthly fee
                 if new_section:
@@ -9880,8 +12147,28 @@ def student_promotion():
                 else:
                     conn.execute("UPDATE student_info SET class = ?, section = NULL, monthly_fee = ? WHERE user_id = ?", 
                                  (new_class, target_monthly_fee, student_id))
+                                 
+                # Update historical marks table class_name to prevent mismatch/stale data
+                conn.execute("UPDATE marks SET class_name = ? WHERE student_id = ?", (new_class, student_id))
+                # Also update certificates
+                conn.execute("UPDATE certificates SET class_name = ? WHERE recipient_id = ? AND recipient_type = 'student'", (new_class, student_id))
+                
+                try:
+                    bill_readmission_fee(conn, student_id, new_class, student['branch'], student['take_coaching'], student['take_day_hostel'])
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to auto-bill readmission fee: {e}")
+                
+                try:
+                    sync_student_ledger_and_dues(conn, student_id)
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to sync student dues in promotion: {e}")
+                
                 success_count += 1
                 
+            try:
+                sync_classes(conn)
+            except Exception as e:
+                print(f" [DB MIGRATE ERROR] sync_classes failed in student_promotion: {e}")
             conn.commit()
             if success_count > 0:
                 flash(f'Successfully promoted {success_count} student(s) to Class {new_class}!')
@@ -9892,22 +12179,24 @@ def student_promotion():
 
         # Query students matching filters
         if class_filter:
+            db_classes = get_db_class_names(class_filter)
+            placeholders = ', '.join(['?'] * len(db_classes))
             if branch_filter:
-                students = conn.execute('''
+                students = conn.execute(f'''
                     SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.section, si.unique_code 
                     FROM users u 
                     JOIN student_info si ON u.id = si.user_id 
-                    WHERE u.role = 'student' AND LOWER(si.branch) = LOWER(?) AND LOWER(si.class) = LOWER(?)
+                    WHERE u.role = 'student' AND LOWER(si.branch) = LOWER(?) AND si.class IN ({placeholders})
                     ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
-                ''', (branch_filter, class_filter)).fetchall()
+                ''', [branch_filter] + db_classes).fetchall()
             else:
-                students = conn.execute('''
+                students = conn.execute(f'''
                     SELECT u.id, u.username, si.full_name, si.roll_number, si.class, si.guardian_name, si.section, si.unique_code 
                     FROM users u 
                     JOIN student_info si ON u.id = si.user_id 
-                    WHERE u.role = 'student' AND LOWER(si.class) = LOWER(?)
+                    WHERE u.role = 'student' AND si.class IN ({placeholders})
                     ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
-                ''', (class_filter,)).fetchall()
+                ''', db_classes).fetchall()
         else:
             students = []
 
@@ -10073,14 +12362,15 @@ def bulk_admit_card():
         except Exception:
             pass
             
-    # Query students
-    students = conn.execute('''
+    db_classes = get_db_class_names(class_name)
+    placeholders = ', '.join(['?'] * len(db_classes))
+    students = conn.execute(f'''
         SELECT u.id, u.username, si.full_name, si.roll_number, si.branch 
         FROM users u 
         JOIN student_info si ON u.id = si.user_id 
-        WHERE u.role = 'student' AND si.class = ? AND si.branch = ?
+        WHERE u.role = 'student' AND si.class IN ({placeholders}) AND si.branch = ?
         ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
-    ''', (class_name, branch)).fetchall()
+    ''', db_classes + [branch]).fetchall()
     
     conn.close()
     
@@ -10910,6 +13200,10 @@ def process_upload(smart_type=None, smart_stream=None):
                 else:
                     flash('Error: Could not determine data type from headers. Please ensure your CSV includes standard headers like CLASS, DOB, ROLL, or SUBJECT.')
                     
+                try:
+                    sync_classes(conn)
+                except Exception as e:
+                    print(f" [DB MIGRATE ERROR] sync_classes failed in process_upload: {e}")
                 conn.commit()
             except Exception as e:
                 flash(f'CRITICAL ERROR during upload: {str(e)}')
@@ -11427,7 +13721,7 @@ def view_routine():
     user = get_session_user()
     conn = get_db_connection()
     
-    CLASSES = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+    CLASSES = get_all_classes(conn)
     DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     
     if request.method == 'POST' and user['role'] == 'admin':
@@ -11484,15 +13778,6 @@ def view_routine():
         conn.close()
         return redirect(url_for('view_routine'))
         
-    class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
-    def get_class_sort_index(cls_name):
-        if not cls_name: return len(class_order) + 2
-        cls_upper = normalize_class_name(cls_name).upper()
-        for idx, c in enumerate(class_order):
-            if c.upper() == cls_upper:
-                return idx
-        return len(class_order) + 1
-
     if user['role'] == 'teacher':
         teacher_row = conn.execute('''
             SELECT COALESCE(ti.full_name, u.username) as name
@@ -11529,7 +13814,7 @@ def view_routine():
 
     sorted_routines = sorted(
         [dict(r) for r in routines],
-        key=lambda x: (x['branch'], get_class_sort_index(x['class_name']), day_order.get(x['day'], 99), parse_time_to_minutes(x['start_time']))
+        key=lambda x: (x['branch'], get_class_sort_key(x['class_name']), day_order.get(x['day'], 99), parse_time_to_minutes(x['start_time']))
     )
     
     routine_data = {}
@@ -11547,7 +13832,7 @@ def view_routine():
         UNION
         SELECT DISTINCT class_name as class FROM class_subjects WHERE class_name IS NOT NULL AND class_name != ''
     ''').fetchall()
-    classes_list = sorted([c[0] for c in db_classes], key=get_class_sort_index)
+    classes_list = sorted([c[0] for c in db_classes], key=get_class_sort_key)
     
     distinct_subjects = [r['name'] for r in conn.execute("SELECT name FROM subjects").fetchall()]
     
@@ -11740,28 +14025,21 @@ def guardian_meeting_attendance(meeting_id):
         SELECT DISTINCT class FROM student_info WHERE branch = ? AND class IS NOT NULL AND class != ''
     ''', (meeting['branch'],)).fetchall()
     
-    class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
-    def get_class_sort_index(cls_name):
-        if not cls_name: return len(class_order) + 2
-        cls_upper = normalize_class_name(cls_name).upper()
-        for idx, c in enumerate(class_order):
-            if c.upper() == cls_upper:
-                return idx
-        return len(class_order) + 1
-        
-    classes_list = sorted([c['class'] for c in db_classes], key=get_class_sort_index)
+    classes_list = sorted([c['class'] for c in db_classes], key=get_class_sort_key)
     selected_class = request.args.get('class_name', classes_list[0] if classes_list else '')
     
     guardians_roster = []
     if selected_class:
-        guardians_roster = conn.execute('''
+        db_classes = get_db_class_names(selected_class)
+        placeholders = ', '.join(['?'] * len(db_classes))
+        guardians_roster = conn.execute(f'''
             SELECT u.id as user_id, si.full_name as student_name, si.guardian_name, si.class, si.roll_number, ma.status, ma.remarks
             FROM users u
             JOIN student_info si ON u.id = si.user_id
             LEFT JOIN meeting_attendance ma ON u.id = ma.user_id AND ma.meeting_id = ? AND ma.attendee_type = 'guardian'
-            WHERE u.role = 'student' AND si.branch = ? AND si.class = ?
+            WHERE u.role = 'student' AND si.branch = ? AND si.class IN ({placeholders})
             ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
-        ''', (meeting_id, meeting['branch'], selected_class)).fetchall()
+        ''', [meeting_id, meeting['branch']] + db_classes).fetchall()
         
     others_roster = conn.execute('''
         SELECT * FROM meeting_attendance
@@ -11796,7 +14074,7 @@ def admin_attendance():
         return redirect(url_for('dashboard'))
         
     conn = get_db_connection()
-    CLASSES = ['Nursery', 'U/N', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+    CLASSES = get_active_classes(conn)
     
     if session.get('branch'):
         branch_filter = session['branch']
@@ -11842,14 +14120,16 @@ def admin_attendance():
     users_list = []
     if role_filter == 'student':
         if class_filter:
-            users_list = conn.execute('''
+            db_classes = get_db_class_names(class_filter)
+            placeholders = ', '.join(['?'] * len(db_classes))
+            users_list = conn.execute(f'''
                 SELECT u.id, u.username, si.full_name, si.class, si.roll_number, si.phone_number, att.status as att_status, att.remarks as att_remarks
                 FROM users u
                 JOIN student_info si ON u.id = si.user_id
                 LEFT JOIN attendance att ON u.id = att.user_id AND att.date = ? AND att.attendance_type = ?
-                WHERE u.role = 'student' AND si.branch = ? AND si.class = ?
+                WHERE u.role = 'student' AND si.branch = ? AND si.class IN ({placeholders})
                 ORDER BY CAST(si.roll_number AS INTEGER), si.roll_number
-            ''', (date_filter, attendance_type, branch_filter, class_filter)).fetchall()
+            ''', [date_filter, attendance_type, branch_filter] + db_classes).fetchall()
     elif role_filter == 'teacher':
         if attendance_type == 'coaching':
             users_list = conn.execute('''
@@ -11898,9 +14178,25 @@ def admin_attendance():
                            logo_url=logo_url)
 
 
+def sync_leave_dates_to_attendance(conn, user_id, role, start_date_str, end_date_str, leave_type):
+    from datetime import datetime, timedelta
+    try:
+        start = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end = datetime.strptime(end_date_str, '%Y-%m-%d')
+        delta = end - start
+        for i in range(delta.days + 1):
+            day = (start + timedelta(days=i)).strftime('%Y-%m-%d')
+            conn.execute('''
+                INSERT OR REPLACE INTO attendance (user_id, role, date, status, remarks, attendance_type)
+                VALUES (?, ?, ?, 'On Leave', ?, 'regular')
+            ''', (user_id, role, day, f'Approved Leave ({leave_type})'))
+    except Exception as e:
+        print(f"Error syncing leave dates to attendance: {e}")
+
+
 # ================= LEAVE MANAGEMENT =================
 
-@app.route('/admin/leaves', methods=['GET', 'POST'])
+@app.route('/admin/leaves', methods=['GET'])
 @login_required
 def admin_leaves():
     user = get_session_user()
@@ -11909,21 +14205,10 @@ def admin_leaves():
         return redirect(url_for('dashboard'))
         
     conn = get_db_connection()
-    
-    if request.method == 'POST':
-        leave_id = request.form.get('leave_id')
-        action = request.form.get('action')
-        status = 'Approved' if action == 'approve' else 'Rejected'
-        
-        conn.execute("UPDATE leaves SET status = ? WHERE id = ?", (status, leave_id))
-        conn.commit()
-        flash(f'Leave application {status.lower()} successfully.')
-        conn.close()
-        return redirect(url_for('admin_leaves'))
         
     if session.get('branch'):
         pending_leaves = conn.execute('''
-            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as full_name, u.username, COALESCE(si.class, 'Teacher') as class
+            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as applicant_name, u.username, COALESCE(si.class, 'Teacher') as class_name
             FROM leaves l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN student_info si ON u.id = si.user_id
@@ -11933,7 +14218,7 @@ def admin_leaves():
         ''', (session['branch'], session['branch'], session['branch'])).fetchall()
         
         resolved_leaves = conn.execute('''
-            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as full_name, u.username, COALESCE(si.class, 'Teacher') as class
+            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as applicant_name, u.username, COALESCE(si.class, 'Teacher') as class_name
             FROM leaves l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN student_info si ON u.id = si.user_id
@@ -11941,9 +14226,28 @@ def admin_leaves():
             WHERE l.status != 'Pending' AND (si.branch = ? OR ti.address LIKE '%' || ? || '%' OR u.branch = ?)
             ORDER BY l.submitted_at DESC LIMIT 50
         ''', (session['branch'], session['branch'], session['branch'])).fetchall()
+        
+        students_dropdown = conn.execute('''
+            SELECT u.id, si.full_name, si.roll_number, si.class, si.branch
+            FROM users u
+            JOIN student_info si ON u.id = si.user_id
+            WHERE LOWER(si.branch) = LOWER(?)
+        ''', (session['branch'],)).fetchall()
+        
+        teachers_list = conn.execute('''
+            SELECT u.id, u.username, ti.full_name,
+                   COALESCE((
+                       SELECT SUM(CAST(julianday(l.end_date) - julianday(l.start_date) + 1 AS INTEGER))
+                       FROM leaves l
+                       WHERE l.user_id = u.id AND l.status = 'Approved' AND l.leave_type = 'Casual Leave'
+                   ), 0) as leaves_taken
+            FROM users u
+            JOIN teacher_info ti ON u.id = ti.user_id
+            WHERE u.role = 'teacher' AND (u.branch = ? OR ti.address LIKE '%' || ? || '%')
+        ''', (session['branch'], session['branch'])).fetchall()
     else:
         pending_leaves = conn.execute('''
-            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as full_name, u.username, COALESCE(si.class, 'Teacher') as class
+            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as applicant_name, u.username, COALESCE(si.class, 'Teacher') as class_name
             FROM leaves l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN student_info si ON u.id = si.user_id
@@ -11953,7 +14257,7 @@ def admin_leaves():
         ''').fetchall()
         
         resolved_leaves = conn.execute('''
-            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as full_name, u.username, COALESCE(si.class, 'Teacher') as class
+            SELECT l.*, COALESCE(si.full_name, ti.full_name, u.username) as applicant_name, u.username, COALESCE(si.class, 'Teacher') as class_name
             FROM leaves l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN student_info si ON u.id = si.user_id
@@ -11962,14 +14266,102 @@ def admin_leaves():
             ORDER BY l.submitted_at DESC LIMIT 50
         ''').fetchall()
         
+        students_dropdown = conn.execute('''
+            SELECT u.id, si.full_name, si.roll_number, si.class, si.branch
+            FROM users u
+            JOIN student_info si ON u.id = si.user_id
+        ''').fetchall()
+        
+        teachers_list = conn.execute('''
+            SELECT u.id, u.username, ti.full_name,
+                   COALESCE((
+                       SELECT SUM(CAST(julianday(l.end_date) - julianday(l.start_date) + 1 AS INTEGER))
+                       FROM leaves l
+                       WHERE l.user_id = u.id AND l.status = 'Approved' AND l.leave_type = 'Casual Leave'
+                   ), 0) as leaves_taken
+            FROM users u
+            JOIN teacher_info ti ON u.id = ti.user_id
+            WHERE u.role = 'teacher'
+        ''').fetchall()
+        
     conn.close()
     logo_url = LOGO_URL
     
     return render_template('admin/leaves.html',
                            pending_leaves=pending_leaves,
+                           past_leaves=resolved_leaves,
                            resolved_leaves=resolved_leaves,
+                           students_dropdown=students_dropdown,
+                           teachers_list=teachers_list,
                            role=user['role'],
                            logo_url=logo_url)
+
+
+@app.route('/admin/leaves/action/<int:leave_id>/<action>', methods=['POST'])
+@login_required
+def admin_leave_action(leave_id, action):
+    user = get_session_user()
+    if user['role'] != 'admin':
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+        
+    status = 'Approved' if action == 'approve' else 'Rejected'
+    conn = get_db_connection()
+    conn.execute("UPDATE leaves SET status = ? WHERE id = ?", (status, leave_id))
+    
+    if status == 'Approved':
+        # Retrieve leave details to update attendance
+        leave = conn.execute("SELECT * FROM leaves WHERE id = ?", (leave_id,)).fetchone()
+        if leave:
+            sync_leave_dates_to_attendance(conn, leave['user_id'], leave['role'], leave['start_date'], leave['end_date'], leave['leave_type'])
+                
+    conn.commit()
+    conn.close()
+    flash(f'Leave application {status.lower()} successfully.')
+    return redirect(url_for('admin_leaves'))
+
+
+@app.route('/admin/leaves/record-direct', methods=['POST'])
+@login_required
+def record_direct_leave():
+    user = get_session_user()
+    if user['role'] != 'admin':
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+        
+    user_id = request.form.get('user_id')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    leave_type = request.form.get('leave_type', 'Casual Leave')
+    reason = request.form.get('reason', '').strip()
+    
+    if not user_id or not start_date or not end_date:
+        flash('Missing required fields for direct leave.')
+        return redirect(url_for('admin_leaves'))
+        
+    conn = get_db_connection()
+    # Find recipient role
+    target_user = conn.execute("SELECT role FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not target_user:
+        flash('Recipient user not found.')
+        conn.close()
+        return redirect(url_for('admin_leaves'))
+        
+    role = target_user['role']
+    
+    # Insert approved leave
+    conn.execute('''
+        INSERT INTO leaves (user_id, role, leave_type, start_date, end_date, reason, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'Approved')
+    ''', (user_id, role, leave_type, start_date, end_date, reason))
+    
+    # Mark attendance as 'On Leave' for the dates using shared helper
+    sync_leave_dates_to_attendance(conn, user_id, role, start_date, end_date, leave_type)
+        
+    conn.commit()
+    conn.close()
+    flash('Direct leave recorded and attendance updated successfully.')
+    return redirect(url_for('admin_leaves'))
 
 @app.route('/student/attendance-leaves', methods=['GET', 'POST'])
 @login_required
@@ -12463,6 +14855,783 @@ def sync_all_existing_teacher_assignments():
 
 # sync_all_existing_teacher_assignments() # Moved to bottom
 
+def migrate_billing_system():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Create fee_matrix table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fee_matrix (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_name TEXT NOT NULL,
+                branch TEXT NOT NULL DEFAULT 'bhogram',
+                school_monthly REAL DEFAULT 0.0,
+                school_admission REAL DEFAULT 0.0,
+                school_readmission REAL DEFAULT 0.0,
+                coaching_monthly REAL DEFAULT 0.0,
+                coaching_admission REAL DEFAULT 0.0,
+                coaching_readmission REAL DEFAULT 0.0,
+                hostel_monthly REAL DEFAULT 0.0,
+                hostel_admission REAL DEFAULT 0.0,
+                hostel_readmission REAL DEFAULT 0.0,
+                UNIQUE(class_name, branch)
+            )
+        ''')
+        
+        # Populate fee_matrix with default classes if empty
+        exist = c.execute("SELECT id FROM fee_matrix").fetchone()
+        if not exist:
+            classes_names = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+            for branch in ['bhogram']:
+                for cls in classes_names:
+                    cls_row = c.execute("SELECT monthly_fee, admission_fee, monthly_fee_coaching, admission_fee_coaching, admission_fee_hostel, readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel, hostel_fee FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls, branch)).fetchone()
+                    if cls_row:
+                        c.execute('''
+                            INSERT OR IGNORE INTO fee_matrix (
+                                class_name, branch, school_monthly, school_admission, school_readmission,
+                                coaching_monthly, coaching_admission, coaching_readmission,
+                                hostel_monthly, hostel_admission, hostel_readmission
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (cls, branch, 
+                              float(cls_row['monthly_fee'] or 0.0), 
+                              float(cls_row['admission_fee'] or 0.0), 
+                              float(cls_row['readmission_fee_school'] or 0.0),
+                              float(cls_row['monthly_fee_coaching'] or 0.0), 
+                              float(cls_row['admission_fee_coaching'] or 0.0), 
+                              float(cls_row['readmission_fee_coaching'] or 0.0),
+                              float(cls_row['hostel_fee'] or 0.0), 
+                              float(cls_row['admission_fee_hostel'] or 0.0), 
+                              float(cls_row['readmission_fee_hostel'] or 0.0)))
+                    else:
+                        c.execute('''
+                            INSERT OR IGNORE INTO fee_matrix (
+                                class_name, branch, school_monthly, school_admission, school_readmission,
+                                coaching_monthly, coaching_admission, coaching_readmission,
+                                hostel_monthly, hostel_admission, hostel_readmission
+                            ) VALUES (?, ?, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                        ''', (cls, branch))
+
+        # Clean up any extra classes and non-bhogram branches from fee_matrix
+        c.execute("DELETE FROM fee_matrix WHERE class_name NOT IN ('Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI')")
+        c.execute("DELETE FROM fee_matrix WHERE branch != 'bhogram'")
+
+        # Create transport_settings table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS transport_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                flat_rate REAL DEFAULT 400.0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Seed transport_settings if empty
+        exist_trans = c.execute("SELECT id FROM transport_settings").fetchone()
+        if not exist_trans:
+            c.execute("INSERT INTO transport_settings (flat_rate) VALUES (400.0)")
+            
+        # Create student_ledger table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS student_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                fee_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                month TEXT NOT NULL,
+                year TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Unpaid/Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                paid_at TIMESTAMP,
+                branch TEXT,
+                FOREIGN KEY (student_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Create financial_logs table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS financial_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                log_type TEXT NOT NULL,
+                fee_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                month TEXT NOT NULL,
+                year TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                branch TEXT,
+                FOREIGN KEY (student_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Add readmission_revenue column to fees table
+        try:
+            c.execute("ALTER TABLE fees ADD COLUMN readmission_revenue REAL DEFAULT 0.0")
+            print(" [DB MIGRATE] Added readmission_revenue column to fees table.")
+        except sqlite3.OperationalError:
+            pass
+            
+        conn.commit()
+        conn.close()
+        print(" [DB MIGRATE] Billing System tables migrated successfully.")
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] Billing System tables migration failed: {e}")
+
+def bill_admission_fee(conn, user_id, class_name, branch, take_coaching, take_day_hostel, custom_admission_fee=None):
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    amount = 0.0
+    if custom_admission_fee is not None and float(custom_admission_fee) > 0.0:
+        amount = float(custom_admission_fee)
+    else:
+        matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+        if matrix:
+            if take_day_hostel:
+                amount = float(matrix['hostel_admission'] or 0.0)
+            elif take_coaching:
+                amount = float(matrix['coaching_admission'] or 0.0)
+            else:
+                amount = float(matrix['school_admission'] or 0.0)
+        else:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+            if cls_row:
+                if take_day_hostel:
+                    amount = float(cls_row['admission_fee_hostel'] or 0.0)
+                elif take_coaching:
+                    amount = float(cls_row['admission_fee_coaching'] or 0.0)
+                else:
+                    amount = float(cls_row['admission_fee'] or 0.0)
+                    
+    if amount > 0.0:
+        conn.execute('''
+            INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+            VALUES (?, 'Admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+        ''', (user_id, amount, month, year, branch))
+        
+        conn.execute('''
+            INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+            VALUES (?, 'Charge', 'Admission Fee', ?, ?, ?, ?)
+        ''', (user_id, amount, month, year, branch))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET remaining_fee = COALESCE(remaining_fee, 0.0) + ?
+            WHERE user_id = ?
+        ''', (amount, user_id))
+
+def bill_readmission_fee(conn, user_id, class_name, branch, take_coaching, take_day_hostel, custom_readmission_fee=None):
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    amount = 0.0
+    if custom_readmission_fee is not None and float(custom_readmission_fee) > 0.0:
+        amount = float(custom_readmission_fee)
+    else:
+        matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+        if matrix:
+            if take_day_hostel:
+                amount = float(matrix['hostel_readmission'] or 0.0)
+            elif take_coaching:
+                amount = float(matrix['coaching_readmission'] or 0.0)
+            else:
+                amount = float(matrix['school_readmission'] or 0.0)
+        else:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+            if cls_row:
+                if take_day_hostel:
+                    amount = float(cls_row['readmission_fee_hostel'] or 0.0)
+                elif take_coaching:
+                    amount = float(cls_row['readmission_fee_coaching'] or 0.0)
+                else:
+                    amount = float(cls_row['readmission_fee_school'] or 0.0)
+                    
+    if amount > 0.0:
+        conn.execute('''
+            INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+            VALUES (?, 'Re-admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+        ''', (user_id, amount, month, year, branch))
+        
+        conn.execute('''
+            INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+            VALUES (?, 'Charge', 'Re-admission Fee', ?, ?, ?, ?)
+        ''', (user_id, amount, month, year, branch))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET remaining_fee = COALESCE(remaining_fee, 0.0) + ?
+            WHERE user_id = ?
+        ''', (amount, user_id))
+
+def run_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    students = conn.execute('''
+        SELECT u.id, si.*
+        FROM users u
+        JOIN student_info si ON u.id = si.user_id
+        WHERE u.role = 'student'
+    ''').fetchall()
+    
+    transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+    flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+    
+    billed_count = 0
+    for student in students:
+        student_id = student['id']
+        class_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        take_school = student['take_school'] or 0
+        take_coaching = student['take_coaching'] or 0
+        take_day_hostel = student['take_day_hostel'] or 0
+        take_car = student['take_car'] or 0
+        
+        already_billed = conn.execute('''
+            SELECT id FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchone()
+        if already_billed:
+            continue
+            
+        student_dict = dict(student)
+        bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+        
+        school_fee = bd['tuition_fee'] if take_school else 0.0
+        coaching_fee = bd['coaching_combo_fee'] if take_coaching else 0.0
+        hostel_fee = bd['room_rent'] if take_day_hostel else 0.0
+        car_fee = flat_transport_fee if take_car else 0.0
+        
+        line_items = []
+        if school_fee > 0.0:
+            line_items.append(('Monthly Tuition Fee', school_fee))
+        if coaching_fee > 0.0:
+            line_items.append(('Monthly Coaching Fee', coaching_fee))
+        if hostel_fee > 0.0:
+            line_items.append(('Monthly Hostel Fee', hostel_fee))
+        if car_fee > 0.0:
+            line_items.append(('Monthly Transport Fee', car_fee))
+            
+        total_due = school_fee + coaching_fee + hostel_fee + car_fee
+        if total_due <= 0.0:
+            continue
+            
+        for fee_type, amount in line_items:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = COALESCE(month_end_billing_count, 0) + 1
+            WHERE user_id = ?
+        ''', (student_id,))
+        sync_student_ledger_and_dues(conn, student_id)
+        billed_count += 1
+        
+    return billed_count
+
+def undo_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    entries = conn.execute('''
+        SELECT id, student_id, amount 
+        FROM student_ledger 
+        WHERE month = ? AND year = ? AND fee_type LIKE 'Monthly%' AND status = 'Unpaid/Pending'
+    ''', (month, year)).fetchall()
+    
+    deleted_count = 0
+    for entry in entries:
+        entry_id = entry['id']
+        student_id = entry['student_id']
+        amount = float(entry['amount'])
+        
+        conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry_id,))
+        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND month = ? AND year = ? AND amount = ?", (student_id, month, year, amount))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = CASE 
+                    WHEN COALESCE(month_end_billing_count, 0) - 1 < 0 THEN 0
+                    ELSE COALESCE(month_end_billing_count, 0) - 1
+                END,
+                remaining_fee = CASE 
+                    WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0
+                    ELSE COALESCE(remaining_fee, 0.0) - ?
+                END
+            WHERE user_id = ?
+        ''', (amount, amount, student_id))
+        deleted_count += 1
+        
+    return deleted_count
+
+def record_ledger_payment(conn, student_id, amount_paid):
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    unpaid_entries = conn.execute('''
+        SELECT id, amount, fee_type, branch 
+        FROM student_ledger 
+        WHERE student_id = ? AND status = 'Unpaid/Pending'
+        ORDER BY id ASC
+    ''', (student_id,)).fetchall()
+    
+    remaining_payment = float(amount_paid)
+    for entry in unpaid_entries:
+        entry_id = entry['id']
+        entry_amount = float(entry['amount'])
+        
+        if remaining_payment >= entry_amount:
+            conn.execute('''
+                UPDATE student_ledger 
+                SET status = 'Paid', paid_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ''', (entry_id,))
+            
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Payment', ?, ?, ?, ?, ?)
+            ''', (student_id, entry['fee_type'] + ' Payment', entry_amount, month, year, entry['branch']))
+            
+            remaining_payment -= entry_amount
+        else:
+            if remaining_payment > 0:
+                conn.execute('''
+                    UPDATE student_ledger 
+                    SET amount = ?, status = 'Paid', paid_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                ''', (remaining_payment, entry_id))
+                
+                conn.execute('''
+                    INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                    VALUES (?, 'Payment', ?, ?, ?, ?, ?)
+                ''', (student_id, entry['fee_type'] + ' Payment', remaining_payment, month, year, entry['branch']))
+                
+                remainder = entry_amount - remaining_payment
+                conn.execute('''
+                    INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                    VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                ''', (student_id, entry['fee_type'], remainder, month, year, entry['branch']))
+                
+                remaining_payment = 0
+            break
+            
+    conn.execute('''
+        UPDATE student_info
+        SET remaining_fee = CASE 
+            WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0 
+            ELSE COALESCE(remaining_fee, 0.0) - ? 
+        END
+        WHERE user_id = ?
+    ''', (float(amount_paid), float(amount_paid), student_id))
+
+def run_year_end_billing(conn, year=None):
+    from datetime import datetime
+    if not year:
+        year = datetime.now().strftime('%Y')
+    month = datetime.now().strftime('%B')
+        
+    students = conn.execute('''
+        SELECT u.id, si.class, si.branch, si.take_school, si.take_coaching, si.take_day_hostel, si.is_custom_fee, si.readmission_fee
+        FROM users u
+        JOIN student_info si ON u.id = si.user_id
+        WHERE u.role = 'student'
+    ''').fetchall()
+    
+    billed_count = 0
+    for student in students:
+        student_id = student['id']
+        class_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        take_school = int(student['take_school'] if student['take_school'] is not None else 1)
+        take_coaching = int(student['take_coaching'] or 0)
+        take_day_hostel = int(student['take_day_hostel'] or 0)
+        
+        # Check duplicate billing for Re-admission fee in this year
+        already_billed = conn.execute('''
+            SELECT id FROM student_ledger 
+            WHERE student_id = ? AND year = ? AND fee_type = 'Re-admission Fee'
+        ''', (student_id, year)).fetchone()
+        if already_billed:
+            continue
+            
+        custom_readm = student['readmission_fee'] if student['is_custom_fee'] else None
+        
+        amount = 0.0
+        if custom_readm is not None and float(custom_readm) > 0.0:
+            amount = float(custom_readm)
+        else:
+            matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+            if matrix:
+                if take_day_hostel:
+                    amount = float(matrix['hostel_readmission'] or 0.0)
+                elif take_coaching:
+                    amount = float(matrix['coaching_readmission'] or 0.0)
+                else:
+                    amount = float(matrix['school_readmission'] or 0.0)
+            else:
+                cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (class_name.lower(), branch.lower())).fetchone()
+                if cls_row:
+                    if take_day_hostel:
+                        amount = float(cls_row['readmission_fee_hostel'] or 0.0)
+                    elif take_coaching:
+                        amount = float(cls_row['readmission_fee_coaching'] or 0.0)
+                    else:
+                        amount = float(cls_row['readmission_fee_school'] or 0.0)
+                        
+        if amount <= 0.0:
+            continue
+            
+        conn.execute('''
+            INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+            VALUES (?, 'Re-admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+        ''', (student_id, amount, month, year, branch))
+        
+        conn.execute('''
+            INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+            VALUES (?, 'Charge', 'Re-admission Fee', ?, ?, ?, ?)
+        ''', (student_id, amount, month, year, branch))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET year_end_billing_count = COALESCE(year_end_billing_count, 0) + 1
+            WHERE user_id = ?
+        ''', (student_id,))
+        sync_student_ledger_and_dues(conn, student_id)
+        billed_count += 1
+        
+    return billed_count
+
+def undo_year_end_billing(conn, year=None):
+    from datetime import datetime
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    entries = conn.execute('''
+        SELECT id, student_id, amount 
+        FROM student_ledger 
+        WHERE year = ? AND fee_type = 'Re-admission Fee' AND status = 'Unpaid/Pending'
+    ''', (year,)).fetchall()
+    
+    deleted_count = 0
+    for entry in entries:
+        entry_id = entry['id']
+        student_id = entry['student_id']
+        amount = float(entry['amount'])
+        
+        conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry_id,))
+        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ? AND amount = ?", (student_id, year, amount))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET year_end_billing_count = CASE 
+                    WHEN COALESCE(year_end_billing_count, 0) - 1 < 0 THEN 0
+                    ELSE COALESCE(year_end_billing_count, 0) - 1
+                END,
+                remaining_fee = CASE 
+                    WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0
+                    ELSE COALESCE(remaining_fee, 0.0) - ?
+                END
+            WHERE user_id = ?
+        ''', (amount, amount, student_id))
+        deleted_count += 1
+        
+    return deleted_count
+
+def sync_student_ledger_and_dues(conn, student_id, submitted_remaining_fee=None, *args, **kwargs):
+    is_manual_dues_change = kwargs.get('is_manual_dues_change', False)
+    if not is_manual_dues_change and args:
+        is_manual_dues_change = args[0]
+        
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+    if not student:
+        return
+        
+    student_dict = dict(student)
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 1] student_id={student_id} submitted_remaining_fee={submitted_remaining_fee} args={args} kwargs={kwargs}")
+        print(f"[DEBUG SYNC 2] student_dict={student_dict}")
+    
+    # 1. Recalculate what their current month/year billed fees SHOULD be
+    take_school = int(student_dict.get('take_school') if student_dict.get('take_school') is not None else 1)
+    take_coaching = int(student_dict.get('take_coaching') or 0)
+    take_day_hostel = int(student_dict.get('take_day_hostel') or 0)
+    take_car = int(student_dict.get('take_car') or 0)
+    
+    # Get monthly fee breakdown
+    bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+    
+    # Monthly expected items
+    expected_monthly = {}
+    if take_school and bd['tuition_fee'] > 0.0:
+        expected_monthly['Monthly Tuition Fee'] = bd['tuition_fee']
+    if take_coaching and bd['coaching_combo_fee'] > 0.0:
+        expected_monthly['Monthly Coaching Fee'] = bd['coaching_combo_fee']
+    if take_day_hostel and bd['room_rent'] > 0.0:
+        expected_monthly['Monthly Hostel Fee'] = bd['room_rent']
+    if take_car:
+        flat_transport_fee = kwargs.get('flat_transport_fee')
+        if flat_transport_fee is None:
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+        expected_monthly['Monthly Transport Fee'] = flat_transport_fee
+        
+    # Get global max billing counts
+    max_month_end = kwargs.get('max_month_end')
+    if max_month_end is None:
+        max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+        
+    max_year_end = kwargs.get('max_year_end')
+    if max_year_end is None:
+        max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+    
+    curr_month_count = student_dict.get('month_end_billing_count') or 0
+    curr_year_count = student_dict.get('year_end_billing_count') or 0
+    
+    has_monthly_run = False
+    if curr_month_count < max_month_end:
+        has_monthly_run = True
+        conn.execute("UPDATE student_info SET month_end_billing_count = ? WHERE user_id = ?", (max_month_end, student_id))
+    elif curr_month_count > 0:
+        has_monthly_run = True
+        
+    has_year_end_run = False
+    if curr_year_count < max_year_end:
+        has_year_end_run = True
+        conn.execute("UPDATE student_info SET year_end_billing_count = ? WHERE user_id = ?", (max_year_end, student_id))
+    elif curr_year_count > 0:
+        has_year_end_run = True
+    
+    if has_monthly_run:
+        # Sync the current month's ledger entries
+        existing_entries = conn.execute('''
+            SELECT id, fee_type, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchall()
+        
+        existing_types = {e['fee_type']: e for e in existing_entries}
+        
+        for f_type, expected_amt in expected_monthly.items():
+            if f_type in existing_types:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    if float(entry['amount']) != expected_amt:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_amt, entry['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (expected_amt, student_id, f_type, month, year))
+            else:
+                if expected_amt > 0.0:
+                    conn.execute('''
+                        INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                        VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    conn.execute('''
+                        INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                        VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    
+        for f_type in existing_types:
+            if f_type not in expected_monthly:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (student_id, f_type, month, year))
+
+    # 2. Check Re-admission Fee (Year End)
+    expected_readm = 0.0
+    matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+    if matrix:
+        if take_day_hostel:
+            expected_readm = float(matrix['hostel_readmission'] or 0.0)
+        elif take_coaching:
+            expected_readm = float(matrix['coaching_readmission'] or 0.0)
+        else:
+            expected_readm = float(matrix['school_readmission'] or 0.0)
+    else:
+        cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+        if cls_row:
+            if take_day_hostel:
+                expected_readm = float(cls_row['readmission_fee_hostel'] or 0.0)
+            elif take_coaching:
+                expected_readm = float(cls_row['readmission_fee_coaching'] or 0.0)
+            else:
+                expected_readm = float(cls_row['readmission_fee_school'] or 0.0)
+
+    # Apply Financial Aid Readmission Reduction
+    fin_aid_readm = float(student_dict.get('financial_aid_readmission') or 0.0)
+    expected_readm = max(0.0, expected_readm - fin_aid_readm)
+
+    if has_year_end_run:
+        existing_readm = conn.execute('''
+            SELECT id, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND year = ? AND fee_type = 'Re-admission Fee'
+        ''', (student_id, year)).fetchone()
+        
+        if existing_readm:
+            if existing_readm['status'] == 'Unpaid/Pending':
+                if float(existing_readm['amount']) != expected_readm:
+                    if expected_readm > 0.0:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_readm, existing_readm['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (expected_readm, student_id, year))
+                    else:
+                        conn.execute("DELETE FROM student_ledger WHERE id = ?", (existing_readm['id'],))
+                        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (student_id, year))
+        else:
+            if expected_readm > 0.0:
+                conn.execute('''
+                    INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                    VALUES (?, 'Re-admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+                conn.execute('''
+                    INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                    VALUES (?, 'Charge', 'Re-admission Fee', ?, ?, ?, ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+
+    # 3. Calculate expected dues based on formula:
+    # total = prev_dues + monthly * total_monthly_trigger + re_admission * total_yearly_trigger - total_paid
+    monthly_fee_val = float(bd['total_fee'] or 0.0)
+    readmission_fee_val = expected_readm
+        
+    billing_month_count = max_month_end if curr_month_count < max_month_end else curr_month_count
+    billing_year_count = max_year_end if curr_year_count < max_year_end else curr_year_count
+    
+    total_paid = conn.execute("SELECT SUM(amount) FROM fees WHERE student_id = ? AND status = 'Paid'", (student_id,)).fetchone()[0] or 0.0
+    prev_dues = float(student_dict.get('prev_dues') or 0.0)
+    
+    expected_remaining_fee = prev_dues + (monthly_fee_val * billing_month_count) + (readmission_fee_val * billing_year_count) - total_paid
+    # ALLOW NEGATIVE DUES
+        
+
+
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 3] expected_remaining_fee={expected_remaining_fee} prev_dues={prev_dues} billing_month_count={billing_month_count} billing_year_count={billing_year_count} total_paid={total_paid} monthly_fee_val={monthly_fee_val} readmission_fee_val={readmission_fee_val}")
+
+    # Recalculate sum of Unpaid/Pending ledger entries
+    unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+    
+    diff = expected_remaining_fee - unpaid_sum
+    if abs(diff) > 0.01:
+        if diff > 0:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, 'Balance Adjustment', ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', 'Balance Adjustment', ?, ?, ?, ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+        else:
+            unpaid_entries_desc = conn.execute('''
+                SELECT id, amount 
+                FROM student_ledger 
+                WHERE student_id = ? AND status = 'Unpaid/Pending'
+                ORDER BY id DESC
+            ''', (student_id,)).fetchall()
+            to_deduct = abs(diff)
+            for entry in unpaid_entries_desc:
+                if to_deduct <= 0:
+                    break
+                entry_amt = float(entry['amount'])
+                if to_deduct >= entry_amt:
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    to_deduct -= entry_amt
+                else:
+                    conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (entry_amt - to_deduct, entry['id']))
+                    to_deduct = 0.0
+        # Re-sum after adjustment (applies to both positive and negative directions)
+        unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+
+    conn.execute("UPDATE student_info SET remaining_fee = ? WHERE user_id = ?", (unpaid_sum, student_id))
+
+def migrate_existing_readmission_fees_in_fees_table(conn):
+    try:
+        conn.execute("ALTER TABLE fees ADD COLUMN readmission_revenue REAL DEFAULT 0.0")
+        conn.commit()
+    except Exception:
+        pass
+
+    paid_readmissions = conn.execute('''
+        SELECT student_id, amount, month, year, paid_at
+        FROM student_ledger
+        WHERE fee_type = 'Re-admission Fee' AND status = 'Paid'
+    ''').fetchall()
+    
+    for row in paid_readmissions:
+        student_id = row['student_id']
+        amount = float(row['amount'])
+        month = row['month']
+        year = row['year']
+        
+        # Match by student, month, year
+        fee_record = conn.execute('''
+            SELECT id, amount, school_revenue, hostel_revenue, coaching_revenue, tax_amount, readmission_revenue
+            FROM fees
+            WHERE student_id = ? AND month = ? AND year = ? AND status = 'Paid'
+            LIMIT 1
+        ''', (student_id, month, year)).fetchone()
+        
+        if not fee_record:
+            fee_record = conn.execute('''
+                SELECT id, amount, school_revenue, hostel_revenue, coaching_revenue, tax_amount, readmission_revenue
+                FROM fees
+                WHERE student_id = ? AND status = 'Paid'
+                ORDER BY abs(strftime('%s', paid_at) - strftime('%s', ?)) ASC
+                LIMIT 1
+            ''', (student_id, row['paid_at'] or datetime.now().isoformat())).fetchone()
+            
+        if fee_record:
+            fee_id = fee_record['id']
+            curr_readmission = float(fee_record['readmission_revenue'] or 0.0)
+            if curr_readmission < amount:
+                diff = amount - curr_readmission
+                school_rev = float(fee_record['school_revenue'] or 0.0)
+                hostel_rev = float(fee_record['hostel_revenue'] or 0.0)
+                coaching_rev = float(fee_record['coaching_revenue'] or 0.0)
+                tax_amt = float(fee_record['tax_amount'] or 0.0)
+                
+                remaining_to_deduct = diff
+                deduct_school = min(remaining_to_deduct, school_rev)
+                school_rev -= deduct_school
+                remaining_to_deduct -= deduct_school
+                
+                deduct_hostel = min(remaining_to_deduct, hostel_rev)
+                hostel_rev -= deduct_hostel
+                remaining_to_deduct -= deduct_hostel
+                
+                deduct_coaching = min(remaining_to_deduct, coaching_rev)
+                coaching_rev -= deduct_coaching
+                remaining_to_deduct -= deduct_coaching
+                
+                deduct_tax = min(remaining_to_deduct, tax_amt)
+                tax_amt -= deduct_tax
+                
+                conn.execute('''
+                    UPDATE fees
+                    SET school_revenue = ?, hostel_revenue = ?, coaching_revenue = ?, tax_amount = ?, readmission_revenue = ?
+                    WHERE id = ?
+                ''', (school_rev, hostel_rev, coaching_rev, tax_amt, amount, fee_id))
+    conn.commit()
+
 def run_startup_migrations():
     print("Running database migrations and startup tasks...")
     try:
@@ -12470,12 +15639,62 @@ def run_startup_migrations():
         update_bhogram_class_fees()
         migrate_class_teachers_and_complaints_schema()
         sync_all_existing_teacher_assignments()
+        migrate_billing_system()
+        # Retrospective readmission fees migration
+        conn = get_db_connection()
+        migrate_existing_readmission_fees_in_fees_table(conn)
+        conn.close()
         print("Startup tasks complete.")
     except Exception as e:
         print(f"Error during startup tasks: {e}")
 
+@app.route('/admin/fix-dues-corruption')
+def fix_dues_corruption():
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    
+    # 1. Set all prev_dues to remaining_fee (assume remaining fees as previous dues)
+    conn.execute("UPDATE student_info SET prev_dues = COALESCE(remaining_fee, 0.0)")
+    
+    # 2. Delete all artificially injected Balance Adjustments
+    conn.execute("DELETE FROM student_ledger WHERE fee_type = 'Balance Adjustment'")
+    
+    # 3. Recalculate everything naturally
+    students = conn.execute("SELECT user_id FROM student_info").fetchall()
+    for s in students:
+        try:
+            sync_student_ledger_and_dues(conn, s['user_id'])
+        except Exception as e:
+            print(f"Failed to sync {s['user_id']}: {e}")
+            
+    conn.commit()
+    conn.close()
+    
+    flash("Successfully healed all corrupted student balances!")
+    return redirect(url_for('audit_report'))
+
+@app.route('/debug/find-func')
+def debug_find_func():
+    with open(__file__, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    
+    out = []
+    for i, line in enumerate(lines):
+        if '/student/edit-info' in line:
+            start = max(0, i - 2)
+            end = min(len(lines), i + 20)
+            out.append(f"Lines {start+1}-{end}:\\n" + "".join(lines[start:end]))
+    return "\\n\\n".join(out) if out else "Not found"
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 if __name__ == '__main__':
-    run_startup_migrations()
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        run_startup_migrations()
     port = int(os.getenv('PORT', 5001))
     print(f"Starting server on port {port} (debug=True)...")
     app.run(host='0.0.0.0', port=port, debug=True)

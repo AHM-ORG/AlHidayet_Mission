@@ -1,0 +1,212 @@
+def calculate_student_fees_breakdown(student, conn=None):
+    """
+    Returns a dictionary of line items and aggregated component totals:
+    - tuition_fee, transport_fee, lab_library_fee, academic_discount
+    - room_rent, mess_food_charges, utility_cost, security_deposit
+    - coaching_combo_fee, study_material_charges, exam_test_series_fee, combo_discount
+    - school_tax_rate, hostel_tax_rate, coaching_tax_rate
+    - school_revenue, hostel_revenue, coaching_revenue, tax_amount, total_fee
+    """
+    # 1. Base fields
+    tuition = float(student.get('tuition_fee') or 0.0)
+    transport = float(student.get('transport_fee') or 0.0)
+    lab_lib = float(student.get('lab_library_fee') or 0.0)
+    acad_disc = float(student.get('academic_discount') or 0.0)
+    
+    room_rent = float(student.get('room_rent') or 0.0)
+    mess = float(student.get('mess_food_charges') or 0.0)
+    utility = float(student.get('utility_cost') or 0.0)
+    deposit = float(student.get('security_deposit') or 0.0)
+    
+    coaching_combo = float(student.get('coaching_combo_fee') or 0.0)
+    materials = float(student.get('study_material_charges') or 0.0)
+    exams = float(student.get('exam_test_series_fee') or 0.0)
+    combo_disc = float(student.get('combo_discount') or 0.0)
+    
+    school_tax_rate = float(student.get('school_tax_rate') or 0.0)
+    hostel_tax_rate = float(student.get('hostel_tax_rate') or 0.05)
+    coaching_tax_rate = float(student.get('coaching_tax_rate') or 0.0)
+    
+    # Checkbox configurations (default to school active, others based on flags)
+    take_school = int(student.get('take_school') if student.get('take_school') is not None else 1)
+    take_coaching = int(student.get('take_coaching') or 0)
+    take_day_hostel = int(student.get('take_day_hostel') or 0)
+    take_car = int(student.get('take_car') or 0)
+    
+    cls_name = student.get('class')
+    branch = student.get('branch') or 'bhogram'
+    
+    # 2. Check if new line item fields are populated, if not, query fee_structures dynamically
+    if int(student.get('is_custom_fee') or 0) == 1:
+        # Check if the student has any custom component values set in the database:
+        has_custom_components = any([
+            float(student.get('tuition_fee') or 0.0) > 0.0,
+            float(student.get('transport_fee') or 0.0) > 0.0,
+            float(student.get('lab_library_fee') or 0.0) > 0.0,
+            float(student.get('academic_discount') or 0.0) > 0.0,
+            float(student.get('room_rent') or 0.0) > 0.0,
+            float(student.get('mess_food_charges') or 0.0) > 0.0,
+            float(student.get('utility_cost') or 0.0) > 0.0,
+            float(student.get('security_deposit') or 0.0) > 0.0,
+            float(student.get('coaching_combo_fee') or 0.0) > 0.0,
+            float(student.get('study_material_charges') or 0.0) > 0.0,
+            float(student.get('exam_test_series_fee') or 0.0) > 0.0,
+            float(student.get('combo_discount') or 0.0) > 0.0
+        ])
+        if not has_custom_components:
+            # If no components are set, map the flat monthly_fee to the main active program
+            flat_fee = float(student.get('monthly_fee') or 0.0)
+            tuition = 0.0
+            room_rent = 0.0
+            coaching_combo = 0.0
+            
+            if take_school:
+                tuition = flat_fee
+            elif take_day_hostel:
+                room_rent = flat_fee
+            elif take_coaching:
+                coaching_combo = flat_fee
+            else:
+                tuition = flat_fee # fallback
+                
+            transport = 0.0
+            lab_lib = 0.0
+            acad_disc = 0.0
+            mess = 0.0
+            utility = 0.0
+            deposit = 0.0
+            materials = 0.0
+            exams = 0.0
+            combo_disc = 0.0
+        has_line_items = True
+    else:
+        has_line_items = any([tuition, transport, lab_lib, acad_disc, room_rent, mess, utility, deposit, coaching_combo, materials, exams, combo_disc])
+    
+    if not has_line_items and cls_name:
+        try:
+            close_conn = False
+            active_conn = conn
+            if active_conn is None:
+                active_conn = get_db_connection()
+                active_conn.row_factory = sqlite3.Row
+                close_conn = True
+            
+            # Fetch school template if take_school is active
+            if take_school:
+                school_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day School Only'
+                ''', (cls_name, branch)).fetchone()
+                if school_struct:
+                    tuition = float(school_struct['tuition_fee'] or 0.0)
+                    transport = float(school_struct['transport_fee'] or 0.0)
+                    lab_lib = float(school_struct['lab_library_fee'] or 0.0)
+                    acad_disc = float(school_struct['academic_discount'] or 0.0)
+                    school_tax_rate = float(school_struct['school_tax_rate'] or 0.0)
+            
+            # Fetch hostel template if take_day_hostel is active
+            if take_day_hostel:
+                hostel_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'Day Hostel Only'
+                ''', (cls_name, branch)).fetchone()
+                if hostel_struct:
+                    room_rent = float(hostel_struct['room_rent'] or 0.0)
+                    mess = float(hostel_struct['mess_food_charges'] or 0.0)
+                    utility = float(hostel_struct['utility_cost'] or 0.0)
+                    deposit = float(hostel_struct['security_deposit'] or 0.0)
+                    hostel_tax_rate = float(hostel_struct['hostel_tax_rate'] or 0.05)
+                    
+            # Fetch coaching template if take_coaching is active
+            if take_coaching:
+                coaching_struct = active_conn.execute('''
+                    SELECT * FROM fee_structures 
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?) AND enrollment_type = 'School + Coaching'
+                ''', (cls_name, branch)).fetchone()
+                if coaching_struct:
+                    coaching_combo = float(coaching_struct['coaching_combo_fee'] or 0.0)
+                    materials = float(coaching_struct['study_material_charges'] or 0.0)
+                    exams = float(coaching_struct['exam_test_series_fee'] or 0.0)
+                    combo_disc = float(coaching_struct['combo_discount'] or 0.0)
+                    coaching_tax_rate = float(coaching_struct['coaching_tax_rate'] or 0.0)
+                    
+            if close_conn:
+                active_conn.close()
+            has_line_items = True
+        except Exception as e:
+            print(f"Error loading fee structure from DB: {e}")
+            
+    # 3. Fallback to original columns if still empty
+    if not has_line_items:
+        m_fee = float(student.get('monthly_fee') or 0.0)
+        h_fee = float(student.get('hostel_fee') or 0.0)
+        
+        if take_day_hostel and not take_school:
+            room_rent = h_fee
+        elif take_school and take_coaching:
+            tuition = m_fee
+            coaching_combo = float(student.get('monthly_fee_coaching') or 0.0) or (m_fee * 0.5)
+        elif take_school:
+            tuition = m_fee
+            if take_day_hostel:
+                room_rent = h_fee
+
+    # 4. Zero out components if they are not selected in checkboxes
+    if not take_school:
+        tuition = 0.0
+        transport = 0.0
+        lab_lib = 0.0
+        acad_disc = 0.0
+    if not take_day_hostel:
+        room_rent = 0.0
+        mess = 0.0
+        utility = 0.0
+        deposit = 0.0
+    if not take_coaching:
+        coaching_combo = 0.0
+        materials = 0.0
+        exams = 0.0
+        combo_disc = 0.0
+
+    # 5. Sum component totals
+    school_total = tuition + transport + lab_lib - acad_disc
+    hostel_total = room_rent + mess + utility + deposit
+    coaching_total = coaching_combo + materials + exams - combo_disc
+    
+    # 6. Component Tax calculations (inclusive tax)
+    school_tax = school_total * (school_tax_rate / (1.0 + school_tax_rate))
+    hostel_tax = hostel_total * (hostel_tax_rate / (1.0 + hostel_tax_rate))
+    coaching_tax = coaching_total * (coaching_tax_rate / (1.0 + coaching_tax_rate))
+    
+    school_net = school_total - school_tax
+    hostel_net = hostel_total - hostel_tax
+    coaching_net = coaching_total - coaching_tax
+    
+    total = school_total + hostel_total + coaching_total
+    
+    if take_car:
+        total += 400.0
+        school_net += 400.0
+        
+    return {
+        'tuition_fee': tuition,
+        'transport_fee': transport,
+        'lab_library_fee': lab_lib,
+        'academic_discount': acad_disc,
+        'room_rent': room_rent,
+        'mess_food_charges': mess,
+        'utility_cost': utility,
+        'security_deposit': deposit,
+        'coaching_combo_fee': coaching_combo,
+        'study_material_charges': materials,
+        'exam_test_series_fee': exams,
+        'combo_discount': combo_disc,
+        'school_tax_rate': school_tax_rate,
+        'hostel_tax_rate': hostel_tax_rate,
+        'coaching_tax_rate': coaching_tax_rate,
+        'school_revenue': school_net,
+        'hostel_revenue': hostel_net,
+        'coaching_revenue': coaching_net,
+        'tax_amount': school_tax + hostel_tax + coaching_tax,
+        'total_fee': total
+    }

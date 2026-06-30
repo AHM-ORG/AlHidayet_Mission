@@ -120,7 +120,7 @@
                                 {% set ns.classes = ns.classes + [s.class.strip().lower()] %}
                             {% endif %}
                         {% endfor %}
-                        {% set class_order = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                        {% set class_order = global_classes %}
                         {% for c in class_order %}
                             {% if c.strip().lower() in ns.classes %}
                             <button class="class-filter-btn" data-class="{{ c }}" style="padding: 6px 16px; border-radius: 20px; border: 2px solid #ddd; background: #fff; color: #333; cursor: pointer; font-weight: 500; font-size: 13px;">{{ c }}</button>

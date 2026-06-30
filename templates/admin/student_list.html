@@ -93,6 +93,7 @@
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/fee-matrix" class="sidebar-item {% if request.path == '/admin/fee-matrix' %}active{% endif %}"><i data-lucide="table"></i> Fee Matrix</a>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
@@ -268,8 +269,8 @@
                                                     data-bank-details="{{ student.bank_details or 'N/A' }}"
                                                     data-session="{{ student.session or 'N/A' }}"
                                                     data-mode-of-admission="{{ student.mode_of_admission or 'N/A' }}"
-                                                    data-coaching-opted="{{ 'Yes' if student.coaching_opted == 1 else 'No' }}"
-                                                    data-car-opted="{{ 'Yes' if student.car_opted == 1 else 'No' }}"
+                                                    data-coaching-opted="{{ 'Yes' if student.coaching_opted|int == 1 else 'No' }}"
+                                                    data-car-opted="{{ 'Yes' if student.car_opted|int == 1 else 'No' }}"
                                                     data-previous-class="{{ student.previous_class or 'N/A' }}"
                                                     data-prev-marks-percentage="{{ student.prev_marks_percentage or 'N/A' }}"
                                                     data-father-qualification="{{ student.father_qualification or 'N/A' }}"
@@ -409,8 +410,8 @@
                                                     data-bank-details="{{ student.bank_details or 'N/A' }}"
                                                     data-session="{{ student.session or 'N/A' }}"
                                                     data-mode-of-admission="{{ student.mode_of_admission or 'N/A' }}"
-                                                    data-coaching-opted="{{ 'Yes' if student.coaching_opted == 1 else 'No' }}"
-                                                    data-car-opted="{{ 'Yes' if student.car_opted == 1 else 'No' }}"
+                                                    data-coaching-opted="{{ 'Yes' if student.coaching_opted|int == 1 else 'No' }}"
+                                                    data-car-opted="{{ 'Yes' if student.car_opted|int == 1 else 'No' }}"
                                                     data-previous-class="{{ student.previous_class or 'N/A' }}"
                                                     data-prev-marks-percentage="{{ student.prev_marks_percentage or 'N/A' }}"
                                                     data-father-qualification="{{ student.father_qualification or 'N/A' }}"

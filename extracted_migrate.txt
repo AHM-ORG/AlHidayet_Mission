@@ -1,0 +1,120 @@
+def migrate_billing_system():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Create fee_matrix table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fee_matrix (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class_name TEXT NOT NULL,
+                branch TEXT NOT NULL DEFAULT 'bhogram',
+                school_monthly REAL DEFAULT 0.0,
+                school_admission REAL DEFAULT 0.0,
+                school_readmission REAL DEFAULT 0.0,
+                coaching_monthly REAL DEFAULT 0.0,
+                coaching_admission REAL DEFAULT 0.0,
+                coaching_readmission REAL DEFAULT 0.0,
+                hostel_monthly REAL DEFAULT 0.0,
+                hostel_admission REAL DEFAULT 0.0,
+                hostel_readmission REAL DEFAULT 0.0,
+                UNIQUE(class_name, branch)
+            )
+        ''')
+        
+        # Populate fee_matrix with default classes if empty
+        exist = c.execute("SELECT id FROM fee_matrix").fetchone()
+        if not exist:
+            classes_names = ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI']
+            for branch in ['bhogram']:
+                for cls in classes_names:
+                    cls_row = c.execute("SELECT monthly_fee, admission_fee, monthly_fee_coaching, admission_fee_coaching, admission_fee_hostel, readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel, hostel_fee FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls, branch)).fetchone()
+                    if cls_row:
+                        c.execute('''
+                            INSERT OR IGNORE INTO fee_matrix (
+                                class_name, branch, school_monthly, school_admission, school_readmission,
+                                coaching_monthly, coaching_admission, coaching_readmission,
+                                hostel_monthly, hostel_admission, hostel_readmission
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (cls, branch, 
+                              float(cls_row['monthly_fee'] or 0.0), 
+                              float(cls_row['admission_fee'] or 0.0), 
+                              float(cls_row['readmission_fee_school'] or 0.0),
+                              float(cls_row['monthly_fee_coaching'] or 0.0), 
+                              float(cls_row['admission_fee_coaching'] or 0.0), 
+                              float(cls_row['readmission_fee_coaching'] or 0.0),
+                              float(cls_row['hostel_fee'] or 0.0), 
+                              float(cls_row['admission_fee_hostel'] or 0.0), 
+                              float(cls_row['readmission_fee_hostel'] or 0.0)))
+                    else:
+                        c.execute('''
+                            INSERT OR IGNORE INTO fee_matrix (
+                                class_name, branch, school_monthly, school_admission, school_readmission,
+                                coaching_monthly, coaching_admission, coaching_readmission,
+                                hostel_monthly, hostel_admission, hostel_readmission
+                            ) VALUES (?, ?, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                        ''', (cls, branch))
+
+        # Clean up any extra classes and non-bhogram branches from fee_matrix
+        c.execute("DELETE FROM fee_matrix WHERE class_name NOT IN ('Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI')")
+        c.execute("DELETE FROM fee_matrix WHERE branch != 'bhogram'")
+
+        # Create transport_settings table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS transport_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                flat_rate REAL DEFAULT 400.0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Seed transport_settings if empty
+        exist_trans = c.execute("SELECT id FROM transport_settings").fetchone()
+        if not exist_trans:
+            c.execute("INSERT INTO transport_settings (flat_rate) VALUES (400.0)")
+            
+        # Create student_ledger table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS student_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                fee_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                month TEXT NOT NULL,
+                year TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Unpaid/Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                paid_at TIMESTAMP,
+                branch TEXT,
+                FOREIGN KEY (student_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Create financial_logs table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS financial_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                log_type TEXT NOT NULL,
+                fee_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                month TEXT NOT NULL,
+                year TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                branch TEXT,
+                FOREIGN KEY (student_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Add readmission_revenue column to fees table
+        try:
+            c.execute("ALTER TABLE fees ADD COLUMN readmission_revenue REAL DEFAULT 0.0")
+            print(" [DB MIGRATE] Added readmission_revenue column to fees table.")
+        except sqlite3.OperationalError:
+            pass
+            
+        conn.commit()
+        conn.close()
+        print(" [DB MIGRATE] Billing System tables migrated successfully.")
+    except Exception as e:
+        print(f" [DB MIGRATE ERROR] Billing System tables migration failed: {e}")

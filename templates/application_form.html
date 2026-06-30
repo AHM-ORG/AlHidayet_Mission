@@ -232,14 +232,9 @@
                         <label>Class Applying For*</label>
                         <select name="class_applied" required>
                             <option value="">Select Class</option>
-                            <option value="Nursery" {% if form_data and form_data.get('class_applied')=='Nursery' %}selected{% endif %}>Nursery</option>
-                            <option value="Upper Nursery" {% if form_data and form_data.get('class_applied')=='Upper Nursery' %}selected{% endif %}>Upper Nursery</option>
-                            <option value="I" {% if form_data and form_data.get('class_applied')=='I' %}selected{% endif %}>I</option>
-                            <option value="II" {% if form_data and form_data.get('class_applied')=='II' %}selected{% endif %}>II</option>
-                            <option value="III" {% if form_data and form_data.get('class_applied')=='III' %}selected{% endif %}>III</option>
-                            <option value="IV" {% if form_data and form_data.get('class_applied')=='IV' %}selected{% endif %}>IV</option>
-                            <option value="V" {% if form_data and form_data.get('class_applied')=='V' %}selected{% endif %}>V</option>
-                            <option value="VI" {% if form_data and form_data.get('class_applied')=='VI' %}selected{% endif %}>VI</option>
+                            {% for cls in all_classes %}
+                                <option value="{{ cls }}" {% if form_data and form_data.get('class_applied')==cls %}selected{% endif %}>{{ cls }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="input-group">

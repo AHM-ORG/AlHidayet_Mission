@@ -1,0 +1,159 @@
+@app.route('/admin/re-trigger-monthly-fees', methods=['POST'])
+def re_trigger_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        try:
+            students = conn.execute("SELECT id FROM users WHERE role = 'student'").fetchall()
+            student_ids = [student['id'] for student in students]
+            
+            max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+            max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+            
+            count = 0
+            failed = 0
+            for student_id in student_ids:
+                try:
+                    sync_student_ledger_and_dues(
+                        conn, 
+                        student_id,
+                        max_month_end=max_month_end,
+                        max_year_end=max_year_end,
+                        flat_transport_fee=flat_transport_fee
+                    )
+                    conn.commit()
+                    count += 1
+                except Exception as e:
+                    conn.rollback()
+                    print(f" [RE-TRIGGER ERROR] Failed for student {student_id}: {e}")
+                    failed += 1
+            
+            if failed > 0:
+                flash(f'Synced monthly dues for {count} student(s). Failed for {failed} student(s).')
+            else:
+                flash(f'Successfully re-triggered and synced monthly dues for {count} student(s).')
+                
+            send_activity_notification("Re-trigger Current Month Dues", f"Manually re-triggered outstanding monthly dues synchronization for {count} students.")
+        except Exception as e:
+            flash(f'Failed to re-trigger monthly fees: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+def run_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    students = conn.execute('''
+        SELECT u.id, si.*
+        FROM users u
+        JOIN student_info si ON u.id = si.user_id
+        WHERE u.role = 'student'
+    ''').fetchall()
+    
+    transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+    flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+    
+    billed_count = 0
+    for student in students:
+        student_id = student['id']
+        class_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        take_school = student['take_school'] or 0
+        take_coaching = student['take_coaching'] or 0
+        take_day_hostel = student['take_day_hostel'] or 0
+        take_car = student['take_car'] or 0
+        
+        already_billed = conn.execute('''
+            SELECT id FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchone()
+        if already_billed:
+            continue
+            
+        student_dict = dict(student)
+        bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+        
+        school_fee = bd['tuition_fee'] if take_school else 0.0
+        coaching_fee = bd['coaching_combo_fee'] if take_coaching else 0.0
+        hostel_fee = bd['room_rent'] if take_day_hostel else 0.0
+        car_fee = flat_transport_fee if take_car else 0.0
+        
+        line_items = []
+        if school_fee > 0.0:
+            line_items.append(('Monthly Tuition Fee', school_fee))
+        if coaching_fee > 0.0:
+            line_items.append(('Monthly Coaching Fee', coaching_fee))
+        if hostel_fee > 0.0:
+            line_items.append(('Monthly Hostel Fee', hostel_fee))
+        if car_fee > 0.0:
+            line_items.append(('Monthly Transport Fee', car_fee))
+            
+        total_due = school_fee + coaching_fee + hostel_fee + car_fee
+        if total_due <= 0.0:
+            continue
+            
+        for fee_type, amount in line_items:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = COALESCE(month_end_billing_count, 0) + 1
+            WHERE user_id = ?
+        ''', (student_id,))
+        sync_student_ledger_and_dues(conn, student_id)
+        billed_count += 1
+        
+    return billed_count
+
+def undo_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    entries = conn.execute('''
+        SELECT id, student_id, amount 
+        FROM student_ledger 
+        WHERE month = ? AND year = ? AND fee_type LIKE 'Monthly%' AND status = 'Unpaid/Pending'
+    ''', (month, year)).fetchall()
+    
+    deleted_count = 0
+    for entry in entries:
+        entry_id = entry['id']
+        student_id = entry['student_id']
+        amount = float(entry['amount'])
+        
+        conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry_id,))
+        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND month = ? AND year = ? AND amount = ?", (student_id, month, year, amount))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = CASE 
+                    WHEN COALESCE(month_end_billing_count, 0) - 1 < 0 THEN 0
+                    ELSE COALESCE(month_end_billing_count, 0) - 1
+                END,
+                remaining_fee = CASE 
+                    WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0
+                    ELSE COALESCE(remaining_fee, 0.0) - ?
+                END
+            WHERE user_id = ?
+        ''', (amount, amount, student_id))
+        deleted_count += 1
+        
+    return deleted_count

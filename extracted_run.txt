@@ -1,0 +1,98 @@
+@app.route('/admin/post-monthly-fees', methods=['POST'])
+def post_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        month = datetime.now().strftime('%B')
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = run_monthly_billing(conn, month, year)
+            conn.commit()
+            flash(f'Successfully posted monthly fees for {count} active student(s).')
+            send_activity_notification("Month End Billing", f"Triggered monthly billing for {month} {year}. Billed {count} students.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to run Month End billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))
+
+def run_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    students = conn.execute('''
+        SELECT u.id, si.*
+        FROM users u
+        JOIN student_info si ON u.id = si.user_id
+        WHERE u.role = 'student'
+    ''').fetchall()
+    
+    transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+    flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+    
+    billed_count = 0
+    for student in students:
+        student_id = student['id']
+        class_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        take_school = student['take_school'] or 0
+        take_coaching = student['take_coaching'] or 0
+        take_day_hostel = student['take_day_hostel'] or 0
+        take_car = student['take_car'] or 0
+        
+        already_billed = conn.execute('''
+            SELECT id FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchone()
+        if already_billed:
+            continue
+            
+        student_dict = dict(student)
+        bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+        
+        school_fee = bd['tuition_fee'] if take_school else 0.0
+        coaching_fee = bd['coaching_combo_fee'] if take_coaching else 0.0
+        hostel_fee = bd['room_rent'] if take_day_hostel else 0.0
+        car_fee = flat_transport_fee if take_car else 0.0
+        
+        line_items = []
+        if school_fee > 0.0:
+            line_items.append(('Monthly Tuition Fee', school_fee))
+        if coaching_fee > 0.0:
+            line_items.append(('Monthly Coaching Fee', coaching_fee))
+        if hostel_fee > 0.0:
+            line_items.append(('Monthly Hostel Fee', hostel_fee))
+        if car_fee > 0.0:
+            line_items.append(('Monthly Transport Fee', car_fee))
+            
+        total_due = school_fee + coaching_fee + hostel_fee + car_fee
+        if total_due <= 0.0:
+            continue
+            
+        for fee_type, amount in line_items:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = COALESCE(month_end_billing_count, 0) + 1
+            WHERE user_id = ?
+        ''', (student_id,))
+        sync_student_ledger_and_dues(conn, student_id)
+        billed_count += 1
+        
+    return billed_count

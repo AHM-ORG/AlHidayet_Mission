@@ -490,13 +490,13 @@
                             </div>
 
                             <!-- Cascading Student Campus and Class Selectors (Hidden for Teacher) -->
-                            <input type="hidden" id="direct_branch" value="bhogram">
+                            <input type="hidden" id="direct_branch" value="{{ user_branch }}">
                             <div id="student_filters" style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px;">
                                 <div class="input-group">
                                     <label>Class:</label>
                                     <select id="direct_class" class="search-select" onchange="onStudentFilterChange()">
                                         <option value="">Choose Class</option>
-                                        {% for c in ['Nursery', 'Upper Nursery', 'I', 'II', 'III', 'IV', 'V', 'VI'] %}
+                                        {% for c in global_classes %}
                                             <option value="{{ c }}">{{ c }}</option>
                                         {% endfor %}
                                     </select>
@@ -623,6 +623,30 @@
             recipientSelect.refreshOptions(false);
         }
 
+        function normalizeClassName(cls) {
+            if (!cls) return "";
+            let nameStr = cls.toString().trim().toLowerCase();
+            if (nameStr.startsWith("class ")) {
+                nameStr = nameStr.substring(6).trim();
+            }
+            const mapping = {
+                'nursery': 'Nursery',
+                'nuesery': 'Nursery',
+                'u/n': 'Upper Nursery',
+                'un': 'Upper Nursery',
+                'u-n': 'Upper Nursery',
+                'kg': 'Upper Nursery',
+                'upper nursery': 'Upper Nursery',
+                'one': 'I', '1': 'I', 'i': 'I',
+                'two': 'II', '2': 'II', 'ii': 'II',
+                'three': 'III', '3': 'III', 'iii': 'III',
+                'four': 'IV', '4': 'IV', 'iv': 'IV',
+                'five': 'V', '5': 'V', 'v': 'V',
+                'six': 'VI', '6': 'VI', 'vi': 'VI', 'siz': 'VI'
+            };
+            return mapping[nameStr] || cls.toString().trim();
+        }
+
         function onStudentFilterChange() {
             if (!recipientSelect) return;
             const branchEl = document.getElementById("direct_branch");
@@ -640,7 +664,7 @@
                 return;
             }
             
-            const filtered = allStudents.filter(s => s.class_name && s.class_name.trim().toLowerCase() === classVal.trim().toLowerCase());
+            const filtered = allStudents.filter(s => s.class_name && normalizeClassName(s.class_name) === normalizeClassName(classVal));
             
             filtered.forEach(s => {
                 recipientSelect.addOption({

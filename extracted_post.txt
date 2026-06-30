@@ -1,0 +1,21 @@
+@app.route('/admin/post-monthly-fees', methods=['POST'])
+def post_monthly_fees():
+    if 'user' in session and session['role'] == 'admin':
+        from datetime import datetime
+        month = datetime.now().strftime('%B')
+        year = datetime.now().strftime('%Y')
+        
+        conn = get_db_connection()
+        try:
+            count = run_monthly_billing(conn, month, year)
+            conn.commit()
+            flash(f'Successfully posted monthly fees for {count} active student(s).')
+            send_activity_notification("Month End Billing", f"Triggered monthly billing for {month} {year}. Billed {count} students.")
+        except Exception as e:
+            conn.rollback()
+            flash(f'Failed to run Month End billing: {e}')
+        finally:
+            conn.close()
+    else:
+        flash('Access denied.')
+    return redirect(url_for('audit_report'))

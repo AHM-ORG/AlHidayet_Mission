@@ -454,8 +454,8 @@
                     {% for t in teachers %}
                     <div class="teacher-card">
                         <div class="teacher-img">
-                            {% if t.photo_path %}
-                                <img src="{{ url_for('static', filename='uploads/teacher_photos/' + t.photo_path) }}" alt="{{ t.full_name }}">
+                            {% if t.photo_path and t.photo_path != 'None' and t.photo_path != 'null' %}
+                                <img src="{{ url_for('serve_static_upload', filepath='teacher_photos/' + t.photo_path) }}" alt="{{ t.full_name }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';">
                             {% else %}
                                 <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="{{ t.full_name }}">
                             {% endif %}
@@ -583,6 +583,7 @@
                 <button class="fee-tab-btn active" onclick="switchFeeTab('new-admission', this)">New Admission Fee</button>
                 <button class="fee-tab-btn" onclick="switchFeeTab('re-admission', this)">Re-Admission Fee</button>
                 <button class="fee-tab-btn" onclick="switchFeeTab('monthly', this)">Monthly Fee</button>
+                <button class="fee-tab-btn" onclick="switchFeeTab('additional', this)">Additional Fees</button>
             </div>
 
             <!-- Tab 1: New Admission Fee -->
@@ -597,13 +598,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for c in classes %}
+                        {% for c in fee_matrix_data %}
                             {% if c.branch == 'bhogram' %}
                             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
-                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee_coaching|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.admission_fee_hostel|int }}/-</td>
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.class_name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.school_admission|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.coaching_admission|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.hostel_admission|int }}/-</td>
                             </tr>
                             {% endif %}
                         {% endfor %}
@@ -623,13 +624,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for c in classes %}
+                        {% for c in fee_matrix_data %}
                             {% if c.branch == 'bhogram' %}
                             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
-                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_school|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_coaching|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.readmission_fee_hostel|int }}/-</td>
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.class_name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.school_readmission|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.coaching_readmission|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.hostel_readmission|int }}/-</td>
                             </tr>
                             {% endif %}
                         {% endfor %}
@@ -649,13 +650,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for c in classes %}
+                        {% for c in fee_matrix_data %}
                             {% if c.branch == 'bhogram' %}
                             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
-                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.name }}</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.monthly_fee|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.monthly_fee_coaching|int }}/-</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.hostel_fee|int }}/-</td>
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ c.class_name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.school_monthly|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.coaching_monthly|int }}/-</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">₹{{ c.hostel_monthly|int }}/-</td>
                             </tr>
                             {% endif %}
                         {% endfor %}
@@ -667,6 +668,34 @@
                         N.B. :- নার্সারি থেকে চতুর্থ শ্রেণি পর্যন্ত নতুন ভর্তি হওয়া ছাত্র-ছাত্রীদের School Dress, Books, IDENTITY ও BELT মিশনের তরফ থেকে দেওয়া হবে।
                     </div>
                 </div>
+            </div>
+
+            <!-- Tab 4: Additional Fees -->
+            <div id="additional" class="fee-tab-content fees-table-container" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eef2f5;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Outfit', sans-serif;">
+                    <thead>
+                        <tr style="background: var(--primary-color) !important; color: white !important;">
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Class</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Fee Name / Purpose</th>
+                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fee in custom_class_fees_data %}
+                            {% if fee.branch == 'bhogram' %}
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ fee.class_name }}</td>
+                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">{{ fee.fee_type }}</td>
+                                <td style="padding: 16px 24px; color: #d63031; font-weight: bold;">₹{{ fee.amount|int }}/-</td>
+                            </tr>
+                            {% endif %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" style="padding: 24px; text-align: center; color: #636e72; font-style: italic;">No additional custom fees have been set at this time.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
 
             <script>

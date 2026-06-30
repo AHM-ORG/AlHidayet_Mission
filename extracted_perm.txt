@@ -1,0 +1,22 @@
+@app.route('/admin/update-student-permission', methods=['POST'])
+def update_student_permission():
+    if 'user' in session and session['role'] == 'admin':
+        try:
+            data = request.get_json()
+            student_id = data.get('student_id')
+            perm_type = data.get('type')  # 'marksheet' or 'admit'
+            value = int(data.get('value', 0))  # 1 or 0
+            
+            if not student_id or perm_type not in ['marksheet', 'admit']:
+                return jsonify({'success': False, 'error': 'Invalid parameters'}), 400
+                
+            column = 'allow_marksheet' if perm_type == 'marksheet' else 'allow_admit'
+            
+            conn = get_db_connection()
+            conn.execute(f"UPDATE student_info SET {column} = ? WHERE user_id = ?", (value, student_id))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': False, 'error': 'Unauthorized'}), 403

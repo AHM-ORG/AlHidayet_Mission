@@ -1,0 +1,73 @@
+            line_items.append(('Monthly Transport Fee', car_fee))
+            
+        total_due = school_fee + coaching_fee + hostel_fee + car_fee
+        if total_due <= 0.0:
+            continue
+            
+        for fee_type, amount in line_items:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+            ''', (student_id, fee_type, amount, month, year, branch))
+            
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = COALESCE(month_end_billing_count, 0) + 1
+            WHERE user_id = ?
+        ''', (student_id,))
+        sync_student_ledger_and_dues(conn, student_id)
+        billed_count += 1
+        
+    return billed_count
+
+def undo_monthly_billing(conn, month=None, year=None):
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime('%B')
+    if not year:
+        year = datetime.now().strftime('%Y')
+        
+    entries = conn.execute('''
+        SELECT id, student_id, amount 
+        FROM student_ledger 
+        WHERE month = ? AND year = ? AND fee_type LIKE 'Monthly%' AND status = 'Unpaid/Pending'
+    ''', (month, year)).fetchall()
+    
+    deleted_count = 0
+    for entry in entries:
+        entry_id = entry['id']
+        student_id = entry['student_id']
+        amount = float(entry['amount'])
+        
+        conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry_id,))
+        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND month = ? AND year = ? AND amount = ?", (student_id, month, year, amount))
+        
+        conn.execute('''
+            UPDATE student_info
+            SET month_end_billing_count = CASE 
+                    WHEN COALESCE(month_end_billing_count, 0) - 1 < 0 THEN 0
+                    ELSE COALESCE(month_end_billing_count, 0) - 1
+                END,
+                remaining_fee = CASE 
+                    WHEN COALESCE(remaining_fee, 0.0) - ? < 0 THEN 0.0
+                    ELSE COALESCE(remaining_fee, 0.0) - ?
+                END
+            WHERE user_id = ?
+        ''', (amount, amount, student_id))
+        deleted_count += 1
+        
+    return deleted_count
+
+def record_ledger_payment(conn, student_id, amount_paid):
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    unpaid_entries = conn.execute('''
+        SELECT id, amount, fee_type, branch 
+        FROM student_ledger 

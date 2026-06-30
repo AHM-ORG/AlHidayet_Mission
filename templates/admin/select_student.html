@@ -111,14 +111,9 @@
                             <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Class:</label>
                             <select name="class_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                                 <option value="">Select Class</option>
-                                <option value="Nursery">Nursery</option>
-                                <option value="Upper Nursery">Upper Nursery</option>
-                                <option value="I">I</option>
-                                <option value="II">II</option>
-                                <option value="III">III</option>
-                                <option value="IV">IV</option>
-                                <option value="V">V</option>
-                                <option value="VI">VI</option>
+                                {% for cls in global_classes %}
+                                    <option value="{{ cls }}">{{ cls }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
@@ -196,14 +191,9 @@
                             <label style="font-weight: 500; font-size: 13.5px; display: block; margin-bottom: 5px;">Select Class:</label>
                             <select name="class_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                                 <option value="">Select Class</option>
-                                <option value="Nursery">Nursery</option>
-                                <option value="Upper Nursery">Upper Nursery</option>
-                                <option value="I">I</option>
-                                <option value="II">II</option>
-                                <option value="III">III</option>
-                                <option value="IV">IV</option>
-                                <option value="V">V</option>
-                                <option value="VI">VI</option>
+                                {% for cls in global_classes %}
+                                    <option value="{{ cls }}">{{ cls }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
@@ -245,14 +235,9 @@
                                 <label style="font-weight: 500;">Select Class</label>
                                 <select name="class_name" required style="width: 100%;">
                                     <option value="">Select Class</option>
-                                    <option value="Nursery">Nursery</option>
-                                    <option value="Upper Nursery">Upper Nursery</option>
-                                    <option value="I">I</option>
-                                    <option value="II">II</option>
-                                    <option value="III">III</option>
-                                    <option value="IV">IV</option>
-                                    <option value="V">V</option>
-                                    <option value="VI">VI</option>
+                                    {% for cls in global_classes %}
+                                        <option value="{{ cls }}">{{ cls }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                             <div class="input-group">
@@ -273,14 +258,9 @@
                                 <label style="font-weight: 500;">Select Class</label>
                                 <select name="class_name" required style="width: 100%;">
                                     <option value="">Select Class</option>
-                                    <option value="Nursery">Nursery</option>
-                                    <option value="Upper Nursery">Upper Nursery</option>
-                                    <option value="I">I</option>
-                                    <option value="II">II</option>
-                                    <option value="III">III</option>
-                                    <option value="IV">IV</option>
-                                    <option value="V">V</option>
-                                    <option value="VI">VI</option>
+                                    {% for cls in global_classes %}
+                                        <option value="{{ cls }}">{{ cls }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                             <div class="input-group">

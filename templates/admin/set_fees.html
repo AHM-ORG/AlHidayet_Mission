@@ -32,6 +32,7 @@
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/fee-matrix" class="sidebar-item {% if request.path == '/admin/fee-matrix' %}active{% endif %}"><i data-lucide="table"></i> Fee Matrix</a>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
                 <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
@@ -110,14 +111,19 @@
                 {% endif %}
                 {% endwith %}
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
-                    <!-- Class-wise form -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; align-items: start;">
+                    
+                    <!-- LEFT COLUMN (Class-related) -->
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
+                        
+                        <!-- Class-wise form -->
                     <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
                         <h3 style="color: #0984e3; display: flex; align-items: center; gap: 8px;"><i data-lucide="users"></i> Class-wise Fees</h3>
                         <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Set fees configuration for an entire class.</p>
-                        <form action="/admin/set-fees" method="post">
+                        <form action="/admin/fee-matrix" method="post">
+                            <input type="hidden" name="redirect_to" value="set_fees">
                             <input type="hidden" name="update_type" value="class">
-                            <input type="hidden" name="branch" value="bhogram">
+                            <input type="hidden" name="branch" value="{{ branch_filter }}">
                             
                             <div class="input-group" style="margin-bottom: 20px;">
                                 <label style="font-weight: 600;">Class:</label>
@@ -189,11 +195,66 @@
                         </form>
                     </div>
 
+                        <!-- Add Class-wise Due form -->
+                        <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
+                            <h3 style="color: #ff7675; display: flex; align-items: center; gap: 8px;"><i data-lucide="users"></i> Add Class-wise Due</h3>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Add a specific amount (e.g., picnic fee, exam fee) to all students in a class.</p>
+                            <form action="/admin/bulk-custom-fee" method="post" onsubmit="return confirm('Are you sure you want to add this due to ALL students in the selected class? This will increase their previous dues by this amount.');">
+                                <input type="hidden" name="update_type" value="class_due">
+                                
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <label style="font-weight: 600;">Select Class:</label>
+                                    <select name="class_name" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-size: 14px;" class="search-select">
+                                        <option value="" disabled selected>Select a Class</option>
+                                        {% for c in classes %}
+                                        <option value="{{ c }}">{{ c }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #0984e3;">
+                                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 10px; color: #2d3436;">Ticked Benefits (Optional Filter):</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #2d3436;">
+                                            <input type="checkbox" name="filter_take_school" value="1"> School
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #00b894;">
+                                            <input type="checkbox" name="filter_take_coaching" value="1"> Coaching
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #e17055;">
+                                            <input type="checkbox" name="filter_take_day_hostel" value="1"> Day Hostel
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #0984e3;">
+                                            <input type="checkbox" name="filter_take_car" value="1"> Car / Vehicle
+                                        </label>
+                                    </div>
+                                    <small style="display:block; margin-top: 8px; color: #666; line-height: 1.3;">Leave all unchecked to apply to ALL students in the class. Check any to only apply this fee to students with those benefits.</small>
+                                </div>
+                                
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <label style="font-weight: 600;">Fee Type / Purpose:</label>
+                                    <input type="text" name="fee_type" required placeholder="e.g. Monthly, Yearly, Picnic, Exam" style="padding: 10px; width: 100%; box-sizing: border-box;">
+                                </div>
+                                
+                                <div class="input-group" style="margin-bottom: 25px;">
+                                    <label style="font-weight: 600;">Due Amount to Add (INR):</label>
+                                    <input type="number" name="due_amount" required step="0.01" placeholder="e.g. 200" style="padding: 10px; width: 100%; box-sizing: border-box;">
+                                    <small style="display:block; margin-top: 5px; color: #666;">Use a negative number to subtract/discount (e.g. -100).</small>
+                                </div>
+                                
+                                <button type="submit" class="auth-btn" style="background: #ff7675; font-weight: 600;">Add Due to Entire Class</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN (Student-related) -->
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
                     <!-- Student-wise form -->
                     <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
                         <h3 style="color: #6c5ce7; display: flex; align-items: center; gap: 8px;"><i data-lucide="user"></i> Student-wise Fees</h3>
                         <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Assign benefits and custom fees for a specific student.</p>
-                        <form action="/admin/set-fees" method="post">
+                        <form action="/admin/fee-matrix" method="post">
+                            <input type="hidden" name="redirect_to" value="set_fees">
                             <input type="hidden" name="update_type" value="student">
                             {% set filter_id = 'setfee' %}
                             {% include 'partials/class_student_filter.html' %}
@@ -216,209 +277,79 @@
                                 </div>
                             </div>
                             
+                            <!-- Fees override removed per minimalist ledger system -->
                             <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
-                                <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="font-weight: 600;">Monthly Fee (INR):</label>
-                                    <input type="number" name="amount" id="student_monthly_fee" required step="1" min="0" placeholder="e.g. 1200" style="padding: 10px;">
-                                </div>
                                 <input type="hidden" name="admission_fee" id="student_admission_fee" value="0">
-                                <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="font-weight: 600;">Re-admission Fee (INR):</label>
-                                    <input type="number" name="readmission_fee" id="student_readmission_fee" required step="1" min="0" placeholder="e.g. 1500" style="padding: 10px;">
-                                </div>
-                                <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="font-weight: 600;">Remaining Fee / Dues (INR):</label>
-                                    <input type="number" name="remaining_fee" id="student_remaining_fee" required step="0.01" placeholder="e.g. 1500" style="padding: 10px;">
-                                </div>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                <label style="font-weight: 600;">Total Due (INR):</label>
+                                <input type="number" name="total_due" id="student_total_due" required step="0.01" placeholder="e.g. 1500" style="padding: 10px; width: 100%; box-sizing: border-box; border: 2px solid var(--border-color); border-radius: var(--radius);">
+                                <small style="display:block; margin-top: 5px; color: #666;">Set the total outstanding due for this student.</small>
                             </div>
                             
                             <button type="submit" class="auth-btn" style="background: #6c5ce7; font-weight: 600;">Set Student Fee & Benefits</button>
                         </form>
                     </div>
-                </div>
-                </div>
-
-                <!-- CLASS DIRECTORY MANAGER SECTION -->
-                <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="graduation-cap"></i> Class Directory Manager
-                    </h3>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px;">
-                        <!-- Add Class Form -->
-                        <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa; padding: 15px;">
-                            <h4 style="color: #0984e3; margin-bottom: 12px; font-size: 15px;">Add New Class</h4>
-                            <form method="POST">
-                                <input type="hidden" name="create_class" value="1">
-                                <div class="input-group" style="margin-bottom: 10px;">
-                                    <label style="font-size: 12px; font-weight: 600;">Class Name</label>
-                                    <select name="class_name" required style="padding: 6px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-size: 13px;" class="search-select">
-                                        <option value="" disabled selected>Select a Class</option>
-                                        {% for c in classes %}
-                                        <option value="{{ c }}">{{ c }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <input type="hidden" name="branch" id="class-branch-select" value="bhogram">
-                                
-                                <!-- New Admission Fees -->
-                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
-                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">New Admission Fees</h5>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
-                                            <input type="number" step="0.01" min="0" name="admission_fee" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
-                                            <input type="number" step="0.01" min="0" name="admission_fee_coaching" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
-                                            <input type="number" step="0.01" min="0" name="admission_fee_hostel" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Re-Admission Fees -->
-                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
-                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">Re-Admission Fees</h5>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
-                                            <input type="number" step="0.01" min="0" name="readmission_fee_school" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
-                                            <input type="number" step="0.01" min="0" name="readmission_fee_coaching" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
-                                            <input type="number" step="0.01" min="0" name="readmission_fee_hostel" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Monthly Fees -->
-                                <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px; margin-bottom: 15px;">
-                                    <h5 style="margin: 0 0 6px 0; color: var(--primary-color); font-weight: 600; font-size: 12px;">Monthly Fees</h5>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">School</label>
-                                            <input type="number" step="0.01" min="0" name="monthly_fee" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Coach</label>
-                                            <input type="number" step="0.01" min="0" name="monthly_fee_coaching" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                        <div class="input-group">
-                                            <label style="font-size: 10px; margin-bottom: 2px;">Hostel</label>
-                                            <input type="number" step="0.01" min="0" name="hostel_fee" placeholder="0.00" style="padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; width: 100%; font-size: 12px;">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" class="auth-btn">Save Class</button>
-                            </form>
-                        </div>
-                        
-                        <!-- Classes Table View -->
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Active Classes</h4>
-                                <input type="text" id="classesSearch" placeholder="Search classes..." onkeyup="filterTable('classesSearch', 'classesTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
+                    <!-- Student-wise Due form (Add amount) -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
+                        <h3 style="color: #e84393; display: flex; align-items: center; gap: 8px;"><i data-lucide="user-plus"></i> Add Student-wise Due</h3>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Add a specific fee amount (e.g., penalty, late fee, exam fee) to a single student's dues.</p>
+                        <form action="/admin/fee-matrix" method="post" onsubmit="return confirm('Are you sure you want to add this due to the selected student? This will increase their previous dues by this amount.');">
+                            <input type="hidden" name="redirect_to" value="set_fees">
+                            <input type="hidden" name="update_type" value="student_due">
+                            
+                            {% set filter_id = 'studentdue' %}
+                            {% include 'partials/class_student_filter.html' %}
+                            
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <label style="font-weight: 600;">Fee Type / Purpose:</label>
+                                <input type="text" name="fee_type" required placeholder="e.g. Penalty, Late Fee, Exam" style="padding: 10px; width: 100%; box-sizing: border-box; border: 2px solid var(--border-color); border-radius: var(--radius);">
                             </div>
-                            <div style="max-height: 480px; overflow: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
-                                <table id="classesTable" style="width: 100%; border-collapse: collapse; min-width: 900px; font-size: 13px;">
-                                    <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 1; border-bottom: 2px solid #ddd;">
-                                        <tr style="border-bottom: 1px solid #eee;">
-                                            <th rowspan="2" style="padding: 8px; text-align: left; width: 40px; vertical-align: middle;">ID</th>
-                                            <th rowspan="2" style="padding: 8px; text-align: left; min-width: 80px; vertical-align: middle;">Class Name</th>
-                                            <th colspan="3" style="padding: 8px; text-align: center; background: #eef2f7; border-right: 1px solid #eee; border-left: 1px solid #eee;">New Admission Fee</th>
-                                            <th colspan="3" style="padding: 8px; text-align: center; background: #fbf1f1; border-right: 1px solid #eee;">Re-Admission Fee</th>
-                                            <th colspan="3" style="padding: 8px; text-align: center; background: #f1fbf2; border-right: 1px solid #eee;">Monthly Fee</th>
-                                            <th rowspan="2" style="padding: 8px; text-align: center; width: 130px; vertical-align: middle;">Action</th>
-                                        </tr>
-                                        <tr style="background: #fdfdfd; font-size: 11px;">
-                                            <!-- New Admission Columns -->
-                                            <th style="padding: 6px 4px; text-align: center; border-left: 1px solid #eee;">School</th>
-                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
-                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
-                                            <!-- Re-Admission Columns -->
-                                            <th style="padding: 6px 4px; text-align: center;">School</th>
-                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
-                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
-                                            <!-- Monthly Columns -->
-                                            <th style="padding: 6px 4px; text-align: center;">School</th>
-                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
-                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">Hostel</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for c in db_classes %}
-                                        <tr style="border-bottom: 1px solid #eee;">
-                                            <td style="padding: 8px;">{{ c.id }}</td>
-                                            <td style="padding: 8px;"><strong>{{ c.name }}</strong></td>
-                                            
-                                            <!-- New Admission Inputs -->
-                                            <td style="padding: 6px 4px; text-align: center; border-left: 1px solid #eee;">
-                                                <input type="number" step="0.01" min="0" id="adm-fee-{{ c.id }}" value="{{ c.admission_fee if (c.admission_fee is not none and c.admission_fee != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center;">
-                                                <input type="number" step="0.01" min="0" id="adm-fee-coaching-{{ c.id }}" value="{{ c.admission_fee_coaching if (c.admission_fee_coaching is not none and c.admission_fee_coaching != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
-                                                <input type="number" step="0.01" min="0" id="adm-fee-hostel-{{ c.id }}" value="{{ c.admission_fee_hostel if (c.admission_fee_hostel is not none and c.admission_fee_hostel != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            
-                                            <!-- Re-Admission Inputs -->
-                                            <td style="padding: 6px 4px; text-align: center;">
-                                                <input type="number" step="0.01" min="0" id="readm-fee-school-{{ c.id }}" value="{{ c.readmission_fee_school if (c.readmission_fee_school is not none and c.readmission_fee_school != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center;">
-                                                <input type="number" step="0.01" min="0" id="readm-fee-coaching-{{ c.id }}" value="{{ c.readmission_fee_coaching if (c.readmission_fee_coaching is not none and c.readmission_fee_coaching != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
-                                                <input type="number" step="0.01" min="0" id="readm-fee-hostel-{{ c.id }}" value="{{ c.readmission_fee_hostel if (c.readmission_fee_hostel is not none and c.readmission_fee_hostel != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            
-                                            <!-- Monthly Inputs -->
-                                            <td style="padding: 6px 4px; text-align: center;">
-                                                <input type="number" step="0.01" min="0" id="mon-fee-{{ c.id }}" value="{{ c.monthly_fee if (c.monthly_fee is not none and c.monthly_fee != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center;">
-                                                <input type="number" step="0.01" min="0" id="mon-fee-coaching-{{ c.id }}" value="{{ c.monthly_fee_coaching if (c.monthly_fee_coaching is not none and c.monthly_fee_coaching != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #eee;">
-                                                <input type="number" step="0.01" min="0" id="hostel-fee-{{ c.id }}" value="{{ c.hostel_fee if (c.hostel_fee is not none and c.hostel_fee != 0.0) else '' }}" style="width: 58px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
-                                            </td>
-                                            
-                                            <!-- Action Buttons -->
-                                            <td style="padding: 8px; text-align: center; white-space: nowrap;">
-                                                <button type="button" class="badge" onclick="saveClassFees({{ c.id }})" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 6px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
-                                                    <i data-lucide="save" style="width: 10px; height: 10px;"></i> Save
-                                                </button>
-                                                <form method="POST" onsubmit="return confirm('Delete class {{ c.name }}? This will also delete associated subjects and config slots.')" style="display: inline;">
-                                                    <input type="hidden" name="delete_class" value="1">
-                                                    <input type="hidden" name="class_id" value="{{ c.id }}">
-                                                    <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 6px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
-                                                        <i data-lucide="trash-2" style="width: 10px; height: 10px;"></i> Del
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                        {% else %}
-                                        <tr><td colspan="12" style="padding: 20px; text-align: center; color: #999;">No classes registered yet.</td></tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                            
+                            <div class="input-group" style="margin-bottom: 25px;">
+                                <label style="font-weight: 600;">Due Amount to Add (INR):</label>
+                                <input type="number" name="due_amount" required step="0.01" placeholder="e.g. 100" style="padding: 10px; width: 100%; box-sizing: border-box; border: 2px solid var(--border-color); border-radius: var(--radius);">
+                                <small style="display:block; margin-top: 5px; color: #666;">Use a negative number to subtract/discount (e.g. -100).</small>
                             </div>
-                        </div>
+                            
+                            <button type="submit" class="auth-btn" style="background: #e84393; font-weight: 600;">Add Due to Student</button>
+                        </form>
                     </div>
                 </div>
+
+                    <div style="margin-top: 30px;">
+                        <h3 style="color: #2d3436; display: flex; align-items: center; gap: 8px; margin-bottom: 15px;"><i data-lucide="history"></i> Custom Fees History (This Branch)</h3>
+                        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #eee; text-align: left;">
+                                        <th style="padding: 12px;">Date Applied</th>
+                                        <th style="padding: 12px;">Class</th>
+                                        <th style="padding: 12px;">Fee Name</th>
+                                        <th style="padding: 12px;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fee in custom_fees %}
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 12px; color: #636e72;">{{ fee.created_at.split(' ')[0] if fee.created_at else '' }}</td>
+                                        <td style="padding: 12px; font-weight: 600;">{{ fee.class_name }}</td>
+                                        <td style="padding: 12px;">{{ fee.fee_type }}</td>
+                                        <td style="padding: 12px; color: #d63031; font-weight: bold;">₹{{ fee.amount }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" style="text-align: center; padding: 20px; color: #999;">No custom fees have been applied yet.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
             </div>
         </main>
     </div>
+
 
     <!-- Scripts -->
     <script id="db-classes-json" type="application/json">
@@ -477,7 +408,7 @@
             const inputAmount = document.getElementById('student_monthly_fee');
             const inputAdmission = document.getElementById('student_admission_fee');
             const inputReadmission = document.getElementById('student_readmission_fee');
-            const inputRemaining = document.getElementById('student_remaining_fee');
+            const inputRemaining = document.getElementById('student_total_due');
 
             function getSelectedStudentClass() {
                 if (!studentSelectEl) return null;
@@ -501,12 +432,14 @@
                     
                     const getAttrVal = (attr) => {
                         const val = parseFloat(selectedOpt.getAttribute(attr));
-                        return (isNaN(val) || val === 0 || val === 0.0) ? '' : val;
+                        return (isNaN(val) || val === 0 || val === 0.0) ? 0 : val;
                     };
-                    inputAmount.value = getAttrVal('data-monthly-fee');
-                    inputAdmission.value = getAttrVal('data-admission-fee');
-                    inputReadmission.value = getAttrVal('data-readmission-fee');
-                    inputRemaining.value = getAttrVal('data-remaining-fee');
+                    inputAmount.value = getAttrVal('data-monthly-fee') || '';
+                    inputAdmission.value = getAttrVal('data-admission-fee') || '';
+                    inputReadmission.value = getAttrVal('data-readmission-fee') || '';
+                    
+                    const remainingFee = getAttrVal('data-remaining-fee');
+                    inputRemaining.value = remainingFee === 0 ? '' : remainingFee;
                 }
             }
 
@@ -521,18 +454,20 @@
                 let baseAdmission = 0;
                 let baseReadmission = 0;
                 
+                if (chkSchool.checked) {
+                    baseMonthly += clsData.monthly_fee || 0;
+                    baseAdmission += clsData.admission_fee || 0;
+                    baseReadmission += clsData.readmission_fee_school || 0;
+                }
+                if (chkCoaching.checked) {
+                    baseMonthly += clsData.monthly_fee_coaching || 0;
+                    baseAdmission += clsData.admission_fee_coaching || 0;
+                    baseReadmission += clsData.readmission_fee_coaching || 0;
+                }
                 if (chkDayHostel.checked) {
-                    baseMonthly = clsData.hostel_fee || 0;
-                    baseAdmission = clsData.admission_fee_hostel || 0;
-                    baseReadmission = clsData.readmission_fee_hostel || 0;
-                } else if (chkCoaching.checked) {
-                    baseMonthly = clsData.monthly_fee_coaching || 0;
-                    baseAdmission = clsData.admission_fee_coaching || 0;
-                    baseReadmission = clsData.readmission_fee_coaching || 0;
-                } else if (chkSchool.checked) {
-                    baseMonthly = clsData.monthly_fee || 0;
-                    baseAdmission = clsData.admission_fee || 0;
-                    baseReadmission = clsData.readmission_fee_school || 0;
+                    baseMonthly += clsData.hostel_fee || 0;
+                    baseAdmission += clsData.admission_fee_hostel || 0;
+                    baseReadmission += clsData.readmission_fee_hostel || 0;
                 }
                 
                 if (chkCar.checked) {

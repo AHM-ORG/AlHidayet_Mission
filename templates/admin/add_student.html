@@ -33,6 +33,7 @@
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/fee-matrix" class="sidebar-item {% if request.path == '/admin/fee-matrix' %}active{% endif %}"><i data-lucide="table"></i> Fee Matrix</a>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
                 <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
@@ -135,19 +136,45 @@
                             </div>
                         </div>
 
-                        <input type="hidden" name="branch" value="bhogram">
+                        <input type="hidden" name="branch" value="{{ branch_filter }}">
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Unique Code</label>
                                 <input type="text" readonly value="Auto-generated on save" style="background-color: #f5f6fa; cursor: not-allowed; border: 2px solid #eee; border-radius: 8px; padding: 12px; width: 100%; color: #aaa;">
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Class</label>
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Class *</label>
                                 <input type="text" name="class" placeholder="e.g. One" required onkeyup="updateRecommendedFee()" onchange="updateRecommendedFee()">
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Academic Session</label>
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Academic Session *</label>
                                 <input type="text" name="session" value="2026" required>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="enrollment_type" id="enrollment_type" value="Day School Only">
+
+                        <!-- Stream-Specific Fields (Hostel) -->
+                        <div id="hostel_fields_group" style="display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; border-radius: 12px; background: rgba(9, 132, 227, 0.05); border: 1px solid rgba(9, 132, 227, 0.15);">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Hostel Room Number</label>
+                                <input type="text" name="hostel_room" placeholder="e.g. Room 102">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Hostel Wing</label>
+                                <input type="text" name="hostel_wing" placeholder="e.g. Boys Wing A">
+                            </div>
+                        </div>
+
+                        <!-- Stream-Specific Fields (Coaching) -->
+                        <div id="coaching_fields_group" style="display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; border-radius: 12px; background: rgba(9, 132, 227, 0.05); border: 1px solid rgba(9, 132, 227, 0.15);">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Coaching Batch</label>
+                                <input type="text" name="coaching_batch" placeholder="e.g. Batch A (Science)">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Coaching Subject</label>
+                                <input type="text" name="coaching_subject" placeholder="e.g. Physics, Chemistry, Math">
                             </div>
                         </div>
 
@@ -155,16 +182,16 @@
                             <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Student Benefits / Options</label>
                             <div style="display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 0;">
                                 <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                    <input type="checkbox" name="take_school" value="1" checked onchange="updateRecommendedFee()"> School
+                                    <input type="checkbox" name="take_school" value="1" checked onchange="toggleEnrollmentFields(); updateRecommendedFee(); calculateTotalOverride();"> School
                                 </label>
                                 <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                    <input type="checkbox" name="take_coaching" value="1" onchange="updateRecommendedFee()"> Coaching
+                                    <input type="checkbox" name="take_coaching" value="1" onchange="toggleEnrollmentFields(); updateRecommendedFee(); calculateTotalOverride();"> Coaching
                                 </label>
                                 <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                    <input type="checkbox" name="take_day_hostel" value="1" onchange="updateRecommendedFee()"> Day Hostel
+                                    <input type="checkbox" name="take_day_hostel" value="1" onchange="toggleEnrollmentFields(); updateRecommendedFee(); calculateTotalOverride();"> Day Hostel
                                 </label>
                                 <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                    <input type="checkbox" name="take_car" value="1" onchange="updateRecommendedFee()"> Car
+                                    <input type="checkbox" name="take_car" value="1" onchange="toggleEnrollmentFields(); updateRecommendedFee(); calculateTotalOverride();"> Car
                                 </label>
                             </div>
                         </div>
@@ -296,7 +323,6 @@
                             <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                 <input type="checkbox" name="attached_documents" value="Bank Passbook"> Bank Passbook
                             </label>
-                            <label style="font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                                 <input type="checkbox" name="attached_documents" value="T.C Certificate"> T.C Certificate
                             </label>
                         </div>
@@ -307,8 +333,8 @@
                                 <input type="date" name="date_of_admission">
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Monthly Fee (₹)</label>
-                                <input type="number" name="monthly_fee" step="0.01" placeholder="e.g. 500.00">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Financial Aid - Monthly (₹ Reduction)</label>
+                                <input type="number" name="financial_aid_monthly" step="0.01" placeholder="e.g. 500.00">
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -317,8 +343,8 @@
                                 <input type="number" name="admission_fee" step="0.01" placeholder="e.g. 3500.00">
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Re-admission Fee (₹)</label>
-                                <input type="number" name="readmission_fee" step="0.01" placeholder="e.g. 1500.00">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Financial Aid - Re-admission (₹ Reduction)</label>
+                                <input type="number" name="financial_aid_readmission" step="0.01" placeholder="e.g. 1500.00">
                             </div>
                         </div>
 
@@ -393,6 +419,67 @@
     <script>
         const dbClasses = JSON.parse(document.getElementById('db-classes-data').textContent || '[]');
         
+        function toggleEnrollmentFields() {
+            const takeHostel = document.querySelector('input[name="take_day_hostel"]').checked;
+            const takeCoaching = document.querySelector('input[name="take_coaching"]').checked;
+            const takeSchool = document.querySelector('input[name="take_school"]').checked;
+            
+            const hostelGroup = document.getElementById('hostel_fields_group');
+            const coachingGroup = document.getElementById('coaching_fields_group');
+            
+            if (hostelGroup) {
+                hostelGroup.style.display = takeHostel ? 'grid' : 'none';
+            }
+            if (coachingGroup) {
+                coachingGroup.style.display = takeCoaching ? 'grid' : 'none';
+            }
+            
+            const selectEl = document.getElementById('enrollment_type');
+            if (selectEl) {
+                if (takeHostel) {
+                    selectEl.value = 'Day Hostel Only';
+                } else if (takeSchool && takeCoaching) {
+                    selectEl.value = 'School + Coaching';
+                } else {
+                    selectEl.value = 'Day School Only';
+                }
+            }
+        }
+
+        function calculateTotalOverride() {
+            const tuition = parseFloat(document.querySelector('input[name="tuition_fee"]').value) || 0;
+            const transport = parseFloat(document.querySelector('input[name="transport_fee"]').value) || 0;
+            const lab = parseFloat(document.querySelector('input[name="lab_library_fee"]').value) || 0;
+            const acadDisc = parseFloat(document.querySelector('input[name="academic_discount"]').value) || 0;
+            
+            const room = parseFloat(document.querySelector('input[name="room_rent"]').value) || 0;
+            const mess = parseFloat(document.querySelector('input[name="mess_food_charges"]').value) || 0;
+            const utility = parseFloat(document.querySelector('input[name="utility_cost"]').value) || 0;
+            const security = parseFloat(document.querySelector('input[name="security_deposit"]').value) || 0;
+            
+            const coaching = parseFloat(document.querySelector('input[name="coaching_combo_fee"]').value) || 0;
+            const material = parseFloat(document.querySelector('input[name="study_material_charges"]').value) || 0;
+            const exam = parseFloat(document.querySelector('input[name="exam_test_series_fee"]').value) || 0;
+            const comboDisc = parseFloat(document.querySelector('input[name="combo_discount"]').value) || 0;
+            
+            const takeCar = document.querySelector('input[name="take_car"]').checked;
+            
+            const schoolTotal = tuition + transport + lab - acadDisc;
+            const hostelTotal = room + mess + utility + security;
+            const coachingTotal = coaching + material + exam - comboDisc;
+            
+            let total = schoolTotal + hostelTotal + coachingTotal;
+            if (takeCar) {
+                total += 400.0;
+            }
+            
+            if (tuition > 0 || transport > 0 || lab > 0 || room > 0 || mess > 0 || utility > 0 || coaching > 0) {
+                document.querySelector('input[name="monthly_fee"]').value = total.toFixed(2);
+            } else {
+                updateRecommendedFee();
+            }
+        }
+        
         function updateRecommendedFee() {
             const classInput = document.querySelector('input[name="class"]');
             const takeSchoolChk = document.querySelector('input[name="take_school"]');
@@ -406,6 +493,17 @@
             
             if (!classInput || !feeInput) return;
             
+            // If overrides exist, don't auto-calculate total recommended monthly fee
+            const tuitionVal = parseFloat(document.querySelector('input[name="tuition_fee"]').value) || 0;
+            const transportVal = parseFloat(document.querySelector('input[name="transport_fee"]').value) || 0;
+            const labVal = parseFloat(document.querySelector('input[name="lab_library_fee"]').value) || 0;
+            const roomVal = parseFloat(document.querySelector('input[name="room_rent"]').value) || 0;
+            const messVal = parseFloat(document.querySelector('input[name="mess_food_charges"]').value) || 0;
+            const coachingVal = parseFloat(document.querySelector('input[name="coaching_combo_fee"]').value) || 0;
+            if (tuitionVal > 0 || transportVal > 0 || labVal > 0 || roomVal > 0 || messVal > 0 || coachingVal > 0) {
+                return;
+            }
+
             const classVal = classInput.value.trim().toLowerCase();
             const takeSchool = takeSchoolChk ? takeSchoolChk.checked : false;
             const takeCoaching = takeCoachingChk ? takeCoachingChk.checked : false;
@@ -478,6 +576,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
+            toggleEnrollmentFields();
             document.querySelectorAll('select').forEach((el)=>{
                 if (!el.classList.contains('search-select')) {
                     el.classList.add('search-select');

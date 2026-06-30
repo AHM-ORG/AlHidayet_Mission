@@ -1,25 +1,25 @@
-import sqlite3
-import os
+import ast
 
-def check_db():
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, 'instance', 'users.db')
-    if not os.path.exists(db_path):
-        db_path = os.path.join(BASE_DIR, 'users.db')
-        
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = c.fetchall()
-    print("Tables:", tables)
-    for table in tables:
-        table_name = table[0]
-        print(f"\nSchema for {table_name}:")
-        c.execute(f"PRAGMA table_info({table_name})")
-        columns = c.fetchall()
-        for col in columns:
-            print(col)
-    conn.close()
+def extract_functions(source, func_names):
+    try:
+        tree = ast.parse(source)
+    except Exception as e:
+        return f"Parse error: {e}"
+    
+    extracted = []
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name in func_names:
+            start = node.lineno
+            if node.decorator_list:
+                start = node.decorator_list[0].lineno
+            end = node.end_lineno
+            lines = source.split('\n')[start-1:end]
+            extracted.append('\n'.join(lines))
+    return '\n\n'.join(extracted) if extracted else "Functions not found"
 
 if __name__ == "__main__":
-    check_db()
+    with open('app.py', 'r', encoding='utf-8', errors='ignore') as f:
+        source = f.read()
+    
+    out = extract_functions(source, ['get_db_connection'])
+    print(out)

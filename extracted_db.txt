@@ -1,0 +1,342 @@
+def get_db_connection():
+    from flask import g, has_request_context
+    if has_request_context() and 'db_conn' in g:
+        return g.db_conn
+
+    if DATABASE_URL and (DATABASE_URL.startswith("libsql://") or DATABASE_URL.startswith("https://") or DATABASE_URL.startswith("http://")):
+        import base64
+        import requests
+        
+        class HttpLibsqlRow:
+            def __init__(self, cols, row_values):
+                self._row = tuple(row_values)
+                self._columns = cols
+            def __getitem__(self, key):
+                if isinstance(key, str):
+                    try:
+                        return self._row[self._columns.index(key)]
+                    except ValueError:
+                        raise KeyError(key)
+                return self._row[key]
+            def keys(self):
+                return self._columns
+            def __iter__(self):
+                return iter(self._row)
+            def __len__(self):
+                return len(self._row)
+
+        class HttpLibsqlCursor:
+            def __init__(self, connection):
+                self._connection = connection
+                self._results = []
+                self._idx = 0
+                self.description = None
+                self.lastrowid = None
+                self.rowcount = -1
+
+            def execute(self, sql, parameters=()):
+                self._results, self.description, self.lastrowid, self.rowcount = self._connection._execute_http(sql, parameters)
+                self._idx = 0
+                return self
+
+            def executemany(self, sql, seq_of_parameters):
+                for parameters in seq_of_parameters:
+                    self.execute(sql, parameters)
+                return self
+
+            def fetchone(self):
+                if self._idx < len(self._results):
+                    row = self._results[self._idx]
+                    self._idx += 1
+                    return row
+                return None
+
+            def fetchall(self):
+                res = self._results[self._idx:]
+                self._idx = len(self._results)
+                return res
+
+            def close(self):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                self.close()
+
+            def __iter__(self):
+                while True:
+                    row = self.fetchone()
+                    if row is None:
+                        break
+                    yield row
+
+        class HttpLibsqlConnection:
+            def __init__(self, database_url, auth_token):
+                self.database_url = database_url
+                self.auth_token = auth_token
+                self.row_factory = None
+                self.http_url = database_url.replace("libsql://", "https://")
+                if not self.http_url.startswith("https://") and not self.http_url.startswith("http://"):
+                    self.http_url = "https://" + self.http_url
+                self.baton = None
+                self.in_transaction = False
+
+            def cursor(self):
+                return HttpLibsqlCursor(self)
+
+            def execute(self, sql, parameters=()):
+                sql_upper = sql.strip().upper()
+                is_write = any(sql_upper.startswith(prefix) for prefix in ["INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER"])
+                if is_write and not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+
+                cursor = self.cursor()
+                cursor.execute(sql, parameters)
+                return cursor
+
+            def executemany(self, sql, seq_of_parameters):
+                sql_upper = sql.strip().upper()
+                is_write = any(sql_upper.startswith(prefix) for prefix in ["INSERT", "UPDATE", "DELETE", "REPLACE", "CREATE", "DROP", "ALTER"])
+                if is_write and not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+
+                cursor = self.cursor()
+                cursor.executemany(sql, seq_of_parameters)
+                return cursor
+
+            def executescript(self, sql_script):
+                if not self.in_transaction:
+                    self._execute_http("BEGIN")
+                    self.in_transaction = True
+                cursor = self.cursor()
+                for statement in sql_script.split(';'):
+                    if statement.strip():
+                        cursor.execute(statement)
+                return cursor
+
+            def commit(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("COMMIT")
+                    finally:
+                        self.in_transaction = False
+
+            def rollback(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("ROLLBACK")
+                    finally:
+                        self.in_transaction = False
+
+            def close(self):
+                if self.in_transaction:
+                    try:
+                        self._execute_http("ROLLBACK")
+                    except Exception:
+                        pass
+                    self.in_transaction = False
+                
+                if self.baton:
+                    try:
+                        headers = {
+                            "Authorization": f"Bearer {self.auth_token}",
+                            "Content-Type": "application/json"
+                        }
+                        url = f"{self.http_url.rstrip('/')}/v2/pipeline"
+                        payload = {
+                            "baton": self.baton,
+                            "requests": [{"type": "close"}]
+                        }
+                        turso_session.post(url, json=payload, headers=headers, timeout=5)
+                    except Exception:
+                        pass
+                    self.baton = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if exc_type is not None:
+                    self.rollback()
+                else:
+                    self.commit()
+                self.close()
+
+            def _execute_http_internal(self, sql, parameters=()):
+                def _make_value(val):
+                    if val is None:
+                        return {"type": "null"}
+                    elif isinstance(val, bool):
+                        return {"type": "integer", "value": "1" if val else "0"}
+                    elif isinstance(val, int):
+                        return {"type": "integer", "value": str(val)}
+                    elif isinstance(val, float):
+                        return {"type": "float", "value": val}
+                    elif isinstance(val, (bytes, bytearray)):
+                        return {"type": "blob", "value": base64.b64encode(val).decode('utf-8')}
+                    else:
+                        return {"type": "text", "value": str(val)}
+                
+                stmt = {"sql": sql}
+                if isinstance(parameters, dict):
+                    named_args = []
+                    for name, val in parameters.items():
+                        clean_name = str(name).lstrip(':@$')
+                        named_args.append({
+                            "name": clean_name,
+                            "value": _make_value(val)
+                        })
+                    stmt["named_args"] = named_args
+                else:
+                    args = [_make_value(val) for val in parameters]
+                    stmt["args"] = args
+
+                payload = {
+                    "requests": [
+                        {
+                            "type": "execute",
+                            "stmt": stmt
+                        }
+                    ]
+                }
+                if self.baton:
+                    payload["baton"] = self.baton
+                
+                headers = {
+                    "Authorization": f"Bearer {self.auth_token}",
+                    "Content-Type": "application/json"
+                }
+                
+                proxies = {
+                    "http": os.environ.get("http_proxy"),
+                    "https": os.environ.get("https_proxy")
+                }
+                
+                url = f"{self.http_url.rstrip('/')}/v2/pipeline"
+                
+                max_retries = 3
+                retry_delay = 1.0
+                response = None
+                
+                import time
+                import requests
+                for attempt in range(max_retries):
+                    try:
+                        response = turso_session.post(url, json=payload, headers=headers, proxies=proxies, timeout=15)
+                        if response.status_code in [429, 500, 502, 503, 504]:
+                            if attempt < max_retries - 1:
+                                time.sleep(retry_delay)
+                                retry_delay *= 2
+                                continue
+                        break
+                    except requests.exceptions.RequestException as e:
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                        else:
+                            raise sqlite3.DatabaseError(f"Turso HTTP connection failed after {max_retries} retries: {str(e)}")
+                            
+                if response.status_code != 200:
+                    raise sqlite3.DatabaseError(f"Turso HTTP error {response.status_code}: {response.text}")
+                    
+                data = response.json()
+                self.baton = data.get("baton")
+                
+                results = data.get("results", [])
+                if not results:
+                    raise sqlite3.DatabaseError(f"Turso response missing results: {data}")
+                    
+                first_res = results[0]
+                if first_res.get("type") == "error":
+                    err_msg = first_res.get("error", {}).get("message", "Unknown database error")
+                    raise sqlite3.OperationalError(f"Database error: {err_msg}")
+                    
+                response_obj = first_res.get("response", {})
+                if response_obj.get("type") == "error":
+                    err_msg = response_obj.get("error", {}).get("message", "Unknown query error")
+                    raise sqlite3.OperationalError(f"Query error: {err_msg}")
+                    
+                result_obj = response_obj.get("result", {})
+                
+                raw_cols = result_obj.get("cols", [])
+                cols = []
+                for c in raw_cols:
+                    if isinstance(c, dict):
+                        cols.append(c.get("name", ""))
+                    else:
+                        cols.append(str(c))
+                        
+                description = [(name, None, None, None, None, None, None) for name in cols] if cols else None
+                
+                raw_rows = result_obj.get("rows", [])
+                rows = []
+                for row in raw_rows:
+                    parsed_row_values = []
+                    for cell in row:
+                        if isinstance(cell, dict):
+                            t = cell.get("type")
+                            v = cell.get("value")
+                            if t == "null":
+                                parsed_row_values.append(None)
+                            elif t == "integer":
+                                parsed_row_values.append(int(v) if v is not None else None)
+                            elif t == "float":
+                                parsed_row_values.append(float(v) if v is not None else None)
+                            elif t == "text":
+                                parsed_row_values.append(str(v) if v is not None else None)
+                            elif t == "blob":
+                                parsed_row_values.append(base64.b64decode(v) if v is not None else None)
+                            else:
+                                parsed_row_values.append(v)
+                        else:
+                            parsed_row_values.append(cell)
+                    rows.append(HttpLibsqlRow(cols, parsed_row_values))
+                    
+                affected_row_count = result_obj.get("affected_row_count", -1)
+                last_insert_rowid = result_obj.get("last_insert_rowid")
+                if last_insert_rowid is not None:
+                    try:
+                        last_insert_rowid = int(last_insert_rowid)
+                    except ValueError:
+                        pass
+                        
+                return rows, description, last_insert_rowid, affected_row_count
+
+            def _execute_http(self, sql, parameters=()):
+                try:
+                    return self._execute_http_internal(sql, parameters)
+                except Exception as e:
+                    err_str = str(e)
+                    if "stream not found" in err_str and self.baton:
+                        print(" [Turso HTTP Connection] Stream expired/not found. Retrying query with a fresh stream...")
+                        self.baton = None
+                        self.in_transaction = False
+                        try:
+                            return self._execute_http_internal(sql, parameters)
+                        except Exception:
+                            self.baton = None
+                            self.in_transaction = False
+                            raise
+                    else:
+                        self.baton = None
+                        self.in_transaction = False
+                        raise
+
+        conn = HttpLibsqlConnection(DATABASE_URL, DATABASE_AUTH_TOKEN)
+    else:
+        conn = sqlite3.connect(DB_NAME, timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 30000")
+    
+    from flask import g, has_request_context
+    if has_request_context():
+        g.db_conn = conn
+        if 'db_connections' not in g:
+            g.db_connections = []
+        g.db_connections.append(conn)
+        
+    return conn

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Configuration Matrix & Settings - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <style>
+        /* Tabs Premium Styling */
+        .tabs-nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            font-weight: 700;
+            font-family: var(--font-body);
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 6px 6px 0 0;
+        }
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background: rgba(9, 132, 227, 0.05);
+        }
+        .tab-btn.active {
+            color: var(--primary-color) !important;
+            border-bottom-color: var(--primary-color) !important;
+            background: rgba(9, 132, 227, 0.08);
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+
+                {% if role == 'admin' %}
+                <div class="sidebar-label">User Directory</div>
+                <a href="/register" class="sidebar-item {% if request.path == '/register' %}active{% endif %}"><i data-lucide="user-plus"></i> Register</a>
+                <a href="/admin/student-list" class="sidebar-item {% if request.path == '/admin/student-list' %}active{% endif %}"><i data-lucide="users"></i> Student Directory</a>
+                <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
+                <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
+                <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
+
+                <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/fee-matrix" class="sidebar-item {% if request.path == '/admin/fee-matrix' %}active{% endif %}"><i data-lucide="table"></i> Fee Matrix</a>
+                <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
+                <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
+                <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
+                <a href="/admin/get-fees" class="sidebar-item {% if request.path == '/admin/get-fees' %}active{% endif %}"><i data-lucide="wallet"></i> Get Fees</a>
+                <a href="/admin/reminder-fees" class="sidebar-item {% if request.path == '/admin/reminder-fees' %}active{% endif %}"><i data-lucide="bell-ring"></i> Reminder Fees</a>
+                <a href="/admin/spend" class="sidebar-item {% if request.path == '/admin/spend' %}active{% endif %}"><i data-lucide="receipt"></i> Spend</a>
+
+                <div class="sidebar-label">Audit</div>
+                <a href="/admin/audit-report" class="sidebar-item {% if request.path == '/admin/audit-report' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Audit Report</a>
+
+                <div class="sidebar-label">Docs & Cards</div>
+                <a href="/admin/admit-card" class="sidebar-item {% if request.path == '/admin/admit-card' %}active{% endif %}"><i data-lucide="ticket"></i> Admit & Seat Token</a>
+                <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheet</a>
+                <a href="/admin/id-card" class="sidebar-item {% if request.path == '/admin/id-card' %}active{% endif %}"><i data-lucide="contact"></i> Id Card</a>
+                <a href="/admin/manage-certificates" class="sidebar-item {% if request.path == '/admin/manage-certificates' %}active{% endif %}"><i data-lucide="award"></i> Certificates</a>
+
+                <div class="sidebar-label">Academics</div>
+                <a href="/admin/guardian-meetings" class="sidebar-item {% if request.path == '/admin/guardian-meetings' %}active{% endif %}"><i data-lucide="presentation"></i> Guardian Meetings</a>
+                <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Bulk Mark Entry</a>
+                <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
+                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
+                <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
+                <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
+                <a href="/admin/attendance" class="sidebar-item {% if request.path == '/admin/attendance' %}active{% endif %}"><i data-lucide="calendar-check"></i> Attendance Manager</a>
+                {% endif %}
+
+                <a href="/logout" class="sidebar-item" style="margin-top:50px; color:#ff7675;"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-title">Fee Configurations & Settings</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 25px;">
+                <!-- ALERTS -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div id="alert-box" style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 600; display:flex; align-items:center; justify-content:space-between;">
+                    <span>{{ messages[0] }}</span>
+                    <button onclick="document.getElementById('alert-box').style.display='none'" style="background:none; border:none; color:inherit; font-size:18px; cursor:pointer;">&times;</button>
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Tab Navigation Buttons -->
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchTab(event, 'matrix-tab')">
+                        <i data-lucide="table"></i> Fee Matrix (Standard Rates)
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(event, 'student-tab')">
+                        <i data-lucide="user-cog"></i> Student Custom Pricing
+                    </button>
+
+                </div>
+
+                <!-- TAB 1: FEE CONFIGURATION MATRIX -->
+                <div class="tab-content active" id="matrix-tab">
+                    <!-- Transport Allowance Flat Settings -->
+                    <div class="auth-container" style="max-width: 100%; margin-bottom: 30px; text-align: left; border-left: 4px solid var(--primary-color); padding: 25px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h3 style="color: var(--primary-dark); margin: 0; display:flex; align-items:center; gap:8px;"><i data-lucide="car"></i> Transport Allowance</h3>
+                                <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Set the global flat rate applied monthly to all students opting for transport.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <input type="number" id="flat_rate_input" value="{{ flat_rate }}" step="0.01" min="0" style="padding: 10px; width: 150px; font-weight: 600; text-align: right; border-radius: var(--radius); border: 2px solid var(--border-color);">
+                                </div>
+                                <button type="button" onclick="saveTransportRate()" class="auth-btn" style="height: 44px; margin: 0; padding: 0 24px; background-color: var(--primary-color); display: inline-flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="save" style="width: 16px; height: 16px;"></i> Save Rate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fee Matrix Grid -->
+                    <div class="auth-container" style="max-width: 100%; text-align: left; padding: 25px; overflow-x: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="color: var(--primary-dark); margin: 0; display:flex; align-items:center; gap:8px;"><i data-lucide="table"></i> Class-Dependent Fee Configurations</h3>
+                                <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Configure monthly and rollover admission fees based on Class and Enrollment types (Bhogram Campus only).</p>
+                            </div>
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 14px;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #ddd; background: #f8f9fa;">
+                                    <th rowspan="2" style="padding: 12px; text-align: left; font-weight: 600; min-width: 120px;">Class</th>
+                                    <th colspan="3" style="padding: 10px; text-align: center; font-weight: 600; background: #f0f7f7; border-left: 1px solid #ddd; border-right: 1px solid #ddd;">School Program (Day School)</th>
+                                    <th colspan="3" style="padding: 10px; text-align: center; font-weight: 600; background: #f3f0f7; border-right: 1px solid #ddd;">Coaching Program</th>
+                                    <th colspan="3" style="padding: 10px; text-align: center; font-weight: 600; background: #fdf5f0; border-right: 1px solid #ddd;">Day Hostel Program</th>
+                                    <th rowspan="2" style="padding: 12px; text-align: center; font-weight: 600; width: 100px;">Actions</th>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #ddd; background: #fcfcfc; font-size: 11px;">
+                                    <!-- School Columns -->
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600; border-left: 1px solid #ddd;">Monthly</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600;">Admission</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600; border-right: 1px solid #ddd;">Re-admission</th>
+                                    <!-- Coaching Columns -->
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600;">Monthly</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600;">Admission</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600; border-right: 1px solid #ddd;">Re-admission</th>
+                                    <!-- Hostel Columns -->
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600;">Monthly</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600;">Admission</th>
+                                    <th style="padding: 8px 4px; text-align: center; font-weight: 600; border-right: 1px solid #ddd;">Re-admission</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in db_classes %}
+                                <tr style="border-bottom: 1px solid #eee; transition: background-color 0.2s;" id="row-{{ row.id }}">
+                                    <td style="padding: 12px; font-weight: 700; color: #102a43;">Class {{ row.class_name }}</td>
+                                    
+                                    <!-- School Inputs -->
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(240, 247, 247, 0.3); border-left: 1px solid #eee;">
+                                        <input type="number" step="0.01" min="0" value="{{ row.school_monthly }}" id="sm-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(240, 247, 247, 0.3);">
+                                        <input type="number" step="0.01" min="0" value="{{ row.school_admission }}" id="sa-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(240, 247, 247, 0.3); border-right: 1px solid #eee;">
+                                        <input type="number" step="0.01" min="0" value="{{ row.school_readmission }}" id="sr-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+
+                                    <!-- Coaching Inputs -->
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(243, 240, 247, 0.3);">
+                                        <input type="number" step="0.01" min="0" value="{{ row.coaching_monthly }}" id="cm-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(243, 240, 247, 0.3);">
+                                        <input type="number" step="0.01" min="0" value="{{ row.coaching_admission }}" id="ca-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(243, 240, 247, 0.3); border-right: 1px solid #eee;">
+                                        <input type="number" step="0.01" min="0" value="{{ row.coaching_readmission }}" id="cr-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+
+                                    <!-- Hostel Inputs -->
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(253, 245, 240, 0.3);">
+                                        <input type="number" step="0.01" min="0" value="{{ row.hostel_monthly }}" id="hm-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(253, 245, 240, 0.3);">
+                                        <input type="number" step="0.01" min="0" value="{{ row.hostel_admission }}" id="ha-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+                                    <td style="padding: 6px 4px; text-align: center; background: rgba(253, 245, 240, 0.3); border-right: 1px solid #eee;">
+                                        <input type="number" step="0.01" min="0" value="{{ row.hostel_readmission }}" id="hr-{{ row.id }}" style="width: 75px; padding: 6px; text-align: right; border-radius: 4px; border: 1px solid #ccc; font-family: var(--font-body); font-weight: 600;">
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td style="padding: 12px; text-align: center;">
+                                        <button type="button" onclick="saveMatrixRow({{ row.id }})" class="btn-primary btn" style="min-height: 32px; padding: 4px 12px; border-radius: 4px; font-size: 12px; display:inline-flex; align-items:center; gap:4px; font-family: var(--font-body);">
+                                            <i data-lucide="save" style="width:12px; height:12px;"></i> Save
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="11" style="padding: 20px; text-align: center; color: var(--text-muted);">No classes configured in the matrix yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 2: STUDENT CUSTOM PRICING -->
+                <div class="tab-content" id="student-tab">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                        
+                        <!-- Student benefit & overriding fee form -->
+                        <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px;">
+                            <h3 style="color: #6c5ce7; display: flex; align-items: center; gap: 8px;"><i data-lucide="user-cog"></i> Custom Dues & Benefits</h3>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Assign custom benefits (School, Coaching, Hostel, Transport) and override dues for a specific student.</p>
+                            <form action="{{ url_for('fee_matrix') }}" method="post">
+                                <input type="hidden" name="update_type" value="student">
+                                
+                                {% set filter_id = 'setfee' %}
+                                {% include 'partials/class_student_filter.html' %}
+                                
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6c5ce7;">
+                                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 10px; color: #2d3436;">Assigned Benefits:</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #2d3436;">
+                                            <input type="checkbox" name="take_school" id="take_school" value="1"> Day School
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #00b894;">
+                                            <input type="checkbox" name="take_coaching" id="take_coaching" value="1"> Coaching
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #e17055;">
+                                            <input type="checkbox" name="take_day_hostel" id="take_day_hostel" value="1"> Day Hostel
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 13px; cursor: pointer; color: #0984e3;">
+                                            <input type="checkbox" name="take_car" id="take_car" value="1"> Transport (Car)
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+                                    <input type="hidden" name="admission_fee" id="student_admission_fee" value="0">
+                                    <div class="input-group" style="margin-bottom: 0;">
+                                        <label style="font-weight: 600;">Total Due (INR):</label>
+                                        <input type="number" name="total_due" id="student_total_due" required step="0.01" placeholder="e.g. 1500" style="padding: 10px;">
+                                        <small style="display:block; margin-top: 5px; color: #666;">Set the total outstanding due for this student.</small>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="auth-btn" style="background: #6c5ce7; font-weight: 600;">Set Custom Fee & Benefits</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Simple description card -->
+                        <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0; padding: 25px; background: linear-gradient(135deg, rgba(108, 92, 231, 0.05), rgba(9, 132, 227, 0.05)); border: 1px solid rgba(108, 92, 231, 0.15);">
+                            <h4 style="color: #6c5ce7; margin-top: 0; display:flex; align-items:center; gap:6px;"><i data-lucide="info"></i> Manual Overrides Info</h4>
+                            <p style="font-size: 14px; line-height: 1.6; color: #555;">
+                                When you configure custom fees for a student:
+                                <ul style="padding-left: 20px; margin-top: 8px;">
+                                    <li>The system marks this student as having a <strong>Custom Fee Override</strong>.</li>
+                                    <li>Subsequent automated monthly billing billing runs will bypass the class-level Standard Matrix rates and bill the custom Monthly Fee specified here instead.</li>
+                                    <li>Setting these values updates the student's instantaneous current balances directly.</li>
+                                </ul>
+                            </p>
+                            <div style="margin-top: 30px; display:flex; align-items:center; gap:8px;">
+                                <i data-lucide="shield-alert" style="color:#6c5ce7; width:20px; height:20px;"></i>
+                                <span style="font-size:12px; font-weight:600; color:#555;">Note: Submitting this form flags the student profile.</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Feedback Toast Indicator -->
+    <div id="toast" style="position: fixed; bottom: 20px; right: 20px; background: rgba(16, 42, 67, 0.95); color: white; padding: 12px 24px; border-radius: 8px; display: none; font-family: var(--font-body); font-weight: 600; box-shadow: var(--shadow-lg); z-index: 10000; align-items: center; gap: 10px;">
+        <span id="toast-message">Saved successfully!</span>
+    </div>
+
+    <!-- Embed classes data from backend -->
+    <script id="db-classes-json" type="application/json">
+        {{ db_classes_all | tojson | safe }}
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // 1. Tab switching and storage persistence
+        function switchTab(evt, tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+            localStorage.setItem('activeFeeTab', tabId);
+        }
+
+        // Restore tab on load
+        document.addEventListener("DOMContentLoaded", function() {
+            const activeTab = localStorage.getItem('activeFeeTab') || 'matrix-tab';
+            const targetBtn = document.querySelector(`.tab-btn[onclick*="${activeTab}"]`);
+            if (targetBtn) {
+                targetBtn.click();
+            }
+        });
+
+        // 2. Feedback Toast Notification
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.style.background = isError ? 'rgba(194, 65, 12, 0.95)' : 'rgba(15, 159, 110, 0.95)';
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // 3. Save Transport Allowance
+        function saveTransportRate() {
+            const rate = parseFloat(document.getElementById('flat_rate_input').value) || 0.0;
+            const formData = new FormData();
+            formData.append('flat_rate', rate);
+
+            fetch('/admin/update-transport-allowance', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(data.message);
+                } else {
+                    showToast(data.message || 'Error saving rate.', true);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('Network error, please check connection.', true);
+            });
+        }
+
+        // 4. Save Matrix Row
+        function saveMatrixRow(rowId) {
+            const sm = parseFloat(document.getElementById('sm-' + rowId).value) || 0.0;
+            const sa = parseFloat(document.getElementById('sa-' + rowId).value) || 0.0;
+            const sr = parseFloat(document.getElementById('sr-' + rowId).value) || 0.0;
+            
+            const cm = parseFloat(document.getElementById('cm-' + rowId).value) || 0.0;
+            const ca = parseFloat(document.getElementById('ca-' + rowId).value) || 0.0;
+            const cr = parseFloat(document.getElementById('cr-' + rowId).value) || 0.0;
+            
+            const hm = parseFloat(document.getElementById('hm-' + rowId).value) || 0.0;
+            const ha = parseFloat(document.getElementById('ha-' + rowId).value) || 0.0;
+            const hr = parseFloat(document.getElementById('hr-' + rowId).value) || 0.0;
+
+            const formData = new FormData();
+            formData.append('row_id', rowId);
+            formData.append('school_monthly', sm);
+            formData.append('school_admission', sa);
+            formData.append('school_readmission', sr);
+            formData.append('coaching_monthly', cm);
+            formData.append('coaching_admission', ca);
+            formData.append('coaching_readmission', cr);
+            formData.append('hostel_monthly', hm);
+            formData.append('hostel_admission', ha);
+            formData.append('hostel_readmission', hr);
+
+            fetch('/admin/update-matrix-row', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(data.message);
+                    const row = document.getElementById('row-' + rowId);
+                    row.style.backgroundColor = 'rgba(15, 159, 110, 0.1)';
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 500);
+                } else {
+                    showToast(data.message || 'Error updating matrix.', true);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('Network error, please check connection.', true);
+            });
+        }
+
+        // 5. Save Class Directory Fees
+        function saveClassFees(classId) {
+            const admFee = parseFloat(document.getElementById('adm-fee-' + classId).value) || 0.0;
+            const admFeeCoaching = parseFloat(document.getElementById('adm-fee-coaching-' + classId).value) || 0.0;
+            const admFeeHostel = parseFloat(document.getElementById('adm-fee-hostel-' + classId).value) || 0.0;
+            
+            const readmFeeSchool = parseFloat(document.getElementById('readm-fee-school-' + classId).value) || 0.0;
+            const readmFeeCoaching = parseFloat(document.getElementById('readm-fee-coaching-' + classId).value) || 0.0;
+            const readmFeeHostel = parseFloat(document.getElementById('readm-fee-hostel-' + classId).value) || 0.0;
+            
+            const monFee = parseFloat(document.getElementById('mon-fee-' + classId).value) || 0.0;
+            const monFeeCoaching = parseFloat(document.getElementById('mon-fee-coaching-' + classId).value) || 0.0;
+            const hostelFee = parseFloat(document.getElementById('hostel-fee-' + classId).value) || 0.0;
+            
+            const formData = new FormData();
+            formData.append('class_id', classId);
+            formData.append('admission_fee', admFee);
+            formData.append('admission_fee_coaching', admFeeCoaching);
+            formData.append('admission_fee_hostel', admFeeHostel);
+            formData.append('readmission_fee_school', readmFeeSchool);
+            formData.append('readmission_fee_coaching', readmFeeCoaching);
+            formData.append('readmission_fee_hostel', readmFeeHostel);
+            formData.append('monthly_fee', monFee);
+            formData.append('monthly_fee_coaching', monFeeCoaching);
+            formData.append('hostel_fee', hostelFee);
+            
+            fetch('/admin/update-class-fees', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(data.message);
+                } else {
+                    showToast(data.message || 'Error updating fees.', true);
+                }
+            })
+            .catch(err => {
+                console.error('Save Class Fees Error:', err);
+                showToast('Network error, please check connection.', true);
+            });
+        }
+
+        // 6. Search / Filter active classes table
+        function filterTable(inputId, tableId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const rows = table.querySelector("tbody").getElementsByTagName("tr");
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName("td");
+                if (cells.length > 0) {
+                    let text = "";
+                    for (let j = 0; j < cells.length; j++) {
+                        text += " " + (cells[j].innerText || cells[j].textContent);
+                    }
+                    if (text.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Student-wise pricing specific interactive logic -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dbClasses = JSON.parse(document.getElementById('db-classes-json').textContent || '[]');
+
+            // Initialize TomSelect dropdowns
+            document.querySelectorAll('select.search-select').forEach((el)=>{
+                new TomSelect(el,{
+                    create: false,
+                    sortField: null
+                });
+            });
+
+            // Student-wise Benefits and Fees interactive hooks
+            const studentSelectEl = document.getElementById('studentSelect_setfee');
+            const chkSchool = document.getElementById('take_school');
+            const chkCoaching = document.getElementById('take_coaching');
+            const chkDayHostel = document.getElementById('take_day_hostel');
+            const chkCar = document.getElementById('take_car');
+            
+            const inputAmount = document.getElementById('student_monthly_fee');
+            const inputAdmission = document.getElementById('student_admission_fee');
+            const inputReadmission = document.getElementById('student_readmission_fee');
+            const inputRemaining = document.getElementById('student_prev_dues');
+
+            function getSelectedStudentClass() {
+                if (!studentSelectEl) return null;
+                const opt = studentSelectEl.querySelector('option[value="' + studentSelectEl.value + '"]');
+                if (!opt) return null;
+                const optgroup = opt.parentNode;
+                if (optgroup && optgroup.tagName === 'OPTGROUP') {
+                    return optgroup.label.replace('Class ', '').trim();
+                }
+                return null;
+            }
+
+            let isPopulating = false;
+
+            function handleStudentSelectChange() {
+                if (!studentSelectEl) return;
+                const selectedOpt = studentSelectEl.querySelector('option[value="' + studentSelectEl.value + '"]');
+                if (selectedOpt) {
+                    isPopulating = true;
+                    try {
+                        chkSchool.checked = selectedOpt.getAttribute('data-take-school') === '1';
+                        chkCoaching.checked = selectedOpt.getAttribute('data-take-coaching') === '1';
+                        chkDayHostel.checked = selectedOpt.getAttribute('data-take-day-hostel') === '1';
+                        chkCar.checked = selectedOpt.getAttribute('data-take-car') === '1';
+                        
+                        const isCustom = selectedOpt.getAttribute('data-is-custom-fee') === '1';
+                        const getAttrVal = (attr) => {
+                            const val = parseFloat(selectedOpt.getAttribute(attr));
+                            return (isNaN(val) || val === 0 || val === 0.0) ? '' : val;
+                        };
+                        inputAmount.value = isCustom ? getAttrVal('data-monthly-fee') : '';
+                        inputAdmission.value = isCustom ? getAttrVal('data-admission-fee') : '';
+                        inputReadmission.value = isCustom ? getAttrVal('data-readmission-fee') : '';
+                        inputRemaining.value = getAttrVal('data-prev-dues');
+                    } finally {
+                        isPopulating = false;
+                    }
+                }
+            }
+
+            function handleBenefitCheckboxChange() {
+                if (isPopulating) return;
+                const className = getSelectedStudentClass();
+                if (!className) return;
+                
+                const clsData = dbClasses.find(c => c.name.toLowerCase() === className.toLowerCase());
+                if (!clsData) return;
+                
+                let baseMonthly = 0;
+                let baseAdmission = 0;
+                let baseReadmission = 0;
+                
+                if (chkSchool.checked) {
+                    baseMonthly += clsData.monthly_fee || 0;
+                    baseAdmission += clsData.admission_fee || 0;
+                    baseReadmission += clsData.readmission_fee_school || 0;
+                }
+                if (chkCoaching.checked) {
+                    baseMonthly += clsData.monthly_fee_coaching || 0;
+                    baseAdmission += clsData.admission_fee_coaching || 0;
+                    baseReadmission += clsData.readmission_fee_coaching || 0;
+                }
+                if (chkDayHostel.checked) {
+                    baseMonthly += clsData.hostel_fee || 0;
+                    baseAdmission += clsData.admission_fee_hostel || 0;
+                    baseReadmission += clsData.readmission_fee_hostel || 0;
+                }
+                if (chkCar.checked) {
+                    baseMonthly += 400; // Flat-rate car allowance
+                }
+                
+                const formatVal = (v) => (v === 0 || v === 0.0) ? '0' : v;
+                inputAmount.placeholder = 'Class Standard: ₹' + formatVal(baseMonthly);
+                inputAdmission.placeholder = 'Class Standard: ₹' + formatVal(baseAdmission);
+                inputReadmission.placeholder = 'Class Standard: ₹' + formatVal(baseReadmission);
+            }
+
+            if (studentSelectEl) {
+                studentSelectEl.addEventListener('change', handleStudentSelectChange);
+                setTimeout(handleStudentSelectChange, 300); // trigger initially
+            }
+
+            [chkSchool, chkCoaching, chkDayHostel, chkCar].forEach(chk => {
+                if (chk) {
+                    chk.addEventListener('change', handleBenefitCheckboxChange);
+                }
+            });
+
+            // Initialize class selection filter on class_student_filter widget
+            if (typeof initClassFilter === 'function') {
+                initClassFilter('setfee');
+            }
+            
+            const classFilterEl = document.getElementById('classFilter_setfee');
+            if (classFilterEl) {
+                classFilterEl.addEventListener('change', function() {
+                    setTimeout(handleStudentSelectChange, 100);
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/class_filter.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

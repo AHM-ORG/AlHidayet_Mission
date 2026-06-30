@@ -1,0 +1,211 @@
+def sync_student_ledger_and_dues(conn, student_id, submitted_remaining_fee=None, *args, **kwargs):
+    is_manual_dues_change = kwargs.get('is_manual_dues_change', False)
+    if not is_manual_dues_change and args:
+        is_manual_dues_change = args[0]
+        
+    from datetime import datetime
+    month = datetime.now().strftime('%B')
+    year = datetime.now().strftime('%Y')
+    
+    student = conn.execute("SELECT * FROM student_info WHERE user_id = ?", (student_id,)).fetchone()
+    if not student:
+        return
+        
+    student_dict = dict(student)
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 1] student_id={student_id} submitted_remaining_fee={submitted_remaining_fee} args={args} kwargs={kwargs}")
+        print(f"[DEBUG SYNC 2] student_dict={student_dict}")
+    
+    # 1. Recalculate what their current month/year billed fees SHOULD be
+    take_school = student_dict.get('take_school') or 0
+    take_coaching = student_dict.get('take_coaching') or 0
+    take_day_hostel = student_dict.get('take_day_hostel') or 0
+    take_car = student_dict.get('take_car') or 0
+    
+    # Get monthly fee breakdown
+    bd = calculate_student_fees_breakdown(student_dict, conn=conn)
+    
+    # Monthly expected items
+    expected_monthly = {}
+    if take_school and bd['tuition_fee'] > 0.0:
+        expected_monthly['Monthly Tuition Fee'] = bd['tuition_fee']
+    if take_coaching and bd['coaching_combo_fee'] > 0.0:
+        expected_monthly['Monthly Coaching Fee'] = bd['coaching_combo_fee']
+    if take_day_hostel and bd['room_rent'] > 0.0:
+        expected_monthly['Monthly Hostel Fee'] = bd['room_rent']
+    if take_car:
+        flat_transport_fee = kwargs.get('flat_transport_fee')
+        if flat_transport_fee is None:
+            transport_row = conn.execute("SELECT flat_rate FROM transport_settings ORDER BY id DESC LIMIT 1").fetchone()
+            flat_transport_fee = float(transport_row['flat_rate']) if transport_row else 400.0
+        expected_monthly['Monthly Transport Fee'] = flat_transport_fee
+        
+    # Get global max billing counts
+    max_month_end = kwargs.get('max_month_end')
+    if max_month_end is None:
+        max_month_end = conn.execute("SELECT MAX(month_end_billing_count) FROM student_info").fetchone()[0] or 0
+        
+    max_year_end = kwargs.get('max_year_end')
+    if max_year_end is None:
+        max_year_end = conn.execute("SELECT MAX(year_end_billing_count) FROM student_info").fetchone()[0] or 0
+    
+    curr_month_count = student_dict.get('month_end_billing_count') or 0
+    curr_year_count = student_dict.get('year_end_billing_count') or 0
+    
+    has_monthly_run = False
+    if curr_month_count < max_month_end:
+        has_monthly_run = True
+        conn.execute("UPDATE student_info SET month_end_billing_count = ? WHERE user_id = ?", (max_month_end, student_id))
+    elif curr_month_count > 0:
+        has_monthly_run = True
+        
+    has_year_end_run = False
+    if curr_year_count < max_year_end:
+        has_year_end_run = True
+        conn.execute("UPDATE student_info SET year_end_billing_count = ? WHERE user_id = ?", (max_year_end, student_id))
+    elif curr_year_count > 0:
+        has_year_end_run = True
+    
+    if has_monthly_run:
+        # Sync the current month's ledger entries
+        existing_entries = conn.execute('''
+            SELECT id, fee_type, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND month = ? AND year = ? AND fee_type LIKE 'Monthly%'
+        ''', (student_id, month, year)).fetchall()
+        
+        existing_types = {e['fee_type']: e for e in existing_entries}
+        
+        for f_type, expected_amt in expected_monthly.items():
+            if f_type in existing_types:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    if float(entry['amount']) != expected_amt:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_amt, entry['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (expected_amt, student_id, f_type, month, year))
+            else:
+                if expected_amt > 0.0:
+                    conn.execute('''
+                        INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                        VALUES (?, ?, ?, ?, ?, 'Unpaid/Pending', ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    conn.execute('''
+                        INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                        VALUES (?, 'Charge', ?, ?, ?, ?, ?)
+                    ''', (student_id, f_type, expected_amt, month, year, student_dict['branch']))
+                    
+        for f_type in existing_types:
+            if f_type not in expected_monthly:
+                entry = existing_types[f_type]
+                if entry['status'] == 'Unpaid/Pending':
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = ? AND month = ? AND year = ?", (student_id, f_type, month, year))
+
+    # 2. Check Re-admission Fee (Year End)
+    expected_readm = float(student_dict.get('readmission_fee') or 0.0)
+    if not student_dict.get('is_custom_fee'):
+        matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+        if matrix:
+            if take_day_hostel:
+                expected_readm = float(matrix['hostel_readmission'] or 0.0)
+            elif take_coaching:
+                expected_readm = float(matrix['coaching_readmission'] or 0.0)
+            else:
+                expected_readm = float(matrix['school_readmission'] or 0.0)
+        else:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (student_dict['class'].lower(), student_dict['branch'].lower())).fetchone()
+            if cls_row:
+                if take_day_hostel:
+                    expected_readm = float(cls_row['readmission_fee_hostel'] or 0.0)
+                elif take_coaching:
+                    expected_readm = float(cls_row['readmission_fee_coaching'] or 0.0)
+                else:
+                    expected_readm = float(cls_row['readmission_fee_school'] or 0.0)
+
+    if has_year_end_run:
+        existing_readm = conn.execute('''
+            SELECT id, amount, status 
+            FROM student_ledger 
+            WHERE student_id = ? AND year = ? AND fee_type = 'Re-admission Fee'
+        ''', (student_id, year)).fetchone()
+        
+        if existing_readm:
+            if existing_readm['status'] == 'Unpaid/Pending':
+                if float(existing_readm['amount']) != expected_readm:
+                    if expected_readm > 0.0:
+                        conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (expected_readm, existing_readm['id']))
+                        conn.execute("UPDATE financial_logs SET amount = ? WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (expected_readm, student_id, year))
+                    else:
+                        conn.execute("DELETE FROM student_ledger WHERE id = ?", (existing_readm['id'],))
+                        conn.execute("DELETE FROM financial_logs WHERE student_id = ? AND log_type = 'Charge' AND fee_type = 'Re-admission Fee' AND year = ?", (student_id, year))
+        else:
+            if expected_readm > 0.0:
+                conn.execute('''
+                    INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                    VALUES (?, 'Re-admission Fee', ?, ?, ?, 'Unpaid/Pending', ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+                conn.execute('''
+                    INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                    VALUES (?, 'Charge', 'Re-admission Fee', ?, ?, ?, ?)
+                ''', (student_id, expected_readm, month, year, student_dict['branch']))
+
+    # 3. Calculate expected dues based on formula:
+    # total = prev_dues + monthly * total_monthly_trigger + re_admission * total_yearly_trigger - total_paid
+    monthly_fee_val = float(bd['total_fee'] or 0.0)
+    readmission_fee_val = float(student_dict.get('readmission_fee') or 0.0) if student_dict.get('is_custom_fee') == 1 else expected_readm
+        
+    billing_month_count = max_month_end if curr_month_count < max_month_end else curr_month_count
+    billing_year_count = max_year_end if curr_year_count < max_year_end else curr_year_count
+    
+    total_paid = conn.execute("SELECT SUM(amount) FROM fees WHERE student_id = ? AND status = 'Paid'", (student_id,)).fetchone()[0] or 0.0
+    prev_dues = float(student_dict.get('prev_dues') or 0.0)
+    
+    expected_remaining_fee = prev_dues + (monthly_fee_val * billing_month_count) + (readmission_fee_val * billing_year_count) - total_paid
+    if expected_remaining_fee < 0.0:
+        expected_remaining_fee = 0.0
+        
+    force_align = kwargs.get('force_align_prev_dues', False)
+    if (is_manual_dues_change or force_align) and submitted_remaining_fee is not None:
+        prev_dues = float(submitted_remaining_fee) - (monthly_fee_val * billing_month_count) - (readmission_fee_val * billing_year_count) + total_paid
+        conn.execute("UPDATE student_info SET prev_dues = ? WHERE user_id = ?", (prev_dues, student_id))
+        expected_remaining_fee = float(submitted_remaining_fee)
+
+    if student_id == 1 or str(student_id) == '1':
+        print(f"[DEBUG SYNC 3] expected_remaining_fee={expected_remaining_fee} prev_dues={prev_dues} billing_month_count={billing_month_count} billing_year_count={billing_year_count} total_paid={total_paid} monthly_fee_val={monthly_fee_val} readmission_fee_val={readmission_fee_val}")
+
+    # Recalculate sum of Unpaid/Pending ledger entries
+    unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+    
+    diff = expected_remaining_fee - unpaid_sum
+    if abs(diff) > 0.01:
+        if diff > 0:
+            conn.execute('''
+                INSERT INTO student_ledger (student_id, fee_type, amount, month, year, status, branch)
+                VALUES (?, 'Balance Adjustment', ?, ?, ?, 'Unpaid/Pending', ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+            conn.execute('''
+                INSERT INTO financial_logs (student_id, log_type, fee_type, amount, month, year, branch)
+                VALUES (?, 'Charge', 'Balance Adjustment', ?, ?, ?, ?)
+            ''', (student_id, diff, month, year, student_dict['branch']))
+        else:
+            unpaid_entries_desc = conn.execute('''
+                SELECT id, amount 
+                FROM student_ledger 
+                WHERE student_id = ? AND status = 'Unpaid/Pending'
+                ORDER BY id DESC
+            ''', (student_id,)).fetchall()
+            to_deduct = abs(diff)
+            for entry in unpaid_entries_desc:
+                if to_deduct <= 0:
+                    break
+                entry_amt = float(entry['amount'])
+                if to_deduct >= entry_amt:
+                    conn.execute("DELETE FROM student_ledger WHERE id = ?", (entry['id'],))
+                    to_deduct -= entry_amt
+                else:
+                    conn.execute("UPDATE student_ledger SET amount = ? WHERE id = ?", (entry_amt - to_deduct, entry['id']))
+                    to_deduct = 0.0
+        # Re-sum after adjustment (applies to both positive and negative directions)
+        unpaid_sum = conn.execute("SELECT SUM(amount) FROM student_ledger WHERE student_id = ? AND status = 'Unpaid/Pending'", (student_id,)).fetchone()[0] or 0.0
+
+    conn.execute("UPDATE student_info SET remaining_fee = ? WHERE user_id = ?", (unpaid_sum, student_id))

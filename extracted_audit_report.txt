@@ -1,0 +1,173 @@
+@app.route('/admin/audit-report')
+def audit_report():
+    if 'user' in session and session['role'] == 'admin':
+        role = session['role']
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        
+        # Parse query params
+        take_school = request.args.get('take_school')
+        take_coaching = request.args.get('take_coaching')
+        take_day_hostel = request.args.get('take_day_hostel')
+        take_car = request.args.get('take_car')
+        time_range = request.args.get('time_range', '').strip().lower()
+        if time_range not in ('day', 'week', 'month', 'year', 'all'):
+            time_range = 'all'
+            
+        # Build SQL where clauses
+        student_where = []
+        student_params = []
+        
+        fees_where = []
+        fees_params = []
+        
+        if session.get('branch'):
+            student_where.append("si.branch = ? COLLATE NOCASE")
+            student_params.append(session['branch'])
+            fees_where.append("si.branch = ? COLLATE NOCASE")
+            fees_params.append(session['branch'])
+            
+        benefit_conditions = []
+        if take_school:
+            benefit_conditions.append("si.take_school = 1")
+        if take_coaching:
+            benefit_conditions.append("si.take_coaching = 1")
+        if take_day_hostel:
+            benefit_conditions.append("si.take_day_hostel = 1")
+        if take_car:
+            benefit_conditions.append("si.take_car = 1")
+            
+        if benefit_conditions:
+            benefit_clause = "(" + " OR ".join(benefit_conditions) + ")"
+            student_where.append(benefit_clause)
+            fees_where.append(benefit_clause)
+            
+        # Time range clauses
+        date_clause = None
+        if time_range == 'day':
+            date_clause = "DATE({col}) = DATE('now', 'localtime')"
+        elif time_range == 'week':
+            date_clause = "strftime('%Y-%W', {col}) = strftime('%Y-%W', 'now', 'localtime')"
+        elif time_range == 'month':
+            date_clause = "strftime('%Y-%m', {col}) = strftime('%Y-%m', 'now', 'localtime')"
+        elif time_range == 'year':
+            date_clause = "strftime('%Y', {col}) = strftime('%Y', 'now', 'localtime')"
+            
+        if date_clause:
+            fees_where.append(date_clause.format(col="f.paid_at"))
+            
+        student_clause = " AND ".join(student_where) if student_where else "1=1"
+        fees_clause = " AND ".join(fees_where) if fees_where else "1=1"
+        
+        # Aggregations
+        fees_totals = conn.execute(f'''
+            SELECT 
+                SUM(f.amount) as total,
+                SUM(CASE WHEN COALESCE(f.school_revenue, 0) = 0 AND COALESCE(f.hostel_revenue, 0) = 0 AND COALESCE(f.coaching_revenue, 0) = 0 AND COALESCE(f.readmission_revenue, 0) = 0 THEN f.amount ELSE COALESCE(f.school_revenue, 0) END) as school_rev,
+                SUM(COALESCE(f.hostel_revenue, 0)) as hostel_rev,
+                SUM(COALESCE(f.coaching_revenue, 0)) as coaching_rev,
+                SUM(COALESCE(f.readmission_revenue, 0)) as readmission_rev,
+                SUM(COALESCE(f.tax_amount, 0)) as tax_amt
+            FROM fees f
+            JOIN student_info si ON f.student_id = si.user_id
+            WHERE {fees_clause}
+        ''', fees_params).fetchone()
+        
+        total_fees = fees_totals['total'] or 0.0
+        school_revenue = fees_totals['school_rev'] or 0.0
+        hostel_revenue = fees_totals['hostel_rev'] or 0.0
+        coaching_revenue = fees_totals['coaching_rev'] or 0.0
+        readmission_revenue = fees_totals['readmission_rev'] or 0.0
+        tax_revenue = fees_totals['tax_amt'] or 0.0
+        
+        # Expenses (non-student specific)
+        expenses_where = []
+        expenses_params = []
+        if session.get('branch'):
+            expenses_where.append("branch = ? COLLATE NOCASE")
+            expenses_params.append(session['branch'])
+            
+        if date_clause:
+            expenses_where.append(date_clause.format(col="date"))
+            
+        expenses_clause = " AND ".join(expenses_where) if expenses_where else "1=1"
+        
+        total_expenses = conn.execute(f'''
+            SELECT SUM(amount) as total 
+            FROM expenses 
+            WHERE {expenses_clause}
+        ''', expenses_params).fetchone()['total'] or 0.0
+        
+        if date_clause:
+            ledger_clause = date_clause.format(col="sl.created_at")
+            total_remaining_fees = conn.execute(f'''
+                SELECT SUM(sl.amount) as total 
+                FROM student_ledger sl
+                JOIN student_info si ON sl.student_id = si.user_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+            ''', student_params).fetchone()['total'] or 0.0
+            
+            remaining_fees_details = conn.execute(f'''
+                SELECT u.username, si.full_name, si.class, si.roll_number, SUM(sl.amount) as remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                JOIN student_ledger sl ON si.user_id = sl.student_id
+                WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
+                GROUP BY u.username, si.full_name, si.class, si.roll_number
+                HAVING SUM(sl.amount) > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', student_params).fetchall()
+        else:
+            total_remaining_fees = conn.execute(f'''
+                SELECT SUM(si.remaining_fee) as total 
+                FROM student_info si
+                WHERE {student_clause}
+            ''', student_params).fetchone()['total'] or 0.0
+            
+            remaining_fees_details = conn.execute(f'''
+                SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
+                FROM student_info si
+                JOIN users u ON si.user_id = u.id
+                WHERE {student_clause} AND si.remaining_fee > 0
+                ORDER BY si.class, CAST(si.roll_number AS INTEGER)
+            ''', student_params).fetchall()
+        
+        readmission_where = [student_clause, "sl.fee_type = 'Re-admission Fee'"]
+        if date_clause:
+            readmission_where.append(date_clause.format(col="sl.created_at"))
+            
+        readmission_totals = conn.execute(f'''
+            SELECT 
+                SUM(CASE WHEN sl.status = 'Unpaid/Pending' THEN sl.amount ELSE 0.0 END) as pending_amt
+            FROM student_ledger sl
+            JOIN student_info si ON sl.student_id = si.user_id
+            WHERE {" AND ".join(readmission_where)}
+        ''', student_params).fetchone()
+        
+        readmission_pending = readmission_totals['pending_amt'] or 0.0
+        
+        balance = total_fees - total_expenses  # B2 FIX: remaining_fees are unpaid dues, not cash in hand
+        conn.close()
+        
+        return render_template(
+            'admin/audit_report.html', 
+            fees=total_fees, 
+            expenses=total_expenses, 
+            balance=balance, 
+            remaining_fees=total_remaining_fees, 
+            remaining_fees_details=remaining_fees_details, 
+            school_revenue=school_revenue,
+            hostel_revenue=hostel_revenue,
+            coaching_revenue=coaching_revenue,
+            tax_revenue=tax_revenue,
+            readmission_revenue=readmission_revenue,
+            readmission_pending=readmission_pending,
+            role=role, 
+            logo_url=LOGO_URL,
+            take_school=take_school,
+            take_coaching=take_coaching,
+            take_day_hostel=take_day_hostel,
+            take_car=take_car,
+            time_range=time_range
+        )
+    return redirect(url_for('home'))

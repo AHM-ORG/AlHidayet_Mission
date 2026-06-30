@@ -81,27 +81,74 @@
 
     <div class="header">
         <h1>Al Hidayet Mission</h1>
-        <p>Detailed Financial Audit Report</p>
+        <p>Detailed Financial Audit Report
+            {% if filter_year and filter_month %}
+                - {{ filter_month }}/{{ filter_year }}
+            {% elif filter_year %}
+                - Year {{ filter_year }}
+            {% elif filter_month %}
+                - Month {{ filter_month }}
+            {% elif time_range and time_range != 'all' %}
+                - 
+                {% if time_range == 'day' %}Today
+                {% elif time_range == 'week' %}This Week
+                {% elif time_range == 'month' %}This Month
+                {% elif time_range == 'year' %}This Year
+                {% endif %}
+            {% else %}
+                - All Time
+            {% endif %}
+        </p>
     </div>
 
-    <div class="summary-box">
-        <div class="summary-item">
+    {% set has_no_filters = not take_school and not take_coaching and not take_day_hostel and not take_car %}
+    {% set show_school = has_no_filters or take_school == '1' or take_coaching == '1' %}
+    {% set show_hostel = has_no_filters or take_day_hostel == '1' %}
+    {% set show_coaching = has_no_filters or take_coaching == '1' %}
+
+    <div class="summary-box" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; border-bottom: none; padding-bottom: 0;">
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa;">
+            <h3>School Core Revenue</h3>
+            <h2 style="color: #2980b9;">₹{{ "%.2f"|format(school_revenue) }}</h2>
+        </div>
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa;">
+            <h3>Hostel Revenue</h3>
+            <h2 style="color: #8e44ad;">₹{{ "%.2f"|format(hostel_revenue) }}</h2>
+        </div>
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa;">
+            <h3>Coaching Revenue</h3>
+            <h2 style="color: #d35400;">₹{{ "%.2f"|format(coaching_revenue) }}</h2>
+        </div>
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa;">
+            <h3>Re-admission Revenue</h3>
+            <h2 style="color: #1abc9c;">₹{{ "%.2f"|format(readmission_revenue) }}</h2>
+        </div>
+    </div>
+
+    <div class="summary-box" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f7fff7;">
             <h3>Total Fees Collected</h3>
             <h2 style="color: #27ae60;">₹{{ fees }}</h2>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fff5f5;">
             <h3>Total Expenses</h3>
             <h2 style="color: #c0392b;">₹{{ expenses }}</h2>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f0f7ff;">
             <h3>Net Balance</h3>
             <h2 style="color: #2980b9;">₹{{ balance }}</h2>
         </div>
-        <div class="summary-item">
-            <h3>Total Remaining Dues</h3>
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #faf0f5;">
+            <h3>Re-admission Pending</h3>
+            <h2 style="color: #8e44ad;">₹{{ readmission_pending }}</h2>
+        </div>
+        <div class="summary-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fffdf5;">
+            <h3>Total Due</h3>
             <h2 style="color: #f39c12;">₹{{ remaining_fees }}</h2>
         </div>
     </div>
+
+
 
     <h2 class="section-title">Fees Collected (Students)</h2>
     <table>
@@ -111,9 +158,19 @@
                 <th>Student Name</th>
                 <th>Class</th>
                 <th>Roll No</th>
+                <th>Enrollment Type</th>
                 <th>Month & Year</th>
                 <th>Paid At</th>
-                <th style="text-align: right;">Amount (₹)</th>
+                {% if show_school %}
+                <th style="text-align: right;">School Rev (₹)</th>
+                {% endif %}
+                {% if show_hostel %}
+                <th style="text-align: right;">Hostel Rev (₹)</th>
+                {% endif %}
+                {% if show_coaching %}
+                <th style="text-align: right;">Coaching Rev (₹)</th>
+                {% endif %}
+                <th style="text-align: right;">Total Paid (₹)</th>
             </tr>
         </thead>
         <tbody>
@@ -123,15 +180,53 @@
                 <td>{{ fee.student_name or 'N/A' }}</td>
                 <td>{{ fee.class or 'N/A' }}</td>
                 <td>{{ fee.roll_number or 'N/A' }}</td>
+                <td>{{ fee.enrollment_type or 'Day School Only' }}</td>
                 <td>{{ fee.month }} {{ fee.year }}</td>
                 <td>{{ fee.paid_at }}</td>
-                <td style="text-align: right;">{{ fee.amount }}</td>
+                {% if show_school %}
+                <td style="text-align: right;">{{ "%.2f"|format(fee.school_revenue or 0.0) }}</td>
+                {% endif %}
+                {% if show_hostel %}
+                <td style="text-align: right;">{{ "%.2f"|format(fee.hostel_revenue or 0.0) }}</td>
+                {% endif %}
+                {% if show_coaching %}
+                <td style="text-align: right;">{{ "%.2f"|format(fee.coaching_revenue or 0.0) }}</td>
+                {% endif %}
+                <td style="text-align: right; font-weight: bold;">{{ "%.2f"|format(fee.amount or 0.0) }}</td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="7" style="text-align: center;">No fees recorded.</td>
+                <td colspan="12" style="text-align: center;">No fees recorded.</td>
             </tr>
             {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="section-title">Detailed Revenue Stream Breakdown</h2>
+    <table style="max-width: 400px; margin-bottom: 30px;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th>Revenue Stream</th>
+                <th style="text-align: right;">Amount (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>School Core (Tuition / Admission / Readmission / Transport)</td>
+                <td style="text-align: right;">₹{{ "%.2f"|format(school_revenue) }}</td>
+            </tr>
+            <tr>
+                <td>Hostel lodging/board (Net Room Rent / Mess / Utility)</td>
+                <td style="text-align: right;">₹{{ "%.2f"|format(hostel_revenue) }}</td>
+            </tr>
+            <tr>
+                <td>Coaching (Combo / Material / Tests)</td>
+                <td style="text-align: right;">₹{{ "%.2f"|format(coaching_revenue) }}</td>
+            </tr>
+            <tr style="font-weight: bold; font-size: 13px; background: #eef7ee; border-top: 2px solid #333;">
+                <td>Total Revenue Collected</td>
+                <td style="text-align: right; color: #27ae60;">₹{{ fees }}</td>
+            </tr>
         </tbody>
     </table>
 
@@ -152,7 +247,7 @@
             <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ exp.category }}</td>
-                <td>{{ exp.recipient_type or 'General' | title }}</td>
+                <td>{{ exp.recipient_name or ((exp.recipient_type or 'General') | title) }}</td>
                 <td>{{ exp.description }}</td>
                 <td>{{ exp.date }}</td>
                 <td style="text-align: right;">{{ exp.amount }}</td>
@@ -165,7 +260,7 @@
         </tbody>
     </table>
 
-    <h2 class="section-title">Remaining Dues (Unpaid Student Fees)</h2>
+    <h2 class="section-title">Total Due (Unpaid Student Fees)</h2>
     <table>
         <thead>
             <tr>
@@ -174,7 +269,7 @@
                 <th>Roll No</th>
                 <th>Student Name</th>
                 <th>Login ID</th>
-                <th style="text-align: right;">Remaining Dues (₹)</th>
+                <th style="text-align: right;">Total Due (₹)</th>
             </tr>
         </thead>
         <tbody>
@@ -189,7 +284,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" style="text-align: center;">No remaining fees pending.</td>
+                <td colspan="6" style="text-align: center;">No total due pending.</td>
             </tr>
             {% endfor %}
         </tbody>

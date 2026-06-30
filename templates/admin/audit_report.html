@@ -33,6 +33,7 @@
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
+                <a href="/admin/fee-matrix" class="sidebar-item {% if request.path == '/admin/fee-matrix' %}active{% endif %}"><i data-lucide="table"></i> Fee Matrix</a>
                 <a href="/admin/set-fees" class="sidebar-item {% if request.path == '/admin/set-fees' %}active{% endif %}"><i data-lucide="indian-rupee"></i> Set Fees</a>
                 <a href="/admin/set-salary" class="sidebar-item {% if request.path == '/admin/set-salary' %}active{% endif %}"><i data-lucide="banknote"></i> Set Salary</a>
                 <a href="/admin/give-salary" class="sidebar-item {% if request.path == '/admin/give-salary' %}active{% endif %}"><i data-lucide="hand-coins"></i> Give Salary</a>
@@ -103,7 +104,7 @@
             <div class="content-wrapper">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 0; color: var(--primary-color);">Audit Overview</h2>
-                    <a href="/admin/print-audit" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">
+                    <a href="/admin/print-audit?{{ request.query_string.decode('utf-8') }}" target="_blank" class="badge badge-success" style="background-color: #27ae60; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">
                         <i data-lucide="printer" style="width: 18px; height: 18px;"></i> Print Detailed Report
                     </a>
                 </div>
@@ -116,23 +117,96 @@
                 {% endif %}
                 {% endwith %}
 
-                <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px; margin-bottom: 30px;">
-                    <div class="auth-container" style="max-width: 100%; border-top-color: #2ecc71;">
-                        <p style="color: #7f8c8d; font-size: 14px;">Total Fees Collected</p>
-                        <h2 style="color: #2ecc71;">₹{{ fees }}</h2>
+                <!-- Filter Section -->
+                <div class="auth-container" style="max-width: 100%; margin-bottom: 25px; padding: 20px;">
+                    <form method="GET" action="/admin/audit-report">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block; font-weight: 600;">Student Benefits / Options</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: rgba(255,255,255,0.05); border: 2px solid #eee; border-radius: 8px; padding: 10px;">
+                                    <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        <input type="checkbox" name="take_school" value="1" {% if take_school == '1' %}checked{% endif %}> School
+                                    </label>
+                                    <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        <input type="checkbox" name="take_coaching" value="1" {% if take_coaching == '1' %}checked{% endif %}> Coaching
+                                    </label>
+                                    <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        <input type="checkbox" name="take_day_hostel" value="1" {% if take_day_hostel == '1' %}checked{% endif %}> Day Hostel
+                                    </label>
+                                    <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        <input type="checkbox" name="take_car" value="1" {% if take_car == '1' %}checked{% endif %}> Car
+                                    </label>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label for="time_range" style="font-size: 13px; color: #666; margin-bottom: 5px; display: block; font-weight: 600;">Quick Time Period</label>
+                                    <select name="time_range" id="time_range" style="width: 100%; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 13px; outline: none; background: white; height: 42px;">
+                                        <option value="all" {% if time_range == 'all' or not time_range %}selected{% endif %}>All Time</option>
+                                        <option value="day" {% if time_range == 'day' %}selected{% endif %}>Today</option>
+                                        <option value="week" {% if time_range == 'week' %}selected{% endif %}>This Week</option>
+                                        <option value="month" {% if time_range == 'month' %}selected{% endif %}>This Month</option>
+                                        <option value="year" {% if time_range == 'year' %}selected{% endif %}>This Year</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label for="filter_year" style="font-size: 13px; color: #666; margin-bottom: 5px; display: block; font-weight: 600;">Select Year</label>
+                                    <select name="filter_year" id="filter_year" style="width: 100%; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 13px; outline: none; background: white; height: 42px;">
+                                        <option value="">-- Year --</option>
+                                        {% for y in available_years %}
+                                        <option value="{{ y }}" {% if filter_year == y %}selected{% endif %}>{{ y }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <label for="filter_month" style="font-size: 13px; color: #666; margin-bottom: 5px; display: block; font-weight: 600;">Select Month</label>
+                                    <select name="filter_month" id="filter_month" style="width: 100%; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 13px; outline: none; background: white; height: 42px;">
+                                        <option value="">-- Month --</option>
+                                        <option value="01" {% if filter_month == '01' %}selected{% endif %}>January</option>
+                                        <option value="02" {% if filter_month == '02' %}selected{% endif %}>February</option>
+                                        <option value="03" {% if filter_month == '03' %}selected{% endif %}>March</option>
+                                        <option value="04" {% if filter_month == '04' %}selected{% endif %}>April</option>
+                                        <option value="05" {% if filter_month == '05' %}selected{% endif %}>May</option>
+                                        <option value="06" {% if filter_month == '06' %}selected{% endif %}>June</option>
+                                        <option value="07" {% if filter_month == '07' %}selected{% endif %}>July</option>
+                                        <option value="08" {% if filter_month == '08' %}selected{% endif %}>August</option>
+                                        <option value="09" {% if filter_month == '09' %}selected{% endif %}>September</option>
+                                        <option value="10" {% if filter_month == '10' %}selected{% endif %}>October</option>
+                                        <option value="11" {% if filter_month == '11' %}selected{% endif %}>November</option>
+                                        <option value="12" {% if filter_month == '12' %}selected{% endif %}>December</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                            <a href="/admin/audit-report" style="padding: 10px 20px; border-radius: 6px; border: 1px solid #ccc; text-decoration: none; color: #666; font-size: 13px; display: inline-flex; align-items: center;">Reset Filters</a>
+                            <button type="submit" class="auth-btn" style="width: auto; padding: 10px 30px; margin: 0; font-size: 13px;">Apply Filters</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Detailed revenue breakdown removed as per minimalist request -->
+                    <div class="auth-container" style="max-width: 100%; border-top-color: #2ecc71; padding: 15px;">
+                        <p style="color: #7f8c8d; font-size: 13px; margin: 0 0 5px 0;">Total Fees Collected</p>
+                        <h3 style="color: #2ecc71; margin: 0;">₹{{ fees }}</h3>
                     </div>
-                    <div class="auth-container" style="max-width: 100%; border-top-color: #e74c3c;">
-                        <p style="color: #7f8c8d; font-size: 14px;">Total Expenses</p>
-                        <h2 style="color: #e74c3c;">₹{{ expenses }}</h2>
+                    <div class="auth-container" style="max-width: 100%; border-top-color: #e74c3c; padding: 15px;">
+                        <p style="color: #7f8c8d; font-size: 13px; margin: 0 0 5px 0;">Total Expenses</p>
+                        <h3 style="color: #e74c3c; margin: 0;">₹{{ expenses }}</h3>
                     </div>
-                    <div class="auth-container" style="max-width: 100%; border-top-color: var(--primary-color);">
-                        <p style="color: #7f8c8d; font-size: 14px;">Net Balance</p>
-                        <h2 style="color: var(--primary-color);">₹{{ balance }}</h2>
+                    <div class="auth-container" style="max-width: 100%; border-top-color: var(--primary-color); padding: 15px;">
+                        <p style="color: #7f8c8d; font-size: 13px; margin: 0 0 5px 0;">Net Balance</p>
+                        <h3 style="color: var(--primary-color); margin: 0;">₹{{ balance }}</h3>
                     </div>
-                    <div class="auth-container" style="max-width: 100%; border-top-color: #fdcb6e;">
-                        <p style="color: #7f8c8d; font-size: 14px;">Total Remaining Dues (Fees)</p>
-                        <h2 style="color: #fdcb6e;">₹{{ remaining_fees }}</h2>
+                    <div class="auth-container" style="max-width: 100%; border-top-color: #e056fd; padding: 15px;">
+                        <p style="color: #7f8c8d; font-size: 13px; margin: 0 0 5px 0;">Re-admission Dues Pending</p>
+                        <h3 style="color: #e056fd; margin: 0;">₹{{ readmission_pending }}</h3>
+                    </div>
+                    <div class="auth-container" style="max-width: 100%; border-top-color: #fdcb6e; padding: 15px;">
+                        <p style="color: #7f8c8d; font-size: 13px; margin: 0 0 5px 0;">Total Due</p>
+                        <h3 style="color: #fdcb6e; margin: 0;">₹{{ remaining_fees }}</h3>
                     </div>
                 </div>
 
@@ -141,8 +215,10 @@
                     <canvas id="auditChart"></canvas>
                 </div>
 
+
+
                 <div class="auth-container" style="max-width: 800px; margin: 0 auto 25px auto; overflow-x: auto;">
-                    <h3>Remaining Fees Description</h3>
+                    <h3>Total Due Description</h3>
                     <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Detailed breakdown of unpaid fees by student.</p>
                     {% if remaining_fees_details %}
                     <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 14px;">
@@ -152,7 +228,7 @@
                                 <th style="padding: 12px; font-weight: 600;">Roll No.</th>
                                 <th style="padding: 12px; font-weight: 600;">Student Name</th>
                                 <th style="padding: 12px; font-weight: 600;">Username</th>
-                                <th style="padding: 12px; font-weight: 600; text-align: right;">Remaining Dues (₹)</th>
+                                <th style="padding: 12px; font-weight: 600; text-align: right;">Total Due (₹)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -168,25 +244,18 @@
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #fffaf0; font-weight: bold; border-top: 2px solid #eee;">
-                                <td colspan="4" style="padding: 12px; text-align: right;">Total Remaining Dues:</td>
+                                <td colspan="4" style="padding: 12px; text-align: right;">Total Due:</td>
                                 <td style="padding: 12px; text-align: right; color: #e74c3c; font-size: 16px;">₹{{ remaining_fees }}</td>
                             </tr>
                         </tfoot>
                     </table>
                     {% else %}
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; color: #7f8c8d; border: 1px solid #eee;">
-                        No remaining fees pending from active students.
+                        No total due pending from active students.
                     </div>
                     {% endif %}
                 </div>
 
-                <div class="auth-container" style="max-width: 600px; margin: 0 auto; border-top-color: #9b59b6; text-align: center;">
-                    <h3>Update Student Dues</h3>
-                    <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">Add monthly fees of all active students to their remaining dues balance.</p>
-                    <form action="/admin/post-monthly-fees" method="POST" onsubmit="return confirm('Are you sure you want to add monthly fees of all students to their remaining dues?');">
-                        <button type="submit" class="auth-btn" style="background-color: #9b59b6; border-color: #9b59b6; color: white;">Post Monthly Fees to Dues</button>
-                    </form>
-                </div>
             </div>
         </main>
     </div>
@@ -196,9 +265,9 @@
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Fees Collected', 'Expenses', 'Remaining Dues'],
+                labels: ['Fees Collected', 'Expenses', 'Total Due'],
                 datasets: [{
-                    data: [Number("{{ fees }}"), Number("{{ expenses }}"), Number("{{ remaining_fees }}")],
+                    data: [{{ fees|float|default(0) }}, {{ expenses|float|default(0) }}, {{ remaining_fees|float|default(0) }}],
                     backgroundColor: ['#2ecc71', '#e74c3c', '#fdcb6e'],
                 }]
             },

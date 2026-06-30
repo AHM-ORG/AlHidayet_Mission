@@ -1,0 +1,97 @@
+@app.route('/admin/reset-student-fee/<student_id>', methods=['GET', 'POST'])
+def reset_student_fee(student_id):
+    if 'user' in session and session['role'] == 'admin':
+        try:
+            conn = get_db_connection()
+            # Fetch the student details to check campus and calculate standard rates
+            student = conn.execute('''
+                SELECT user_id, class, branch, take_school, take_coaching, take_day_hostel, take_car, enrollment_type, remaining_fee, monthly_fee, readmission_fee 
+                FROM student_info 
+                WHERE user_id = ?
+            ''', (student_id,)).fetchone()
+            
+            if not student:
+                conn.close()
+                flash('Student not found.')
+                return redirect(url_for('fee_matrix'))
+                
+            if session.get('branch'):
+                if student['branch'] != session['branch']:
+                    conn.close()
+                    flash('Permission denied: Student does not belong to your campus.')
+                    return redirect(url_for('fee_matrix'))
+            
+            # Reset overrides to 0.0 (or default) and is_custom_fee to 0
+            conn.execute('''
+                UPDATE student_info
+                SET is_custom_fee = 0,
+                    tuition_fee = 0.0,
+                    transport_fee = 0.0,
+                    lab_library_fee = 0.0,
+                    academic_discount = 0.0,
+                    room_rent = 0.0,
+                    mess_food_charges = 0.0,
+                    utility_cost = 0.0,
+                    security_deposit = 0.0,
+                    coaching_combo_fee = 0.0,
+                    study_material_charges = 0.0,
+                    exam_test_series_fee = 0.0,
+                    combo_discount = 0.0,
+                    school_tax_rate = 0.0,
+                    hostel_tax_rate = 0.05,
+                    coaching_tax_rate = 0.0
+                WHERE user_id = ?
+            ''', (student_id,))
+            
+            # Calculate standard class fees using templates since overrides are now 0.0 and is_custom_fee is 0
+            bd = calculate_student_fees_breakdown({
+                'class': student['class'],
+                'branch': student['branch'],
+                'enrollment_type': student['enrollment_type'],
+                'take_car': student['take_car'],
+                'take_school': student['take_school'],
+                'take_coaching': student['take_coaching'],
+                'take_day_hostel': student['take_day_hostel'],
+                'is_custom_fee': 0
+            }, conn)
+            m_fee = bd['total_fee']
+            
+            # Fetch default admission/readmission rates from classes table
+            class_row = conn.execute("SELECT * FROM classes WHERE name = ? AND branch = ?", (student['class'], student['branch'])).fetchone()
+            a_fee = 0.0
+            r_fee = 0.0
+            if student['take_day_hostel']:
+                a_fee = class_row['admission_fee_hostel'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_hostel'] if class_row else 0.0
+            elif student['take_coaching']:
+                a_fee = class_row['admission_fee_coaching'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_coaching'] if class_row else 0.0
+            elif student['take_school']:
+                a_fee = class_row['admission_fee'] if class_row else 0.0
+                r_fee = class_row['readmission_fee_school'] if class_row else 0.0
+                
+            # Update monthly_fee, admission_fee, readmission_fee to standard rates in student_info
+            conn.execute('''
+                UPDATE student_info
+                SET monthly_fee = ?, admission_fee = ?, readmission_fee = ?
+                WHERE user_id = ?
+            ''', (m_fee, a_fee, r_fee, student_id))
+            
+            # Sync ledger and dues to prevent historical shifting
+            old_monthly_fee = float(student['monthly_fee']) if student['monthly_fee'] is not None else 0.0
+            old_readmission_fee = float(student['readmission_fee']) if student['readmission_fee'] is not None else 0.0
+            old_remaining_fee = float(student['remaining_fee']) if student['remaining_fee'] is not None else 0.0
+            
+            new_remaining_fee = old_remaining_fee + (m_fee - old_monthly_fee) + (r_fee - old_readmission_fee)
+            if new_remaining_fee < 0.0:
+                new_remaining_fee = 0.0
+                
+            sync_student_ledger_and_dues(conn, student_id, submitted_remaining_fee=new_remaining_fee, force_align_prev_dues=True)
+            
+            conn.commit()
+            conn.close()
+            flash('Student fee reset to regular rates successfully.')
+        except Exception as e:
+            flash(f'Error resetting student fee: {e}')
+        return redirect(url_for('fee_matrix'))
+    return redirect(url_for('home'))

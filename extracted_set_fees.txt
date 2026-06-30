@@ -1,0 +1,3 @@
+@app.route('/admin/set-fees', methods=['GET', 'POST'])
+def set_fees():
+    return redirect(url_for('fee_matrix'))

@@ -1,0 +1,36 @@
+def resolve_student_default_fees(students, conn):
+    resolved = []
+    for s in students:
+        s_dict = dict(s)
+        if not s_dict.get('is_custom_fee'):
+            bd = calculate_student_fees_breakdown({
+                'class': s_dict.get('class'),
+                'branch': s_dict.get('branch') or 'bhogram',
+                'take_school': s_dict.get('take_school') if s_dict.get('take_school') is not None else 1,
+                'take_coaching': s_dict.get('take_coaching') or 0,
+                'take_day_hostel': s_dict.get('take_day_hostel') or 0,
+                'take_car': s_dict.get('take_car') or 0,
+                'is_custom_fee': 0
+            }, conn)
+            s_dict['monthly_fee'] = bd['total_fee']
+            
+            cls_name = s_dict.get('class')
+            branch = s_dict.get('branch') or 'bhogram'
+            a_fee = 0.0
+            r_fee = 0.0
+            if cls_name:
+                cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+                if cls_row:
+                    if s_dict.get('take_day_hostel'):
+                        a_fee = cls_row['admission_fee_hostel'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_hostel'] if cls_row else 0.0
+                    elif s_dict.get('take_coaching'):
+                        a_fee = cls_row['admission_fee_coaching'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_coaching'] if cls_row else 0.0
+                    elif s_dict.get('take_school') if s_dict.get('take_school') is not None else 1:
+                        a_fee = cls_row['admission_fee'] if cls_row else 0.0
+                        r_fee = cls_row['readmission_fee_school'] if cls_row else 0.0
+            s_dict['admission_fee'] = a_fee
+            s_dict['readmission_fee'] = r_fee
+        resolved.append(s_dict)
+    return resolved

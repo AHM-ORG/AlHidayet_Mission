@@ -1,0 +1,336 @@
+@app.route('/admin/edit-student/<int:user_id>', methods=['GET', 'POST'])
+def edit_student(user_id):
+    if 'user' in session and session['role'] == 'admin':
+        conn = get_db_connection()
+        
+        if request.method == 'POST':
+            # Update user info
+            username = request.form['username']
+            email = request.form.get('email', '')
+            password = request.form.get('password', '').strip()
+            
+            try:
+                if password:
+                    conn.execute("UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?", 
+                                 (username, email, hash_password(password), user_id))
+                else:
+                    conn.execute("UPDATE users SET username = ?, email = ? WHERE id = ?", 
+                                 (username, email, user_id))
+                
+                # Get bank details inputs and serialize them
+                bank_name = request.form.get('bank_name', '').strip()
+                branch_name = request.form.get('branch_name', '').strip()
+                account_no = request.form.get('account_no', '').strip()
+                ifsc_code = request.form.get('ifsc_code', '').strip()
+                bank_details = None
+                if bank_name or branch_name or account_no or ifsc_code:
+                    bank_details = json.dumps({
+                        'bank_name': bank_name,
+                        'branch_name': branch_name,
+                        'account_no': account_no,
+                        'ifsc_code': ifsc_code
+                    })
+
+                old_student_data = conn.execute("SELECT enrollment_type, take_school, take_coaching, take_day_hostel FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                if old_student_data:
+                    old_type = get_enrollment_type_from_checkboxes(
+                        old_student_data['take_school'],
+                        old_student_data['take_coaching'],
+                        old_student_data['take_day_hostel']
+                    )
+                else:
+                    old_type = 'Day School Only'
+
+                # Update student_info
+                info = {
+                    'branch': request.form.get('branch'),
+                    'class': normalize_class_name(request.form.get('class')),
+                    'roll_number': request.form.get('roll_number'),
+                    'full_name': request.form.get('full_name'),
+                    'guardian_name': request.form.get('guardian_name'),
+                    'dob': request.form.get('dob'),
+                    'section': request.form.get('section'),
+                    'blood_group': request.form.get('blood_group'),
+                    'village': request.form.get('village'),
+                    'post_office': request.form.get('post_office'),
+                    'police_station': request.form.get('police_station'),
+                    'district': request.form.get('district'),
+                    'phone_number': request.form.get('phone_number'),
+                    'aadhaar_number': request.form.get('aadhaar_number'),
+                    'mothers_name': request.form.get('mothers_name'),
+                    'date_of_admission': request.form.get('date_of_admission'),
+                    'monthly_fee': float(request.form.get('monthly_fee') or 0),
+                    'bank_details': bank_details,
+                    'session': request.form.get('session'),
+                    'mode_of_admission': 'Day Hostel' if request.form.get('take_day_hostel') else ('School with Coaching' if request.form.get('take_coaching') else 'School'),
+                    'father_qualification': request.form.get('father_qualification'),
+                    'father_occupation': request.form.get('father_occupation'),
+                    'father_monthly_income': request.form.get('father_monthly_income'),
+                    'mother_qualification': request.form.get('mother_qualification'),
+                    'mother_occupation': request.form.get('mother_occupation'),
+                    'mother_monthly_income': request.form.get('mother_monthly_income'),
+                    'nationality': request.form.get('nationality', 'Indian'),
+                    'religion': request.form.get('religion'),
+                    'gender': request.form.get('gender'),
+                    'caste': request.form.get('caste'),
+                    'whatsapp_no': request.form.get('whatsapp_no'),
+                    'previous_class': request.form.get('previous_class'),
+                    'prev_marks_percentage': request.form.get('prev_marks_percentage'),
+                    'identification_mark': request.form.get('identification_mark'),
+                    'attached_documents': ', '.join(request.form.getlist('attached_documents')),
+                    'coaching_opted': 1 if request.form.get('take_coaching') else 0,
+                    'car_opted': 1 if request.form.get('take_car') else 0,
+                    'take_school': 1 if request.form.get('take_school') else 0,
+                    'take_coaching': 1 if request.form.get('take_coaching') else 0,
+                    'take_day_hostel': 1 if request.form.get('take_day_hostel') else 0,
+                    'take_car': 1 if request.form.get('take_car') else 0,
+                    'admission_fee': float(request.form.get('admission_fee') or 0),
+                    'readmission_fee': float(request.form.get('readmission_fee') or 0),
+                    'sl_no': request.form.get('sl_no', '').strip(),
+                    'enrollment_type': get_enrollment_type_from_checkboxes(
+                        1 if request.form.get('take_school') else 0,
+                        1 if request.form.get('take_coaching') else 0,
+                        1 if request.form.get('take_day_hostel') else 0
+                    ),
+                    'hostel_room': request.form.get('hostel_room', '').strip() or None,
+                    'hostel_wing': request.form.get('hostel_wing', '').strip() or None,
+                    'coaching_batch': request.form.get('coaching_batch', '').strip() or None,
+                    'coaching_subject': request.form.get('coaching_subject', '').strip() or None,
+                    'tuition_fee': float(request.form.get('tuition_fee') or 0.0),
+                    'transport_fee': float(request.form.get('transport_fee') or 0.0),
+                    'lab_library_fee': float(request.form.get('lab_library_fee') or 0.0),
+                    'academic_discount': float(request.form.get('academic_discount') or 0.0),
+                    'room_rent': float(request.form.get('room_rent') or 0.0),
+                    'mess_food_charges': float(request.form.get('mess_food_charges') or 0.0),
+                    'utility_cost': float(request.form.get('utility_cost') or 0.0),
+                    'security_deposit': float(request.form.get('security_deposit') or 0.0),
+                    'coaching_combo_fee': float(request.form.get('coaching_combo_fee') or 0.0),
+                    'study_material_charges': float(request.form.get('study_material_charges') or 0.0),
+                    'exam_test_series_fee': float(request.form.get('exam_test_series_fee') or 0.0),
+                    'combo_discount': float(request.form.get('combo_discount') or 0.0),
+                    'school_tax_rate': float(request.form.get('school_tax_rate') or 0.0),
+                    'hostel_tax_rate': float(request.form.get('hostel_tax_rate') or 0.05),
+                    'coaching_tax_rate': float(request.form.get('coaching_tax_rate') or 0.0)
+                }
+
+                bd = calculate_student_fees_breakdown({
+                    'class': info['class'],
+                    'branch': info['branch'],
+                    'enrollment_type': info['enrollment_type'],
+                    'take_car': info['take_car'],
+                    'tuition_fee': info['tuition_fee'],
+                    'transport_fee': info['transport_fee'],
+                    'lab_library_fee': info['lab_library_fee'],
+                    'academic_discount': info['academic_discount'],
+                    'room_rent': info['room_rent'],
+                    'mess_food_charges': info['mess_food_charges'],
+                    'utility_cost': info['utility_cost'],
+                    'security_deposit': info['security_deposit'],
+                    'coaching_combo_fee': info['coaching_combo_fee'],
+                    'study_material_charges': info['study_material_charges'],
+                    'exam_test_series_fee': info['exam_test_series_fee'],
+                    'combo_discount': info['combo_discount'],
+                    'school_tax_rate': info['school_tax_rate'],
+                    'hostel_tax_rate': info['hostel_tax_rate'],
+                    'coaching_tax_rate': info['coaching_tax_rate']
+                }, conn)
+                
+                # Check if student was previously custom-fee or has custom components
+                existing_student_db = conn.execute("SELECT is_custom_fee, monthly_fee, remaining_fee FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                was_custom = existing_student_db and existing_student_db['is_custom_fee'] == 1
+                
+                has_custom_components = any([
+                    info['tuition_fee'] > 0.0,
+                    info['transport_fee'] > 0.0,
+                    info['lab_library_fee'] > 0.0,
+                    info['academic_discount'] > 0.0,
+                    info['room_rent'] > 0.0,
+                    info['mess_food_charges'] > 0.0,
+                    info['utility_cost'] > 0.0,
+                    info['security_deposit'] > 0.0,
+                    info['coaching_combo_fee'] > 0.0,
+                    info['study_material_charges'] > 0.0,
+                    info['exam_test_series_fee'] > 0.0,
+                    info['combo_discount'] > 0.0
+                ])
+                
+                # Check if the user entered custom values in the main inputs:
+                monthly_fee_input = request.form.get('monthly_fee')
+                admission_fee_input = request.form.get('admission_fee')
+                readmission_fee_input = request.form.get('readmission_fee')
+
+                has_main_overrides = any([
+                    monthly_fee_input and float(monthly_fee_input) > 0.0,
+                    admission_fee_input and float(admission_fee_input) > 0.0,
+                    readmission_fee_input and float(readmission_fee_input) > 0.0
+                ])
+
+                is_custom_fee_val = 1 if (has_custom_components or has_main_overrides) else 0
+
+                if is_custom_fee_val == 1:
+                    if not has_custom_components:
+                        info['monthly_fee'] = float(request.form.get('monthly_fee') or 0.0)
+                    else:
+                        info['monthly_fee'] = bd['total_fee']
+                else:
+                    info['monthly_fee'] = bd['total_fee']
+                    # Resolve default admission / readmission fees from templates
+                    class_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (info['class'].lower(), info['branch'].lower())).fetchone()
+                    a_fee = 0.0
+                    r_fee = 0.0
+                    if class_row:
+                        if info['take_day_hostel']:
+                            a_fee = class_row['admission_fee_hostel'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_hostel'] if class_row else 0.0
+                        elif info['take_coaching']:
+                            a_fee = class_row['admission_fee_coaching'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_coaching'] if class_row else 0.0
+                        elif info['take_school']:
+                            a_fee = class_row['admission_fee'] if class_row else 0.0
+                            r_fee = class_row['readmission_fee_school'] if class_row else 0.0
+                    info['admission_fee'] = a_fee
+                    info['readmission_fee'] = r_fee
+                
+                row_exists = conn.execute("SELECT 1 FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                if row_exists:
+                    conn.execute('''
+                        UPDATE student_info SET
+                            branch = :branch, class = :class, roll_number = :roll_number, full_name = :full_name,
+                            guardian_name = :guardian_name, dob = :dob, section = :section, blood_group = :blood_group,
+                            village = :village, post_office = :post_office, police_station = :police_station,
+                            district = :district, phone_number = :phone_number, aadhaar_number = :aadhaar_number,
+                            mothers_name = :mothers_name, date_of_admission = :date_of_admission, monthly_fee = :monthly_fee,
+                            bank_details = :bank_details, sl_no = :sl_no,
+                            session = :session, mode_of_admission = :mode_of_admission, father_qualification = :father_qualification,
+                            father_occupation = :father_occupation, father_monthly_income = :father_monthly_income,
+                            mother_qualification = :mother_qualification, mother_occupation = :mother_occupation,
+                            mother_monthly_income = :mother_monthly_income, nationality = :nationality, religion = :religion,
+                            gender = :gender, caste = :caste, whatsapp_no = :whatsapp_no, previous_class = :previous_class,
+                            prev_marks_percentage = :prev_marks_percentage, identification_mark = :identification_mark,
+                            attached_documents = :attached_documents, coaching_opted = :coaching_opted, car_opted = :car_opted,
+                            take_school = :take_school, take_coaching = :take_coaching, take_day_hostel = :take_day_hostel, take_car = :take_car,
+                            admission_fee = :admission_fee, readmission_fee = :readmission_fee,
+                            enrollment_type = :enrollment_type, hostel_room = :hostel_room, hostel_wing = :hostel_wing,
+                            coaching_batch = :coaching_batch, coaching_subject = :coaching_subject,
+                            tuition_fee = :tuition_fee, transport_fee = :transport_fee, lab_library_fee = :lab_library_fee,
+                            academic_discount = :academic_discount, room_rent = :room_rent, mess_food_charges = :mess_food_charges,
+                            utility_cost = :utility_cost, security_deposit = :security_deposit, coaching_combo_fee = :coaching_combo_fee,
+                            study_material_charges = :study_material_charges, exam_test_series_fee = :exam_test_series_fee,
+                            combo_discount = :combo_discount, school_tax_rate = :school_tax_rate, hostel_tax_rate = :hostel_tax_rate,
+                            coaching_tax_rate = :coaching_tax_rate, is_custom_fee = :is_custom_fee
+                        WHERE user_id = :user_id
+                    ''', {**info, 'is_custom_fee': is_custom_fee_val, 'user_id': user_id})
+                else:
+                    cols = ', '.join(list(info.keys()) + ['is_custom_fee'])
+                    vals = ', '.join([':' + k for k in info.keys()] + [':is_custom_fee'])
+                    conn.execute(f"INSERT INTO student_info (user_id, {cols}) VALUES (:user_id, {vals})", {**info, 'is_custom_fee': is_custom_fee_val, 'user_id': user_id})
+
+                # Adjust dues for enrollment change
+                if old_type != info['enrollment_type']:
+                    adjust_dues_for_enrollment_change(conn, user_id, old_type, info['enrollment_type'])
+                
+                # Sync marks table class name and certificates
+                conn.execute("UPDATE marks SET class_name = ? WHERE student_id = ?", (info['class'], user_id))
+                conn.execute("UPDATE certificates SET class_name = ? WHERE recipient_id = ? AND recipient_type = 'student'", (info['class'], user_id))
+                
+                try:
+                    rem_fee_val = float(existing_student_db['remaining_fee']) if existing_student_db and existing_student_db['remaining_fee'] is not None else 0.0
+                    sync_student_ledger_and_dues(conn, user_id, submitted_remaining_fee=rem_fee_val, force_align_prev_dues=True)
+                except Exception as e:
+                    print(f" [BILLING ERROR] Failed to sync student dues in edit_student: {e}")
+                
+                # Handle Photo Upload
+                photo_file = request.files.get('photo')
+                if photo_file and photo_file.filename:
+                    ext = photo_file.filename.split('.')[-1].lower()
+                    if ext in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
+                        import os
+                        upload_folder = os.path.join(app.root_path, 'static', 'uploads', 'student_photos')
+                        os.makedirs(upload_folder, exist_ok=True)
+                        filename = f"student_{user_id}_{int(datetime.now(timezone.utc).timestamp())}.{ext}"
+                        
+                        # Delete old photo if exists
+                        old_photo = conn.execute("SELECT photo_path FROM student_info WHERE user_id = ?", (user_id,)).fetchone()
+                        if old_photo and old_photo['photo_path']:
+                            try:
+                                delete_old_mapped_file(old_photo['photo_path'])
+                                os.remove(os.path.join(upload_folder, old_photo['photo_path']))
+                            except:
+                                pass
+                        
+                        local_path = os.path.join(upload_folder, filename)
+                        photo_file.save(local_path)
+                        upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'), conn=conn)
+                        conn.execute("UPDATE student_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
+                
+                try:
+                    sync_classes(conn)
+                except Exception as e:
+                    print(f" [DB MIGRATE ERROR] sync_classes failed in edit_student: {e}")
+                conn.commit()
+                flash('Student updated successfully!')
+                return redirect(url_for('student_list'))
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if isinstance(e, sqlite3.OperationalError) and "unique" not in str(e).lower() and "constraint" not in str(e).lower():
+                    flash(f'Error updating student: {str(e)}')
+                else:
+                    flash('Username already exists or database error!')
+            finally:
+                conn.close()
+
+        # GET request: fetch existing data
+        student = conn.execute('''
+            SELECT u.username, u.email, si.* 
+            FROM users u
+            LEFT JOIN student_info si ON u.id = si.user_id
+            WHERE u.id = ? AND u.role = 'student'
+        ''', (user_id,)).fetchone()
+        
+        if not student:
+            conn.close()
+            flash('Student not found!')
+            return redirect(url_for('student_list'))
+
+        branch_filter = session.get('branch') or (student['branch'] if student else None) or 'bhogram'
+        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE LOWER(branch) = LOWER(?)", (branch_filter,)).fetchall()]
+        
+        # Calculate default components breakdown
+        default_fees = calculate_student_fees_breakdown({
+            'class': student['class'],
+            'branch': student['branch'] or 'bhogram',
+            'take_school': student['take_school'] if student['take_school'] is not None else 1,
+            'take_coaching': student['take_coaching'] or 0,
+            'take_day_hostel': student['take_day_hostel'] or 0,
+            'take_car': student['take_car'] or 0,
+            'is_custom_fee': 0
+        }, conn)
+        
+        # Calculate default admission / readmission rates
+        cls_name = student['class']
+        branch = student['branch'] or 'bhogram'
+        default_admission = 0.0
+        default_readmission = 0.0
+        if cls_name:
+            cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (cls_name, branch)).fetchone()
+            if cls_row:
+                if student['take_day_hostel']:
+                    default_admission = cls_row['admission_fee_hostel'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_hostel'] if cls_row else 0.0
+                elif student['take_coaching']:
+                    default_admission = cls_row['admission_fee_coaching'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_coaching'] if cls_row else 0.0
+                elif student['take_school'] if student['take_school'] is not None else 1:
+                    default_admission = cls_row['admission_fee'] if cls_row else 0.0
+                    default_readmission = cls_row['readmission_fee_school'] if cls_row else 0.0
+
+        student_resolved = resolve_student_default_fees([student], conn)[0]
+        conn.close()
+        
+        return render_template('admin/edit_student.html', 
+                               student=student_resolved, 
+                               user_id=user_id, 
+                               classes=classes, 
+                               default_fees=default_fees, 
+                               default_admission=default_admission, 
+                               default_readmission=default_readmission)
+    return redirect(url_for('home'))

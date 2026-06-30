@@ -1,0 +1,10 @@
+@app.before_request
+def protect_private_paths():
+    if request.endpoint == 'static':
+        return None
+    user = get_session_user()
+    if request.path.startswith(PRIVATE_PATH_PREFIXES) and not user:
+        flash('Please login to continue.')
+        next_url = request.full_path if request.query_string else request.path
+        return redirect(url_for('login', user_type='student', next=next_url))
+    return None
