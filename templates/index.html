@@ -583,7 +583,6 @@
                 <button class="fee-tab-btn active" onclick="switchFeeTab('new-admission', this)">New Admission Fee</button>
                 <button class="fee-tab-btn" onclick="switchFeeTab('re-admission', this)">Re-Admission Fee</button>
                 <button class="fee-tab-btn" onclick="switchFeeTab('monthly', this)">Monthly Fee</button>
-                <button class="fee-tab-btn" onclick="switchFeeTab('additional', this)">Additional Fees</button>
             </div>
 
             <!-- Tab 1: New Admission Fee -->
@@ -670,33 +669,6 @@
                 </div>
             </div>
 
-            <!-- Tab 4: Additional Fees -->
-            <div id="additional" class="fee-tab-content fees-table-container" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eef2f5;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Outfit', sans-serif;">
-                    <thead>
-                        <tr style="background: var(--primary-color) !important; color: white !important;">
-                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Class</th>
-                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Fee Name / Purpose</th>
-                            <th style="padding: 18px 24px; font-weight: 600; font-size: 15px;">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for fee in custom_class_fees_data %}
-                            {% if fee.branch == 'bhogram' %}
-                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.3s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
-                                <td style="padding: 16px 24px; font-weight: 600; color: #2d3436;">{{ fee.class_name }}</td>
-                                <td style="padding: 16px 24px; color: #2d3436; font-weight: 500;">{{ fee.fee_type }}</td>
-                                <td style="padding: 16px 24px; color: #d63031; font-weight: bold;">₹{{ fee.amount|int }}/-</td>
-                            </tr>
-                            {% endif %}
-                        {% else %}
-                            <tr>
-                                <td colspan="3" style="padding: 24px; text-align: center; color: #636e72; font-style: italic;">No additional custom fees have been set at this time.</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
 
             <script>
                 function switchFeeTab(tabId, btn) {
