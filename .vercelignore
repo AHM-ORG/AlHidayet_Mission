@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+*.db
+*.sqlite
+instance/
+__pycache__/
+debug_*
+scratch*
+*.bak
+*.migrated
