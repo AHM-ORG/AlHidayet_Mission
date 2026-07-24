@@ -977,40 +977,30 @@ MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'true').lower() == 'true'
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 
-# Helper: Real Email Sender for OTP (HTTP API to bypass port blocking)
+# Helper: Real Email Sender for OTP
 def _send_otp_email_sync(to_email, otp):
-    subject = "AHM Login Verification Code"
-    body = f"<p>Your OTP Verification Code is: <strong>{otp}</strong></p><p>Do not share this code with anyone.</p>"
-    
-    brevo_api_key = os.getenv('BREVO_API_KEY')
-    if not brevo_api_key:
-        print(f" [EMAIL ERROR] BREVO_API_KEY missing in .env! OTP code is: {otp}")
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        print(" [EMAIL ERROR] Missing email credentials.")
         return False
         
-    url = "https://api.brevo.com/v3/smtp/email"
-    headers = {
-        "accept": "application/json",
-        "api-key": brevo_api_key,
-        "content-type": "application/json"
-    }
-    payload = {
-        "sender": {"name": "Mission Al Hidayet", "email": SENDER_EMAIL},
-        "to": [{"email": to_email}],
-        "subject": subject,
-        "htmlContent": body
-    }
-    
     try:
-        print(f" [EMAIL] Sending OTP via Brevo API to {to_email}...")
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code in [201, 202, 200]:
-            print(f" [EMAIL SENT] OTP {otp} sent successfully to {to_email}")
-            return True
-        else:
-            print(f" [EMAIL ERROR] Brevo API rejected email: {response.text}")
-            return False
+        subject = "AHM Login Verification Code"
+        body = f"Your OTP Verification Code is: {otp}\n\nDo not share this code with anyone."
+        
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+
+        # Connect to Gmail SMTP Server
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+            
+        print(f" [EMAIL SENT] OTP sent to {to_email}")
+        return True
     except Exception as e:
-        print(f" [EMAIL ERROR] Failed to send OTP to {to_email} via Brevo HTTP API: {e}")
+        print(f" [EMAIL ERROR] Failed to send OTP: {e}")
         return False
 
 import threading
@@ -1021,34 +1011,21 @@ def send_otp_email(to_email, otp):
     return True
 
 def _send_email_raw(subject, body, to_email="missionalhidayet@gmail.com"):
-    brevo_api_key = os.getenv('BREVO_API_KEY')
-    if not brevo_api_key:
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
         return False
 
-    url = "https://api.brevo.com/v3/smtp/email"
-    headers = {
-        "accept": "application/json",
-        "api-key": brevo_api_key,
-        "content-type": "application/json"
-    }
-    # Wrap standard text body in HTML tags if it isn't already
-    html_content = body if "<" in body else f"<pre>{body}</pre>"
-    payload = {
-        "sender": {"name": "Mission Al Hidayet", "email": SENDER_EMAIL},
-        "to": [{"email": to_email}],
-        "subject": subject,
-        "htmlContent": html_content
-    }
-    
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code in [201, 202, 200]:
-            return True
-        else:
-            print(f" [EMAIL ERROR] Connection failed (Brevo API): {response.text}")
-            return False
+        msg = MIMEText(body, 'html' if '<' in body else 'plain')
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        return True
     except Exception as e:
-        print(f" [EMAIL ERROR] Connection failed to Brevo API: {e}")
+        print(f" [EMAIL ERROR] Connection failed: {e}")
         return False
 
 def _send_activity_email_sync(subject, body):
