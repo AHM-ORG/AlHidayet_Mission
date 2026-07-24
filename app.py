@@ -3815,18 +3815,26 @@ def inject_branding():
 
 # Folder Creation Helper
 def create_folders():
-    for branch in BRANCHES:
-        for category in CATEGORIES:
-            path = os.path.join(UPLOAD_BASE, branch, category)
-            os.makedirs(path, exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'temp'), exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'avatars'), exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'proofs'), exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'student_photos'), exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'teacher_photos'), exist_ok=True)
-    os.makedirs(os.path.join(UPLOAD_BASE, 'cvs'), exist_ok=True)
+    try:
+        for branch in BRANCHES:
+            for category in CATEGORIES:
+                path = os.path.join(UPLOAD_BASE, branch, category)
+                os.makedirs(path, exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'temp'), exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'avatars'), exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'proofs'), exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'student_photos'), exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'teacher_photos'), exist_ok=True)
+        os.makedirs(os.path.join(UPLOAD_BASE, 'cvs'), exist_ok=True)
+    except OSError:
+        # In read-only serverless environments (like Vercel), ignore folder creation
+        pass
 
-create_folders()
+try:
+    create_folders()
+except Exception:
+    pass
+
 
 def parse_teacher_qualifications(qual_str):
     """
