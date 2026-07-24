@@ -4657,18 +4657,13 @@ def dashboard():
 
         if role == 'admin':
             try:
-                with open("debug_sync.txt", "w") as dbg_f:
-                    dbg_student = c.execute("SELECT * FROM student_info WHERE user_id = 2").fetchone()
-                    dbg_f.write(f"student_info: {dict(dbg_student) if dbg_student else 'None'}\n")
-                    dbg_ledger = c.execute("SELECT * FROM student_ledger WHERE student_id = 2").fetchall()
-                    dbg_f.write(f"student_ledger: {[dict(r) for r in dbg_ledger]}\n")
-                    dbg_classes = c.execute("SELECT * FROM classes WHERE LOWER(branch) = 'bhogram'").fetchall()
-                    dbg_f.write(f"classes: {[dict(r) for r in dbg_classes]}\n")
-                    dbg_matrix = c.execute("SELECT * FROM fee_matrix WHERE branch = 'bhogram'").fetchall()
-                    dbg_f.write(f"fee_matrix: {[dict(r) for r in dbg_matrix]}\n")
+                dbg_student = c.execute("SELECT * FROM student_info WHERE user_id = 2").fetchone()
+                dbg_ledger = c.execute("SELECT * FROM student_ledger WHERE student_id = 2").fetchall()
+                dbg_classes = c.execute("SELECT * FROM classes WHERE LOWER(branch) = 'bhogram'").fetchall()
+                dbg_matrix = c.execute("SELECT * FROM fee_matrix WHERE branch = 'bhogram'").fetchall()
             except Exception as dbg_e:
-                with open("debug_sync.txt", "w") as dbg_f:
-                    dbg_f.write(f"error: {dbg_e}\n")
+                print(f"[DEBUG SYNC ERROR] {dbg_e}")
+
             if session.get('branch'):
                 # Branch Admin (Manager)
                 all_users = c.execute('''
