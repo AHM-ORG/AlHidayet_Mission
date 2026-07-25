@@ -6075,8 +6075,10 @@ def student_list():
             })
         
         teacher_classes = set()
-        if session['role'] == 'teacher':
-            allowed = get_teacher_allowed_subjects(conn, session['username'])
+        user_role = session.get('role')
+        if user_role == 'teacher':
+            current_username = session.get('username') or session.get('user') or ''
+            allowed = get_teacher_allowed_subjects(conn, current_username)
             teacher_classes = {normalize_class_name(x['class']) for x in allowed if x.get('class')}
         
         # Convert sqlite3.Row to dict to make it mutable/sortable, resolve defaults, and attach complaints
@@ -6086,7 +6088,7 @@ def student_list():
             sd['complaints'] = complaints_by_student.get(sd['id'], [])
             students_list.append(sd)
         
-        if session['role'] == 'teacher':
+        if user_role == 'teacher':
             students_list = [s for s in students_list if normalize_class_name(s.get('class')) in teacher_classes]
         
         def get_student_sort_key(student):
