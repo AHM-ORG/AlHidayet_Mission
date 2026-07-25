@@ -5,8 +5,11 @@ import json
 import random
 import string
 import smtplib
+import ssl
 import hmac
 import secrets
+
+SMTP_TLS_CONTEXT = ssl.create_default_context()
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from functools import wraps
@@ -992,8 +995,8 @@ def _send_otp_email_sync(to_email, otp):
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
 
-        # Connect to Gmail SMTP Server
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        # Connect to Gmail SMTP Server with SSL context and finite timeout
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15, context=SMTP_TLS_CONTEXT) as server:
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
             
@@ -1020,7 +1023,7 @@ def _send_email_raw(subject, body, to_email="missionalhidayet@gmail.com"):
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15, context=SMTP_TLS_CONTEXT) as server:
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
         return True
@@ -3815,25 +3818,32 @@ def inject_branding():
 
 # Folder Creation Helper
 def create_folders():
-    try:
-        for branch in BRANCHES:
-            for category in CATEGORIES:
-                path = os.path.join(UPLOAD_BASE, branch, category)
-                os.makedirs(path, exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'temp'), exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'avatars'), exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'proofs'), exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'student_photos'), exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'teacher_photos'), exist_ok=True)
-        os.makedirs(os.path.join(UPLOAD_BASE, 'cvs'), exist_ok=True)
-    except OSError:
-        # In read-only serverless environments (like Vercel), ignore folder creation
-        pass
+    dirs_to_create = []
+    for branch in BRANCHES:
+        for category in CATEGORIES:
+            dirs_to_create.append(os.path.join(UPLOAD_BASE, branch, category))
+    dirs_to_create.extend([
+        os.path.join(UPLOAD_BASE, 'temp'),
+        os.path.join(UPLOAD_BASE, 'avatars'),
+        os.path.join(UPLOAD_BASE, 'proofs'),
+        os.path.join(UPLOAD_BASE, 'student_photos'),
+        os.path.join(UPLOAD_BASE, 'teacher_photos'),
+        os.path.join(UPLOAD_BASE, 'cvs'),
+    ])
 
-try:
-    create_folders()
-except Exception:
-    pass
+    failed_paths = []
+    for path in dirs_to_create:
+        try:
+            os.makedirs(path, exist_ok=True)
+        except OSError as oe:
+            failed_paths.append((path, str(oe)))
+        except Exception as e:
+            failed_paths.append((path, str(e)))
+
+    if failed_paths:
+        print(f" [FOLDER INIT INFO] Read-only or restricted filesystem detected. Could not create {len(failed_paths)} directories: {[p[0] for p in failed_paths[:3]]}")
+
+create_folders()
 
 
 def parse_teacher_qualifications(qual_str):
