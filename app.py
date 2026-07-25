@@ -8945,6 +8945,32 @@ def save_marks_api():
 
     user = conn.execute("SELECT id FROM users WHERE username = ?", (session['user'],)).fetchone()
 
+    # Strict Teacher Permission Check: Ensure teacher can only enter/save marks for assigned classes & subjects
+    if session['role'] == 'teacher':
+        username = session.get('username') or session.get('user') or ''
+        allowed_subjects = get_teacher_allowed_subjects(conn, username)
+        
+        allowed_pairs = set()
+        for item in allowed_subjects:
+            cls_norms = [c.lower() for c in get_db_class_names(item['class'])]
+            sub_norm = item['name'].strip().lower()
+            for cn in cls_norms:
+                allowed_pairs.add((cn, sub_norm))
+                
+        req_class_norms = [c.lower() for c in get_db_class_names(class_name)]
+        
+        filtered_marks = []
+        for mark in marks_data:
+            subj_name = (mark.get('subject_name') or '').strip().lower()
+            if any((cn, subj_name) in allowed_pairs for cn in req_class_norms):
+                filtered_marks.append(mark)
+                
+        if not filtered_marks:
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'You are not assigned to enter marks for this class and subject.'}), 403
+            
+        marks_data = filtered_marks
+
     try:
         for mark in marks_data:
             student_id = mark.get('student_id')
