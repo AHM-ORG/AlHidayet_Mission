@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approve Marks - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                <div class="sidebar-label">Academic ERP</div>
+                <a href="/admin/academics-setting" class="sidebar-item"><i data-lucide="settings"></i> Academic Settings</a>
+                <a href="/admin/full-marks-config" class="sidebar-item"><i data-lucide="sliders"></i> Full Marks Config</a>
+                <a href="/admin/approve-marks" class="sidebar-item active"><i data-lucide="check-check"></i> Approve Marks</a>
+                <a href="/admin/library" class="sidebar-item"><i data-lucide="book-open"></i> Library ERP</a>
+                <a href="/admin/audit-logs" class="sidebar-item"><i data-lucide="shield-alert"></i> Audit Logs</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 style="font-size:20px; font-weight:700;">Mark Submission Approvals</h1>
+                <div class="user-profile">
+                    <span>Role: <strong>{{ role|capitalize }}</strong></span>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 24px;">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-info" style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; background: #e3f2fd; color: #0d47a1;">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="card" style="background:#fff; border-radius:12px; padding:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                    <h2 style="font-size:16px; font-weight:600; margin-bottom:16px;">Pending Mark Submission Batches</h2>
+                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                        <thead>
+                            <tr style="background:#f5f5f5; text-align:left;">
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Class</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Subject</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Exam & Term</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Submitted By</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Status</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in pending_approvals %}
+                                <tr>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ app.class_name }} {% if app.section %}(Section {{ app.section }}){% endif %}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ app.subject_name }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ app.exam_type }} - {{ app.term_name }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ app.submitter_name or 'Teacher' }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">
+                                        <span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; background:#fff3cd; color:#856404;">{{ app.status }}</span>
+                                    </td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">
+                                        <form method="POST" style="display:inline-flex; gap:8px;">
+                                            <input type="hidden" name="approval_id" value="{{ app.id }}">
+                                            <button type="submit" name="action" value="approve" style="background:#2e7d32; color:#fff; padding:6px 12px; border:none; border-radius:4px; font-size:12px; cursor:pointer;">Approve</button>
+                                            <button type="submit" name="action" value="reject" style="background:#c62828; color:#fff; padding:6px 12px; border:none; border-radius:4px; font-size:12px; cursor:pointer;">Reject</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6" style="padding:16px; text-align:center; color:#888;">No pending mark submissions waiting for approval.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Marks Configuration - Al Hidayet Mission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-pattern">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al Hidayet Mission</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="sidebar-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                <div class="sidebar-label">Academic ERP</div>
+                <a href="/admin/academics-setting" class="sidebar-item"><i data-lucide="settings"></i> Academic Settings</a>
+                <a href="/admin/full-marks-config" class="sidebar-item active"><i data-lucide="sliders"></i> Full Marks Config</a>
+                <a href="/admin/approve-marks" class="sidebar-item"><i data-lucide="check-check"></i> Approve Marks</a>
+                <a href="/admin/library" class="sidebar-item"><i data-lucide="book-open"></i> Library ERP</a>
+                <a href="/admin/audit-logs" class="sidebar-item"><i data-lucide="shield-alert"></i> Audit Logs</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 style="font-size:20px; font-weight:700;">Full Marks Configuration</h1>
+                <div class="user-profile">
+                    <span>Role: <strong>{{ role|capitalize }}</strong></span>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 24px;">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-info" style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; background: #e3f2fd; color: #0d47a1;">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="card" style="background:#fff; border-radius:12px; padding:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05); margin-bottom: 24px;">
+                    <h2 style="font-size:16px; font-weight:600; margin-bottom:16px;">Configure Dynamic Full Marks</h2>
+                    <form method="POST" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Class Name</label>
+                            <select name="class_name" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="">-- Select Class --</option>
+                                {% for c in classes %}
+                                    <option value="{{ c.name }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Subject Name</label>
+                            <select name="subject_name" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="">-- Select Subject --</option>
+                                {% for s in subjects %}
+                                    <option value="{{ s.name }}">{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Exam Type</label>
+                            <select name="exam_type" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="Written">Written</option>
+                                <option value="Oral">Oral</option>
+                                <option value="Practical">Practical</option>
+                                <option value="Project">Project</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Term Name</label>
+                            <select name="term_name" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="1st Unit">1st Unit</option>
+                                <option value="2nd Unit">2nd Unit</option>
+                                <option value="Final Exam">Final Exam</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Theory Full Marks</label>
+                            <input type="number" step="0.5" name="theory_full_marks" value="100.0" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Practical Full Marks</label>
+                            <input type="number" step="0.5" name="practical_full_marks" value="0.0" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Theory Pass Marks</label>
+                            <input type="number" step="0.5" name="theory_pass_marks" value="33.0" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:13px; font-weight:500; display:block; margin-bottom:6px;">Practical Pass Marks</label>
+                            <input type="number" step="0.5" name="practical_pass_marks" value="0.0" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <button type="submit" style="background:#1b5e20; color:#fff; padding:12px 24px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Save Full Marks Rule</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Configurations Table -->
+                <div class="card" style="background:#fff; border-radius:12px; padding:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                    <h2 style="font-size:16px; font-weight:600; margin-bottom:16px;">Active Full Marks Rules</h2>
+                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                        <thead>
+                            <tr style="background:#f5f5f5; text-align:left;">
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Class</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Subject</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Exam Type</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Term</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Theory FM / PM</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Practical FM / PM</th>
+                                <th style="padding:12px; border-bottom:1px solid #ddd;">Total FM</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cfg in configs %}
+                                <tr>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.class_name }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.subject_name }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.exam_type }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.term_name }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.theory_full_marks }} / {{ cfg.theory_pass_marks }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;">{{ cfg.practical_full_marks }} / {{ cfg.practical_pass_marks }}</td>
+                                    <td style="padding:12px; border-bottom:1px solid #eee;"><strong>{{ cfg.total_full_marks }}</strong></td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="7" style="padding:16px; text-align:center; color:#888;">No custom full marks rules configured yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

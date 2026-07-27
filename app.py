@@ -713,7 +713,15 @@ def calculate_student_fees_breakdown(student, conn=None):
         
     # Apply Financial Aid Monthly Reduction
     fin_aid = float(student.get('financial_aid_monthly') or 0.0)
-    total = max(0.0, total - fin_aid)
+    if fin_aid > 0 and total > 0:
+        new_total = max(0.0, total - fin_aid)
+        discount_ratio = new_total / total
+        school_total *= discount_ratio
+        hostel_total *= discount_ratio
+        coaching_total *= discount_ratio
+        total = new_total
+    else:
+        total = max(0.0, total - fin_aid)
 
     # Component Tax calculations
     school_tax = school_total * (school_tax_rate / (1.0 + school_tax_rate))
@@ -1109,6 +1117,41 @@ Details:
     print(f" [EMAIL QUEUED] Queueing Activity email delivery for '{action}' to {dest_email}...")
     threading.Thread(target=_send_activity_email_sync, args=(subject, body), daemon=True).start()
     return True
+
+def log_audit_trail(action, target_entity=None, old_value=None, new_value=None):
+    try:
+        user_id = session.get('user_id')
+        username = session.get('user', 'System')
+        role = session.get('role', 'System')
+        ip = request.remote_addr if request else '127.0.0.1'
+        
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO audit_logs (user_id, username, role, action, target_entity, old_value, new_value, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, username, role, action, target_entity, str(old_value) if old_value else None, str(new_value) if new_value else None, ip))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f" [AUDIT LOG ERROR] Failed to record audit log for {action}: {e}")
+
+def roles_required(*allowed_roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user' not in session:
+                flash('Please log in to access this page.')
+                return redirect(url_for('login', user_type='admin'))
+            user_role = session.get('role', '').lower()
+            if user_role in ['admin', 'super_admin', 'principal']:
+                return f(*args, **kwargs)
+            normalized_allowed = [r.lower() for r in allowed_roles]
+            if user_role not in normalized_allowed:
+                flash('Access denied: You do not have permission to perform this action.')
+                return redirect(url_for('dashboard'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 def _send_review_otp_email_sync(to_email, otp):
     if not SENDER_EMAIL or not SENDER_PASSWORD:
@@ -2737,6 +2780,154 @@ def init_db():
         c.execute("INSERT INTO registration_documents (title, description, file_path) VALUES (?, ?, ?)",
                   ("School Affiliation Board Certificate", "Board of Secondary Education affiliation authorization certificate.", "static/uploads/documents/sample_affiliation.pdf"))
             
+    # Enterprise ERP Tables Setup
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            role TEXT,
+            action TEXT NOT NULL,
+            target_entity TEXT,
+            old_value TEXT,
+            new_value TEXT,
+            ip_address TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS full_marks_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT NOT NULL,
+            subject_name TEXT NOT NULL,
+            exam_type TEXT NOT NULL,
+            term_name TEXT NOT NULL,
+            theory_full_marks REAL DEFAULT 100.0,
+            practical_full_marks REAL DEFAULT 0.0,
+            total_full_marks REAL DEFAULT 100.0,
+            theory_pass_marks REAL DEFAULT 33.0,
+            practical_pass_marks REAL DEFAULT 0.0,
+            total_pass_marks REAL DEFAULT 33.0,
+            branch TEXT DEFAULT 'bhogram',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS marks_approval (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT NOT NULL,
+            section TEXT,
+            subject_name TEXT NOT NULL,
+            exam_type TEXT NOT NULL,
+            term_name TEXT NOT NULL,
+            branch TEXT DEFAULT 'bhogram',
+            status TEXT DEFAULT 'Draft',
+            submitted_by INTEGER,
+            submitted_at TIMESTAMP,
+            reviewed_by INTEGER,
+            reviewed_at TIMESTAMP,
+            approved_by INTEGER,
+            approved_at TIMESTAMP,
+            rejection_reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS library_books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            isbn TEXT,
+            title TEXT NOT NULL,
+            author TEXT,
+            category TEXT,
+            quantity INTEGER DEFAULT 1,
+            available_qty INTEGER DEFAULT 1,
+            rack_number TEXT,
+            branch TEXT DEFAULT 'bhogram',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS book_issues (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            user_role TEXT NOT NULL,
+            issued_date DATE NOT NULL,
+            due_date DATE NOT NULL,
+            returned_date DATE,
+            fine_amount REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'Issued',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS transport_routes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            route_name TEXT NOT NULL,
+            vehicle_number TEXT,
+            driver_name TEXT,
+            driver_phone TEXT,
+            monthly_fare REAL DEFAULT 0.0,
+            branch TEXT DEFAULT 'bhogram'
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS hostel_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            building_wing TEXT NOT NULL,
+            room_number TEXT NOT NULL,
+            capacity INTEGER DEFAULT 4,
+            occupied_count INTEGER DEFAULT 0,
+            monthly_rent REAL DEFAULT 0.0,
+            branch TEXT DEFAULT 'bhogram'
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS assignments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            class_name TEXT NOT NULL,
+            section TEXT,
+            subject_name TEXT NOT NULL,
+            teacher_id INTEGER NOT NULL,
+            file_path TEXT,
+            due_date DATE NOT NULL,
+            branch TEXT DEFAULT 'bhogram',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS assignment_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assignment_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            file_path TEXT,
+            submission_text TEXT,
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            grade TEXT,
+            remarks TEXT
+        )
+    ''')
+
+    # Migration for marks table to support approval status & breakdown
+    c.execute("PRAGMA table_info(marks)")
+    marks_cols = [col[1] for col in c.fetchall()]
+    for m_col, m_type in [('status', "TEXT DEFAULT 'Approved'"), ('approval_id', 'INTEGER'), ('theory_obtained', 'REAL'), ('practical_obtained', 'REAL')]:
+        if m_col not in marks_cols:
+            try:
+                c.execute(f"ALTER TABLE marks ADD COLUMN {m_col} {m_type}")
+            except sqlite3.OperationalError:
+                pass
+
     # Dynamic Alter Statements for Schema Migrations
     for table in ['users', 'expenses', 'notices', 'applications']:
         try:
@@ -3311,9 +3502,7 @@ def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None
             try:
                 c = conn.cursor()
                 c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
-                if os.path.exists(local_path):
-                    os.remove(local_path)
-                print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id} using active connection. Local file deleted.")
+                print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id} using active connection. Local copy retained.")
             except Exception as e:
                 print(f"Error saving drive mapping using active connection: {e}")
         else:
@@ -3340,12 +3529,7 @@ def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None
                     break
                     
             if db_saved:
-                try:
-                    if os.path.exists(local_path):
-                        os.remove(local_path)
-                    print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local file deleted.")
-                except Exception as e:
-                    print(f"Error removing local file: {e}")
+                print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local copy retained.")
             
     return drive_file_id
 
@@ -3954,9 +4138,11 @@ def parse_teacher_qualifications(qual_str):
 
 def get_teacher_allowed_subjects(conn, username):
     """
-    Returns a list of dicts: [{'branch': branch, 'class': cls, 'name': sub}]
+    Returns a deduplicated list of dicts: [{'branch': branch, 'class': cls, 'name': sub}]
+    where class names are normalized (e.g., 'Nursery') and subject names are title-cased.
     """
     allowed_subjects = []
+    seen = set()
     
     teacher_info = conn.execute('''
         SELECT ti.full_name, u.id 
@@ -3980,11 +4166,19 @@ def get_teacher_allowed_subjects(conn, username):
         branch = teacher_user['branch'] if (teacher_user and teacher_user['branch']) else 'bhogram'
         
         for r in ts_rows:
-            allowed_subjects.append({
-                'branch': branch,
-                'class': r['class_name'],
-                'name': r['subject_name']
-            })
+            raw_cls = r['class_name'] or ''
+            raw_sub = r['subject_name'] or ''
+            norm_cls = normalize_class_name(raw_cls).strip()
+            norm_sub = raw_sub.strip().title()
+            
+            key = (branch.lower(), norm_cls.lower(), norm_sub.lower())
+            if norm_cls and norm_sub and key not in seen:
+                seen.add(key)
+                allowed_subjects.append({
+                    'branch': branch,
+                    'class': norm_cls,
+                    'name': norm_sub
+                })
             
         # 2. Add special subjects ONLY for Class Teachers
         ct_rows = conn.execute('''
@@ -3993,13 +4187,15 @@ def get_teacher_allowed_subjects(conn, username):
         
         special_subjects = ['Behaviour', 'Work Education', 'Physical Education', 'Attendance', 'Hand Writing']
         for ct in ct_rows:
-            cls_name = ct['class_name']
+            raw_cls = ct['class_name'] or ''
+            norm_cls = normalize_class_name(raw_cls).strip()
             for special in special_subjects:
-                exists = any(x['branch'] == branch and x['class'] == cls_name and x['name'] == special for x in allowed_subjects)
-                if not exists:
+                key = (branch.lower(), norm_cls.lower(), special.lower())
+                if norm_cls and key not in seen:
+                    seen.add(key)
                     allowed_subjects.append({
                         'branch': branch,
-                        'class': cls_name,
+                        'class': norm_cls,
                         'name': special
                     })
                     
@@ -8683,6 +8879,28 @@ def bulk_marks():
                     conn.commit()
                     conn.close()
                     return jsonify({'status': 'success'})
+
+            elif action_type == 'assign_teacher':
+                subj_name = request.form.get('subject_name', '').strip().title()
+                teacher_id = request.form.get('teacher_id')
+                if subj_name and class_name:
+                    sub_row = conn.execute("SELECT id FROM subjects WHERE LOWER(name) = LOWER(?)", (subj_name,)).fetchone()
+                    if not sub_row:
+                        conn.execute("INSERT INTO subjects (name) VALUES (?)", (subj_name,))
+                        subject_id = conn.lastrowid
+                    else:
+                        subject_id = sub_row['id']
+                        
+                    db_classes = get_db_class_names(class_name)
+                    for c_name in db_classes:
+                        conn.execute("DELETE FROM teacher_subjects WHERE class_name = ? AND subject_id = ?", (c_name, subject_id))
+                        
+                    if teacher_id and str(teacher_id).isdigit() and int(teacher_id) > 0:
+                        t_id = int(teacher_id)
+                        for c_name in db_classes:
+                            conn.execute("INSERT OR REPLACE INTO teacher_subjects (teacher_id, class_name, subject_id) VALUES (?, ?, ?)", (t_id, c_name, subject_id))
+                    conn.commit()
+                    flash(f'Teacher assignment updated for {subj_name}.', 'success')
             
             conn.close()
             return redirect(url_for('bulk_marks', branch=branch, **{'class': class_name}, term=term_name))
@@ -8705,6 +8923,17 @@ def bulk_marks():
         role = session['role']
         username = session['user']
         allowed_subjects = []
+        all_teachers = []
+        subject_teacher_map = {}
+
+        if role == 'admin':
+            all_teachers = conn.execute("""
+                SELECT u.id, u.username, COALESCE(ti.full_name, u.username) as full_name
+                FROM users u
+                LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE u.role = 'teacher'
+                ORDER BY full_name
+            """).fetchall()
 
         students = []
         if session.get('branch'):
@@ -8714,7 +8943,25 @@ def bulk_marks():
         selected_class = request.args.get('class')
         selected_subject = request.args.get('subject') # Optional pre-fill for admin or selected subject
         selected_term = request.args.get('term', '1st Unit')
-        
+
+        if role == 'admin' and selected_class:
+            db_classes_assigned = get_db_class_names(selected_class)
+            placeholders_assigned = ', '.join('?' for _ in db_classes_assigned)
+            assigned_rows = conn.execute(f"""
+                SELECT s.name as subject_name, u.id as teacher_id, COALESCE(ti.full_name, u.username) as teacher_name
+                FROM teacher_subjects ts
+                JOIN subjects s ON ts.subject_id = s.id
+                JOIN users u ON ts.teacher_id = u.id
+                LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE ts.class_name IN ({placeholders_assigned})
+            """, tuple(db_classes_assigned)).fetchall()
+            for r_assigned in assigned_rows:
+                s_norm = r_assigned['subject_name'].strip().title()
+                subject_teacher_map[s_norm] = {
+                    'teacher_id': r_assigned['teacher_id'],
+                    'teacher_name': r_assigned['teacher_name']
+                }
+
         assigned_class = request.args.get('assigned_class')
         if role == 'teacher' and assigned_class:
             parts = assigned_class.split('|')
@@ -8861,6 +9108,8 @@ def bulk_marks():
                                selected_subject=selected_subject,
                                assigned_class=assigned_class,
                                allowed_subjects=allowed_subjects,
+                               all_teachers=all_teachers,
+                               subject_teacher_map=subject_teacher_map,
                                role=role,
                                subjects=subject_names,
                                marks_dict=marks_dict,
@@ -9265,9 +9514,11 @@ def save_bulk_marks():
                     if obtained_marks is not None and obtained_marks > subject_fm:
                         return handle_error_redirect(f"Validation Error: Obtained marks ({obtained_marks}) exceed Full Marks ({subject_fm}) for student '{std_name}' in subject '{subject_name}'.")
 
+                target_status = 'Approved' if session['role'] in ['admin', 'super_admin'] else ('Submitted' if request.form.get('submit_action') == 'submit' else 'Draft')
+
                 conn.execute('''
-                    INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, is_absent, uploaded_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                    INSERT INTO marks (student_id, class_name, term_name, subject_name, obtained_marks, full_marks, oral_marks, written_marks, ct_marks, is_absent, status, uploaded_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     ON CONFLICT(student_id, term_name, subject_name) DO UPDATE SET
                         obtained_marks = excluded.obtained_marks,
                         full_marks = excluded.full_marks,
@@ -9275,15 +9526,23 @@ def save_bulk_marks():
                         written_marks = excluded.written_marks,
                         ct_marks = excluded.ct_marks,
                         is_absent = 0,
+                        status = excluded.status,
                         uploaded_by = excluded.uploaded_by,
                         uploaded_at = CURRENT_TIMESTAMP
-                ''', (student_id, selected_class, selected_term, subject_name, obtained_marks, subject_fm, oral_marks, written_marks, ct_marks, user['id']))
+                ''', (student_id, selected_class, selected_term, subject_name, obtained_marks, subject_fm, oral_marks, written_marks, ct_marks, target_status, user['id']))
                 saved_count += 1
             
+            if target_status == 'Submitted' and saved_count > 0:
+                conn.execute('''
+                    INSERT INTO marks_approval (class_name, subject_name, exam_type, term_name, branch, status, submitted_by, submitted_at)
+                    VALUES (?, ?, 'Written', ?, ?, 'Submitted', ?, CURRENT_TIMESTAMP)
+                ''', (selected_class, request.form.get('subject') or 'Class Marks', selected_term, selected_branch, user['id']))
+
             conn.commit()
             if saved_count > 0:
-                send_activity_notification("Mark Entry", f"Successfully saved {saved_count} mark entries for Class {selected_class}, Term {selected_term} in branch '{selected_branch}'.")
-            flash(f'Successfully saved {saved_count} mark entries!')
+                send_activity_notification("Mark Entry", f"Successfully saved {saved_count} mark entries ({target_status}) for Class {selected_class}, Term {selected_term} in branch '{selected_branch}'.")
+            status_msg = "submitted for admin approval" if target_status == "Submitted" else ("saved as draft" if target_status == "Draft" else "saved and approved")
+            flash(f'Successfully {status_msg} ({saved_count} mark entries)!')
         except Exception as e:
             conn.rollback()
             flash(f'Database error: {str(e)}', 'error')
@@ -10293,7 +10552,6 @@ def audit_report():
             import datetime
             available_years = [str(datetime.datetime.now().year)]
 
-            
         student_clause = " AND ".join(student_where) if student_where else "1=1"
         fees_clause = " AND ".join(fees_where) if fees_where else "1=1"
         
@@ -10311,12 +10569,12 @@ def audit_report():
             WHERE {fees_clause}
         ''', fees_params).fetchone()
         
-        total_fees = fees_totals['total'] or 0.0
-        school_revenue = fees_totals['school_rev'] or 0.0
-        hostel_revenue = fees_totals['hostel_rev'] or 0.0
-        coaching_revenue = fees_totals['coaching_rev'] or 0.0
-        readmission_revenue = fees_totals['readmission_rev'] or 0.0
-        tax_revenue = fees_totals['tax_amt'] or 0.0
+        total_fees = (fees_totals['total'] if fees_totals else 0.0) or 0.0
+        school_revenue = (fees_totals['school_rev'] if fees_totals else 0.0) or 0.0
+        hostel_revenue = (fees_totals['hostel_rev'] if fees_totals else 0.0) or 0.0
+        coaching_revenue = (fees_totals['coaching_rev'] if fees_totals else 0.0) or 0.0
+        readmission_revenue = (fees_totals['readmission_rev'] if fees_totals else 0.0) or 0.0
+        tax_revenue = (fees_totals['tax_amt'] if fees_totals else 0.0) or 0.0
         
         # Expenses (non-student specific)
         expenses_where = []
@@ -10330,20 +10588,22 @@ def audit_report():
             
         expenses_clause = " AND ".join(expenses_where) if expenses_where else "1=1"
         
-        total_expenses = conn.execute(f'''
+        expenses_row = conn.execute(f'''
             SELECT SUM(amount) as total 
             FROM expenses 
             WHERE {expenses_clause}
-        ''', expenses_params).fetchone()['total'] or 0.0
+        ''', expenses_params).fetchone()
+        total_expenses = (expenses_row['total'] if expenses_row else 0.0) or 0.0
         
         if date_clause:
             ledger_clause = date_clause.format(col="sl.created_at")
-            total_remaining_fees = conn.execute(f'''
+            total_rem_row = conn.execute(f'''
                 SELECT SUM(sl.amount) as total 
                 FROM student_ledger sl
                 JOIN student_info si ON sl.student_id = si.user_id
                 WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
-            ''', student_params).fetchone()['total'] or 0.0
+            ''', student_params).fetchone()
+            total_remaining_fees = (total_rem_row['total'] if total_rem_row else 0.0) or 0.0
             
             remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, SUM(sl.amount) as remaining_fee
@@ -10356,11 +10616,12 @@ def audit_report():
                 ORDER BY si.class, CAST(si.roll_number AS INTEGER)
             ''', student_params).fetchall()
         else:
-            total_remaining_fees = conn.execute(f'''
+            total_rem_row = conn.execute(f'''
                 SELECT SUM(si.remaining_fee) as total 
                 FROM student_info si
                 WHERE {student_clause}
-            ''', student_params).fetchone()['total'] or 0.0
+            ''', student_params).fetchone()
+            total_remaining_fees = (total_rem_row['total'] if total_rem_row else 0.0) or 0.0
             
             remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
@@ -10382,9 +10643,17 @@ def audit_report():
             WHERE {" AND ".join(readmission_where)}
         ''', student_params).fetchone()
         
-        readmission_pending = readmission_totals['pending_amt'] or 0.0
+        readmission_pending = (readmission_totals['pending_amt'] if readmission_totals else 0.0) or 0.0
         
-        balance = total_fees - total_expenses  # B2 FIX: remaining_fees are unpaid dues, not cash in hand
+        month_wise_report = conn.execute('''
+            SELECT strftime('%Y-%m', paid_at) as month_yr, SUM(amount) as total_fees
+            FROM fees
+            WHERE paid_at IS NOT NULL
+            GROUP BY month_yr
+            ORDER BY month_yr DESC
+        ''').fetchall()
+
+        balance = total_fees - total_expenses
         
         conn.close()
         
@@ -10414,6 +10683,7 @@ def audit_report():
             available_years=available_years
         )
     return redirect(url_for('home'))
+
 
 @app.route('/admin/print-audit')
 def print_audit():
@@ -10458,9 +10728,7 @@ def print_audit():
             student_where.append(benefit_clause)
             fees_where.append(benefit_clause)
             
-        # Time range clauses
         date_clause = None
-        
         filter_year = request.args.get('filter_year', '').strip()
         filter_month = request.args.get('filter_month', '').strip()
 
@@ -10486,7 +10754,6 @@ def print_audit():
         student_clause = " AND ".join(student_where) if student_where else "1=1"
         fees_clause = " AND ".join(fees_where) if fees_where else "1=1"
         
-        # Aggregations
         fees_totals = conn.execute(f'''
             SELECT 
                 SUM(f.amount) as total,
@@ -10500,14 +10767,13 @@ def print_audit():
             WHERE {fees_clause}
         ''', fees_params).fetchone()
         
-        total_fees = fees_totals['total'] or 0.0
-        school_revenue = fees_totals['school_rev'] or 0.0
-        hostel_revenue = fees_totals['hostel_rev'] or 0.0
-        coaching_revenue = fees_totals['coaching_rev'] or 0.0
-        readmission_revenue = fees_totals['readmission_rev'] or 0.0
-        tax_revenue = fees_totals['tax_amt'] or 0.0
+        total_fees = (fees_totals['total'] if fees_totals else 0.0) or 0.0
+        school_revenue = (fees_totals['school_rev'] if fees_totals else 0.0) or 0.0
+        hostel_revenue = (fees_totals['hostel_rev'] if fees_totals else 0.0) or 0.0
+        coaching_revenue = (fees_totals['coaching_rev'] if fees_totals else 0.0) or 0.0
+        readmission_revenue = (fees_totals['readmission_rev'] if fees_totals else 0.0) or 0.0
+        tax_revenue = (fees_totals['tax_amt'] if fees_totals else 0.0) or 0.0
         
-        # Expenses (non-student specific)
         expenses_where = []
         expenses_params = []
         if session.get('branch'):
@@ -10519,20 +10785,22 @@ def print_audit():
             
         expenses_clause = " AND ".join(expenses_where) if expenses_where else "1=1"
         
-        total_expenses = conn.execute(f'''
+        expenses_row = conn.execute(f'''
             SELECT SUM(amount) as total 
             FROM expenses 
             WHERE {expenses_clause}
-        ''', expenses_params).fetchone()['total'] or 0.0
+        ''', expenses_params).fetchone()
+        total_expenses = (expenses_row['total'] if expenses_row else 0.0) or 0.0
         
         if date_clause:
             ledger_clause = date_clause.format(col="sl.created_at")
-            total_remaining_fees = conn.execute(f'''
+            total_rem_row = conn.execute(f'''
                 SELECT SUM(sl.amount) as total 
                 FROM student_ledger sl
                 JOIN student_info si ON sl.student_id = si.user_id
                 WHERE {student_clause} AND sl.status = 'Unpaid/Pending' AND {ledger_clause}
-            ''', student_params).fetchone()['total'] or 0.0
+            ''', student_params).fetchone()
+            total_remaining_fees = (total_rem_row['total'] if total_rem_row else 0.0) or 0.0
             
             remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, SUM(sl.amount) as remaining_fee
@@ -10545,11 +10813,12 @@ def print_audit():
                 ORDER BY si.class, CAST(si.roll_number AS INTEGER)
             ''', student_params).fetchall()
         else:
-            total_remaining_fees = conn.execute(f'''
+            total_rem_row = conn.execute(f'''
                 SELECT SUM(si.remaining_fee) as total 
                 FROM student_info si
                 WHERE {student_clause}
-            ''', student_params).fetchone()['total'] or 0.0
+            ''', student_params).fetchone()
+            total_remaining_fees = (total_rem_row['total'] if total_rem_row else 0.0) or 0.0
             
             remaining_fees_details = conn.execute(f'''
                 SELECT u.username, si.full_name, si.class, si.roll_number, si.remaining_fee
@@ -10591,7 +10860,7 @@ def print_audit():
             ORDER BY date DESC
         ''', expenses_params).fetchall()
         
-        balance = total_fees - total_expenses  # B2 FIX: remaining_fees are unpaid dues, not cash in hand
+        balance = total_fees - total_expenses
 
         readmission_where = [student_clause, "sl.fee_type = 'Re-admission Fee'"]
         if date_clause:
@@ -10605,7 +10874,7 @@ def print_audit():
             WHERE {" AND ".join(readmission_where)}
         ''', student_params).fetchone()
         
-        readmission_pending = readmission_totals['pending_amt'] or 0.0
+        readmission_pending = (readmission_totals['pending_amt'] if readmission_totals else 0.0) or 0.0
 
         all_teachers = conn.execute("SELECT u.id, ti.full_name, u.username FROM users u LEFT JOIN teacher_info ti ON u.id = ti.user_id WHERE u.role = 'teacher'").fetchall()
         teacher_map = {t['id']: (t['full_name'] or t['username']) for t in all_teachers}
@@ -10626,6 +10895,7 @@ def print_audit():
 
         conn.close()
         
+        import datetime
         return render_template(
             'admin/print_audit.html', 
             fees=total_fees, 
@@ -10983,6 +11253,167 @@ def toggle_exam_lock():
         else:
             flash(f"{len(term_names)} exams for class '{class_name}' have been {status_str} successfully.")
     return redirect(url_for('academics_setting'))
+
+# =========================================================
+# ENTERPRISE ERP MODULES: FULL MARKS, APPROVALS, LIBRARY, TRANSPORT, HOSTEL, AUDIT
+# =========================================================
+
+@app.route('/admin/full-marks-config', methods=['GET', 'POST'])
+def full_marks_config_route():
+    if 'user' not in session or session.get('role') not in ['admin', 'super_admin', 'principal', 'vice_principal']:
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    branch = session.get('branch', 'bhogram')
+
+    if request.method == 'POST':
+        cls_name = request.form.get('class_name', '').strip()
+        subj_name = request.form.get('subject_name', '').strip()
+        exam_type = request.form.get('exam_type', 'Written').strip()
+        term_name = request.form.get('term_name', '1st Unit').strip()
+        theory_fm = float(request.form.get('theory_full_marks', '100.0') or 100.0)
+        practical_fm = float(request.form.get('practical_full_marks', '0.0') or 0.0)
+        total_fm = theory_fm + practical_fm
+        theory_pm = float(request.form.get('theory_pass_marks', '33.0') or 33.0)
+        practical_pm = float(request.form.get('practical_pass_marks', '0.0') or 0.0)
+        total_pm = theory_pm + practical_pm
+
+        if cls_name and subj_name:
+            conn.execute('''
+                INSERT INTO full_marks_config (class_name, subject_name, exam_type, term_name, theory_full_marks, practical_full_marks, total_full_marks, theory_pass_marks, practical_pass_marks, total_pass_marks, branch)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (cls_name, subj_name, exam_type, term_name, theory_fm, practical_fm, total_fm, theory_pm, practical_pm, total_pm, branch))
+            conn.commit()
+            log_audit_trail("Configured Full Marks", target_entity=f"{cls_name} - {subj_name} ({term_name})", new_value=f"Theory: {theory_fm}, Practical: {practical_fm}")
+            flash('Full marks configuration saved successfully.')
+
+    configs = conn.execute("SELECT * FROM full_marks_config WHERE LOWER(branch) = LOWER(?) ORDER BY class_name, subject_name", (branch,)).fetchall()
+    classes = conn.execute("SELECT DISTINCT name FROM classes WHERE LOWER(branch) = LOWER(?) ORDER BY name", (branch,)).fetchall()
+    subjects = conn.execute("SELECT DISTINCT name FROM subjects ORDER BY name").fetchall()
+    conn.close()
+
+    return render_template('admin/full_marks_config.html', configs=configs, classes=classes, subjects=subjects, role=session['role'], logo_url=LOGO_URL)
+
+
+@app.route('/admin/approve-marks', methods=['GET', 'POST'])
+def approve_marks_route():
+    if 'user' not in session or session.get('role') not in ['admin', 'super_admin', 'principal', 'vice_principal']:
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    branch = session.get('branch', 'bhogram')
+
+    if request.method == 'POST':
+        approval_id = request.form.get('approval_id')
+        action = request.form.get('action')
+        rejection_reason = request.form.get('rejection_reason', '').strip()
+
+        if approval_id and action:
+            new_status = 'Approved' if action == 'approve' else 'Rejected'
+            conn.execute('''
+                UPDATE marks_approval
+                SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?
+                WHERE id = ?
+            ''', (new_status, session.get('user_id'), rejection_reason if action == 'reject' else None, approval_id))
+
+            app_info = conn.execute("SELECT * FROM marks_approval WHERE id = ?", (approval_id,)).fetchone()
+            if app_info:
+                conn.execute('''
+                    UPDATE marks
+                    SET status = ?
+                    WHERE LOWER(class_name) = LOWER(?) AND LOWER(subject_name) = LOWER(?) AND LOWER(term_name) = LOWER(?)
+                ''', (new_status, app_info['class_name'], app_info['subject_name'], app_info['term_name']))
+
+            conn.commit()
+            log_audit_trail(f"{action.title()} Marks Batch", target_entity=f"Approval ID {approval_id}", new_value=new_status)
+            flash(f'Marks status updated to {new_status}.')
+
+    pending_approvals = conn.execute('''
+        SELECT ma.*, u.username as submitter_name
+        FROM marks_approval ma
+        LEFT JOIN users u ON ma.submitted_by = u.id
+        WHERE LOWER(ma.branch) = LOWER(?) AND ma.status != 'Approved'
+        ORDER BY ma.created_at DESC
+    ''', (branch,)).fetchall()
+
+    conn.close()
+    return render_template('admin/approve_marks.html', pending_approvals=pending_approvals, role=session['role'], logo_url=LOGO_URL)
+
+
+@app.route('/admin/audit-logs')
+def audit_logs_view():
+    if 'user' not in session or session.get('role') not in ['admin', 'super_admin', 'principal']:
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    logs = conn.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 200").fetchall()
+    conn.close()
+    return render_template('admin/audit_logs.html', logs=logs, role=session['role'], logo_url=LOGO_URL)
+
+
+@app.route('/admin/library', methods=['GET', 'POST'])
+def library_management():
+    if 'user' not in session or session.get('role') not in ['admin', 'super_admin', 'principal', 'office_staff']:
+        flash('Access denied.')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    branch = session.get('branch', 'bhogram')
+
+    if request.method == 'POST':
+        action_type = request.form.get('action_type')
+        if action_type == 'add_book':
+            title = request.form.get('title', '').strip()
+            author = request.form.get('author', '').strip()
+            isbn = request.form.get('isbn', '').strip()
+            qty = int(request.form.get('quantity', '1') or 1)
+            rack = request.form.get('rack_number', '').strip()
+
+            if title:
+                conn.execute('''
+                    INSERT INTO library_books (isbn, title, author, quantity, available_qty, rack_number, branch)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (isbn, title, author, qty, qty, rack, branch))
+                conn.commit()
+                log_audit_trail("Added Library Book", target_entity=title, new_value=f"Qty: {qty}")
+                flash(f'Book "{title}" added successfully.')
+
+        elif action_type == 'issue_book':
+            book_id = request.form.get('book_id')
+            user_id = request.form.get('user_id')
+            user_role = request.form.get('user_role', 'student')
+            issued_date = request.form.get('issued_date') or datetime.now().strftime('%Y-%m-%d')
+            due_date = request.form.get('due_date') or (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d')
+
+            if book_id and user_id:
+                bk = conn.execute("SELECT * FROM library_books WHERE id = ?", (book_id,)).fetchone()
+                if bk and bk['available_qty'] > 0:
+                    conn.execute('''
+                        INSERT INTO book_issues (book_id, user_id, user_role, issued_date, due_date)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (book_id, user_id, user_role, issued_date, due_date))
+                    conn.execute("UPDATE library_books SET available_qty = available_qty - 1 WHERE id = ?", (book_id,))
+                    conn.commit()
+                    log_audit_trail("Issued Library Book", target_entity=f"Book ID {book_id} to User {user_id}")
+                    flash('Book issued successfully.')
+                else:
+                    flash('Book is currently unavailable.')
+
+    books = conn.execute("SELECT * FROM library_books WHERE LOWER(branch) = LOWER(?) ORDER BY title", (branch,)).fetchall()
+    issues = conn.execute('''
+        SELECT bi.*, lb.title as book_title, u.username
+        FROM book_issues bi
+        JOIN library_books lb ON bi.book_id = lb.id
+        JOIN users u ON bi.user_id = u.id
+        ORDER BY bi.id DESC
+    ''').fetchall()
+    conn.close()
+
+    return render_template('admin/library.html', books=books, issues=issues, role=session['role'], logo_url=LOGO_URL)
+
 
 @app.route('/admin/update-class-fees', methods=['POST'])
 def update_class_fees():
@@ -12035,7 +12466,7 @@ def delete_document():
 
 @app.route('/admin/student-promotion', methods=['GET', 'POST'])
 def student_promotion():
-    if 'user' in session and session['role'] in ['admin', 'teacher']:
+    if 'user' in session and session.get('role') == 'admin':
         conn = get_db_connection()
         
         # Determine branch filter
@@ -12069,7 +12500,7 @@ def student_promotion():
             for student_id in student_ids:
                 # Fetch student info to get branch and opt-in settings
                 student = conn.execute('''
-                    SELECT branch, take_school, take_coaching, take_day_hostel, take_car, mode_of_admission, is_custom_fee, monthly_fee
+                    SELECT branch, take_school, take_coaching, take_day_hostel, take_car, is_custom_fee, monthly_fee
                     FROM student_info
                     WHERE user_id = ?
                 ''', (student_id,)).fetchone()
@@ -12077,43 +12508,41 @@ def student_promotion():
                 if not student:
                     continue
                     
-                # Security check for Branch Admin
-                if session.get('branch') and student['branch'] != session['branch']:
-                    continue
+                s_branch = student['branch'] or 'bhogram'
+                take_school = int(student['take_school'] or 0)
+                take_coaching = int(student['take_coaching'] or 0)
+                take_day_hostel = int(student['take_day_hostel'] or 0)
+                take_car = int(student['take_car'] or 0)
+                is_custom = int(student['is_custom_fee'] or 0)
                 
-                if student['is_custom_fee']:
-                    target_monthly_fee = student['monthly_fee']
-                else:
-                    take_school = student['take_school'] or 0
-                    take_coaching = student['take_coaching'] or 0
-                    take_day_hostel = student['take_day_hostel'] or 0
-                    take_car = student['take_car'] or 0
-                    mode_of_admission = student['mode_of_admission'] or ('Day Hostel' if take_day_hostel else ('School with Coaching' if take_coaching else 'School'))
-                    
-                    target_monthly_fee = calculate_default_monthly_fee(
-                        class_name=new_class,
-                        mode_of_admission=mode_of_admission,
-                        coaching_opted=bool(take_coaching),
-                        car_opted=bool(take_car),
-                        branch=branch_filter,
-                        conn=conn
-                    )
-                
-                # Update class, optional section, and monthly fee
+                # Update student's class and section
                 if new_section:
-                    conn.execute("UPDATE student_info SET class = ?, section = ?, monthly_fee = ? WHERE user_id = ?", 
-                                 (new_class, new_section, target_monthly_fee, student_id))
+                    conn.execute("UPDATE student_info SET class = ?, section = ? WHERE user_id = ?", (new_class, new_section, student_id))
                 else:
-                    conn.execute("UPDATE student_info SET class = ?, section = NULL, monthly_fee = ? WHERE user_id = ?", 
-                                 (new_class, target_monthly_fee, student_id))
-                                 
-                # Update historical marks table class_name to prevent mismatch/stale data
-                conn.execute("UPDATE marks SET class_name = ? WHERE student_id = ?", (new_class, student_id))
-                # Also update certificates
-                conn.execute("UPDATE certificates SET class_name = ? WHERE recipient_id = ? AND recipient_type = 'student'", (new_class, student_id))
-                
+                    conn.execute("UPDATE student_info SET class = ? WHERE user_id = ?", (new_class, student_id))
+                    
+                # Calculate new monthly fee based on matrix if not custom fee
+                if is_custom == 0:
+                    matrix = conn.execute("SELECT * FROM fee_matrix WHERE LOWER(class_name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (new_class.lower(), s_branch.lower())).fetchone()
+                    if matrix:
+                        school_fee = float(matrix['school_monthly'] or 0.0) if take_school else 0.0
+                        coaching_fee = float(matrix['coaching_monthly'] or 0.0) if take_coaching else 0.0
+                        hostel_fee = float(matrix['hostel_monthly'] or 0.0) if take_day_hostel else 0.0
+                        new_monthly = school_fee + coaching_fee + hostel_fee
+                    else:
+                        cls_row = conn.execute("SELECT * FROM classes WHERE LOWER(name) = LOWER(?) AND LOWER(branch) = LOWER(?)", (new_class.lower(), s_branch.lower())).fetchone()
+                        if cls_row:
+                            school_fee = float(cls_row['monthly_fee'] or 0.0) if take_school else 0.0
+                            coaching_fee = float(cls_row['monthly_fee_coaching'] or 0.0) if take_coaching else 0.0
+                            hostel_fee = float(cls_row['hostel_fee'] or 0.0) if take_day_hostel else 0.0
+                            new_monthly = school_fee + coaching_fee + hostel_fee
+                        else:
+                            new_monthly = float(student['monthly_fee'] or 0.0)
+                    conn.execute("UPDATE student_info SET monthly_fee = ? WHERE user_id = ?", (new_monthly, student_id))
+                    
+                # Auto-bill readmission fee for the new promoted class
                 try:
-                    bill_readmission_fee(conn, student_id, new_class, student['branch'], student['take_coaching'], student['take_day_hostel'])
+                    bill_readmission_fee(conn, student_id, new_class, s_branch, take_coaching, take_day_hostel)
                 except Exception as e:
                     print(f" [BILLING ERROR] Failed to auto-bill readmission fee: {e}")
                 
@@ -12121,6 +12550,11 @@ def student_promotion():
                     sync_student_ledger_and_dues(conn, student_id)
                 except Exception as e:
                     print(f" [BILLING ERROR] Failed to sync student dues in promotion: {e}")
+                
+                # Update historical marks table class_name to prevent mismatch/stale data
+                conn.execute("UPDATE marks SET class_name = ? WHERE student_id = ?", (new_class, student_id))
+                # Also update certificates
+                conn.execute("UPDATE certificates SET class_name = ? WHERE recipient_id = ? AND recipient_type = 'student'", (new_class, student_id))
                 
                 success_count += 1
                 
@@ -12169,7 +12603,8 @@ def student_promotion():
             role=session['role'], 
             logo_url=LOGO_URL
         )
-    return redirect(url_for('home'))
+    flash('Access denied. Student promotion can only be performed by administrators.', 'error')
+    return redirect(url_for('dashboard'))
 
 @app.route('/admin/admit-card')
 @login_required

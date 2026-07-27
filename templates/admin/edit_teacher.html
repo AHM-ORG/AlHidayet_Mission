@@ -129,7 +129,7 @@
                             <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Profile Photo (shown on Homepage)</label>
                             <div style="display: flex; align-items: center; gap: 15px;">
                                 {% if teacher.photo_path %}
-                                    <img src="{{ url_for('static', filename='uploads/teacher_photos/' + teacher.photo_path) }}" alt="Current Photo" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid var(--primary-color);">
+                                    <img src="{{ url_for('static', filename='uploads/teacher_photos/' + teacher.photo_path) }}" alt="Current Photo" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid var(--primary-color);" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 24 24\' fill=\'%23f0f0f0\' stroke=\'%23888\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect width=\'100%\' height=\'100%\' fill=\'%23e8ecef\'/><circle cx=\'12\' cy=\'8\' r=\'4\'/><path d=\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\'/></svg>';">
                                 {% else %}
                                     <div style="width: 60px; height: 60px; border-radius: 8px; background: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 12px; border: 2px dashed #ccc;">No Photo</div>
                                 {% endif %}

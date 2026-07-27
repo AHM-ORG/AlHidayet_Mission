@@ -191,13 +191,33 @@
         .ts-dropdown {
             z-index: 999999 !important;
         }
-        /* Force Tom Select dropdown inside the subjects panel to open upwards to avoid overlapping the table */
-        #manage-subjects-panel .ts-dropdown {
-            top: auto !important;
-            bottom: 100% !important;
-            margin-top: 0 !important;
-            margin-bottom: 5px !important;
-            box-shadow: 0 -6px 12px rgba(0,0,0,0.175) !important;
+        /* Clean native styling for teacher assignment dropdowns */
+        .teacher-assign-dropdown {
+            width: 100%;
+            min-width: 160px;
+            padding: 7px 10px;
+            border-radius: 8px;
+            border: 1.5px solid var(--border-color, #cbd5e1);
+            font-weight: 600;
+            font-size: 13px;
+            color: #1e293b;
+            background-color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .teacher-assign-dropdown:hover,
+        .teacher-assign-dropdown:focus {
+            border-color: var(--primary-color, #4f46e5);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+        .teacher-assign-dropdown option {
+            padding: 8px 12px;
+            font-weight: 500;
+            font-size: 13px;
+            color: #1e293b;
+            background-color: #ffffff;
         }
         /* Remove sticky positioning and z-index from the Configured Subjects table headers inside the panel */
         #manage-subjects-panel thead th {
@@ -264,7 +284,6 @@
                 <a href="/admin/bulk-marks" class="sidebar-item {% if request.path == '/admin/bulk-marks' %}active{% endif %}"><i data-lucide="edit-3"></i> Give Marks</a>
                 <a href="/admin/marksheet" class="sidebar-item {% if request.path == '/admin/marksheet' %}active{% endif %}"><i data-lucide="file-spreadsheet"></i> Marksheets</a>
                 <a href="/admin/academics-setting" class="sidebar-item {% if request.path == '/admin/academics-setting' %}active{% endif %}"><i data-lucide="settings"></i> Academic Setting</a>
-                <a href="/admin/student-promotion" class="sidebar-item {% if request.path == '/admin/student-promotion' %}active{% endif %}"><i data-lucide="user-check"></i> Student Promotion</a>
                 <a href="/admin/bulk-upload" class="sidebar-item {% if request.path == '/admin/bulk-upload' %}active{% endif %}"><i data-lucide="upload"></i> Bulk Data Upload</a>
                 <a href="/routine" class="sidebar-item {% if request.path == '/routine' %}active{% endif %}"><i data-lucide="calendar"></i> Class Routine</a>
                 <a href="/admin/question-papers" class="sidebar-item {% if request.path == '/admin/question-papers' %}active{% endif %}"><i data-lucide="file-text"></i> Question Paper Bank</a>
@@ -341,7 +360,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; align-items: end;">
                     <div class="input-group">
                         <label>Assigned Class & Subject</label>
-                        <select name="assigned_class" required onchange="this.form.submit()">
+                        <select name="assigned_class" required onchange="this.form.submit()" class="no-tom-select teacher-assign-dropdown">
                             <option value="">-- Select Class / Subject --</option>
                             {% for sub in allowed_subjects %}
                             <option value="{{ sub.branch }}|{{ sub.class }}|{{ sub.name }}" {% if assigned_class == sub.branch ~ '|' ~ sub.class ~ '|' ~ sub.name %}selected{% endif %}>
@@ -459,6 +478,7 @@
                             <thead style="background: var(--surface-soft); position: relative !important; z-index: 1 !important;">
                                 <tr style="position: relative !important; z-index: 1 !important;">
                                     <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Subject</th>
+                                    <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Assigned Teacher</th>
                                     <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Written Limit</th>
                                     <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Oral Limit</th>
                                     <th style="position: relative !important; z-index: 1 !important; background-color: var(--primary-color) !important;">Class Test Limit</th>
@@ -477,8 +497,27 @@
                                 {% set or_str = or_val|round(1)|string|replace('.0', '') if or_val != '' else '' %}
                                 {% set ct_str = ct_val|round(1)|string|replace('.0', '') if ct_val != '' else '' %}
                                 {% set fm_str = fm_val|round(1)|string|replace('.0', '') if fm_val != '' else '' %}
+                                {% set assigned = subject_teacher_map.get(sub_row.name.strip().title(), {}) %}
 
                                 <tr>
+                                    <td style="font-weight: 600;">{{ sub_row.name }}</td>
+                                    <td>
+                                        <form method="POST" action="/admin/bulk-marks" style="margin: 0;">
+                                            <input type="hidden" name="action_type" value="assign_teacher">
+                                            <input type="hidden" name="class_name" value="{{ selected_class }}">
+                                            <input type="hidden" name="term_name" value="{{ selected_term }}">
+                                            <input type="hidden" name="branch" value="{{ selected_branch }}">
+                                            <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
+                                            <select name="teacher_id" onchange="this.form.submit()" class="teacher-assign-dropdown">
+                                                <option value="">-- Unassigned --</option>
+                                                {% for t in all_teachers %}
+                                                    <option value="{{ t.id }}" {% if assigned.teacher_id == t.id %}selected{% endif %}>
+                                                        {{ t.full_name|clean_name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                    </td>
                                     <form method="POST" action="/admin/bulk-marks">
                                         <input type="hidden" name="action_type" value="update_fm">
                                         <input type="hidden" name="class_name" value="{{ selected_class }}">
@@ -486,7 +525,6 @@
                                         <input type="hidden" name="branch" value="{{ selected_branch }}">
                                         <input type="hidden" name="subject_name" value="{{ sub_row.name }}">
                                         
-                                        <td style="font-weight: 600;">{{ sub_row.name }}</td>
                                         <td><input type="number" name="written_limit" value="{{ wr_str }}" style="width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #ccc;"></td>
                                         <td><input type="number" name="oral_limit" value="{{ or_str }}" style="width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #ccc;"></td>
                                         <td><input type="number" name="ct_limit" value="{{ ct_str }}" style="width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #ccc;"></td>
@@ -506,7 +544,7 @@
                                         </td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="6" style="padding: 20px; text-align: center; color: #999;">No subjects added to this class for {{ selected_term }} yet.</td></tr>
+                                <tr><td colspan="7" style="padding: 20px; text-align: center; color: #999;">No subjects added to this class for {{ selected_term }} yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -794,15 +832,24 @@
                     </table>
                 </div>
 
-                <div style="margin-top: 30px; text-align: right;">
+                <div style="margin-top: 30px; text-align: right; display: flex; justify-content: flex-end; gap: 12px;">
                     {% if is_locked %}
                     <button type="button" class="auth-btn" disabled style="width: auto; padding: 14px 40px; font-size: 16px; font-weight: 600; border-radius: var(--radius); cursor: not-allowed; opacity: 0.6; display: inline-flex; align-items: center; gap: 8px; background-color: #94a3b8; border-color: #cbd5e1;">
                         <i data-lucide="lock" style="width: 20px; height: 20px;"></i> Marks Entry Locked
                     </button>
                     {% else %}
-                    <button type="submit" class="auth-btn" style="width: auto; padding: 14px 40px; font-size: 16px; font-weight: 600; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow-md); display: inline-flex; align-items: center; gap: 8px;">
-                        <i data-lucide="save" style="width: 20px; height: 20px;"></i> Save All Marks
-                    </button>
+                        {% if role == 'teacher' %}
+                        <button type="submit" name="submit_action" value="draft" class="auth-btn" style="width: auto; padding: 12px 28px; font-size: 15px; font-weight: 600; border-radius: var(--radius); cursor: pointer; background-color: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px;">
+                            <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save as Draft
+                        </button>
+                        <button type="submit" name="submit_action" value="submit" class="auth-btn" style="width: auto; padding: 12px 28px; font-size: 15px; font-weight: 600; border-radius: var(--radius); cursor: pointer; background-color: #10b981; color: white; display: inline-flex; align-items: center; gap: 8px;">
+                            <i data-lucide="send" style="width: 18px; height: 18px;"></i> Submit for Admin Approval
+                        </button>
+                        {% else %}
+                        <button type="submit" name="submit_action" value="approve" class="auth-btn" style="width: auto; padding: 14px 40px; font-size: 16px; font-weight: 600; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow-md); display: inline-flex; align-items: center; gap: 8px;">
+                            <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i> Save & Approve Marks
+                        </button>
+                        {% endif %}
                     {% endif %}
                 </div>
             </form>
@@ -832,6 +879,9 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             document.querySelectorAll('select').forEach((el)=>{
+                if (el.classList.contains('teacher-assign-dropdown') || el.classList.contains('no-tom-select')) {
+                    return;
+                }
                 if (!el.classList.contains('search-select')) {
                     el.classList.add('search-select');
                 }
