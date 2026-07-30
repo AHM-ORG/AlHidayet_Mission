@@ -965,23 +965,24 @@
                     </div>
 
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 500px; flex-wrap: wrap;">
-                        <input type="text" id="marksheetSearch" placeholder="Search by name or ID..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
-                        <select id="sortBySelect" onchange="handleMarksheetSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                        <input type="text" id="marksheetSearch" placeholder="Search by name or ID..." style="flex: 1; min-width: 140px; max-width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
+                        <select id="sortBySelect" onchange="handleMarksheetSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500; max-width: 100%;">
                             <option value="roll">Sort: Roll No</option>
                             <option value="name">Sort: Name</option>
                         </select>
                     </div>
 
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" id="marksheetTable">
-                        <thead>
-                            <tr style="border-bottom: 2px solid #eee;">
-                                <th style="padding: 12px; text-align: left;">SL</th>
-                                <th style="padding: 12px; text-align: left;">Student Name</th>
-                                <th style="padding: 12px; text-align: left;">Guardian</th>
-                                <th style="padding: 12px; text-align: left;">Class</th>
-                                <th style="padding: 12px; text-align: left;">Action</th>
-                            </tr>
-                        </thead>
+                    <div class="table-responsive">
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;" id="marksheetTable">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #eee;">
+                                    <th style="padding: 12px; text-align: left;">SL</th>
+                                    <th style="padding: 12px; text-align: left;">Student Name</th>
+                                    <th style="padding: 12px; text-align: left;">Guardian</th>
+                                    <th style="padding: 12px; text-align: left;">Class</th>
+                                    <th style="padding: 12px; text-align: left;">Action</th>
+                                </tr>
+                            </thead>
                         <tbody>
                             {% for student in students %}
                             <tr style="border-bottom: 1px solid #eee;" data-class="{{ student.class or '' }}" class="student-row" data-roll="{{ student.roll_number or '' }}" data-name="{{ (student.full_name or student.username or '')|lower }}">
@@ -997,6 +998,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    </div>
                     {% else %}
                     <div class="dashboard-empty-state">
                         <div class="empty-icon"><i data-lucide="alert-circle"></i></div>

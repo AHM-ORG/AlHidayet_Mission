@@ -6,6 +6,7 @@ const StudentLedgerView = ({ studentId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchLedger = async () => {
       try {
         const response = await fetch(`/api/ledger/${studentId}`, {
@@ -16,15 +17,16 @@ const StudentLedgerView = ({ studentId }) => {
         });
         if (!response.ok) throw new Error('Failed to fetch ledger');
         const data = await response.json();
-        setLedgerData(data);
+        if (isMounted) setLedgerData(data);
       } catch (err) {
-        setError(err.message);
+        if (isMounted) setError(err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchLedger();
+    return () => { isMounted = false; };
   }, [studentId]);
 
   if (loading) return <div className="p-8 text-gray-500 text-sm">Loading ledger...</div>;
@@ -33,18 +35,18 @@ const StudentLedgerView = ({ studentId }) => {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-gray-100 mt-8">
       <header className="mb-8 border-b border-gray-100 pb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Financial Ledger</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Financial Ledger</h1>
         <p className="text-gray-500 text-sm mt-1">{ledgerData.student.name} • Class {ledgerData.student.class_id}</p>
       </header>
 
       <div className="grid grid-cols-2 gap-6 mb-8">
         <div className="p-6 bg-gray-50 rounded-lg border border-gray-100">
           <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mb-1">Total Balance Due</p>
-          <p className="text-3xl font-light text-gray-900">₹{ledgerData.total_balance_due.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-gray-900">₹{ledgerData.total_balance_due.toFixed(2)}</p>
         </div>
         <div className="p-6 bg-gray-50 rounded-lg border border-gray-100">
           <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mb-1">Next Payment Date</p>
-          <p className="text-xl font-light text-gray-700 mt-2">1st of Next Month</p>
+          <p className="text-xl font-medium text-gray-700 mt-2">1st of Next Month</p>
         </div>
       </div>
 
@@ -97,4 +99,5 @@ const StudentLedgerView = ({ studentId }) => {
   );
 };
 
-export default StudentLedgerView;
+export default React.memo(StudentLedgerView);
+

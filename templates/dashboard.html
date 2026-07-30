@@ -63,7 +63,7 @@
             padding: 25px;
             border-radius: var(--radius);
             box-shadow: var(--shadow-sm);
-            transition: all 0.3s ease;
+            transition: transform 200ms var(--ease-apple-fluid), box-shadow 200ms var(--ease-apple-fluid);
             text-align: center;
             border-bottom: 4px solid var(--primary-color);
             cursor: pointer;
@@ -203,26 +203,26 @@
                 {% if role == 'admin' %}
                 <!-- Quick Stats Grid -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--primary-color);">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Total Users</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ all_users|length if all_users else 0 }}</div>
+                    <div class="dash-card stat-card" style="padding: 20px; border-radius: 12px; border-left: 4px solid var(--primary-color);">
+                        <div style="font-size: 14px; color: var(--text-muted); font-weight: 600;">Total Users</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-dark); margin-top: 5px;">{{ all_users|length if all_users else 0 }}</div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #00b894;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Active Notices</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ all_notices|length if all_notices else 0 }}</div>
+                    <div class="dash-card stat-card" style="padding: 20px; border-radius: 12px; border-left: 4px solid #00b894;">
+                        <div style="font-size: 14px; color: var(--text-muted); font-weight: 600;">Active Notices</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-dark); margin-top: 5px;">{{ all_notices|length if all_notices else 0 }}</div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #fdcb6e;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Admission Requests</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ pending_forms|length if pending_forms else 0 }}</div>
+                    <div class="dash-card stat-card" style="padding: 20px; border-radius: 12px; border-left: 4px solid #fdcb6e;">
+                        <div style="font-size: 14px; color: var(--text-muted); font-weight: 600;">Admission Requests</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-dark); margin-top: 5px;">{{ pending_forms|length if pending_forms else 0 }}</div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #ff7675;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Pending Gallery Media</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ pending_gallery|length if pending_gallery else 0 }}</div>
+                    <div class="dash-card stat-card" style="padding: 20px; border-radius: 12px; border-left: 4px solid #ff7675;">
+                        <div style="font-size: 14px; color: var(--text-muted); font-weight: 600;">Pending Gallery Media</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-dark); margin-top: 5px;">{{ pending_gallery|length if pending_gallery else 0 }}</div>
                     </div>
                 </div>
 
                 <!-- Administrative Control Center -->
-                <div class="auth-container" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
+                <div class="glass-panel" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; border-radius: 16px;">
                     <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
                         <i data-lucide="layout-grid"></i> Administrative Control Center
                     </h3>
@@ -432,18 +432,18 @@
                     {% if all_notices %}
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
                             {% for notice in all_notices %}
-                            <div style="background: #fdf2f8; border-left: 4px solid #e84393; padding: 15px; border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                            <div class="notice-item-card" style="border-left: 4px solid #e84393; padding: 18px; border-radius: 14px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
                                 <div>
-                                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3436; line-height: 1.5; font-weight: 500;">{{ notice['content'] }}</p>
-                                    <div style="font-size: 11px; color: #7f8c8d; display: flex; align-items: center; gap: 5px; margin-bottom: 15px;">
+                                    <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.6; font-weight: 500;">{{ notice['content'] }}</p>
+                                    <div style="font-size: 11px; opacity: 0.8; display: flex; align-items: center; gap: 5px; margin-bottom: 15px;">
                                         <i data-lucide="calendar" style="width: 12px; height: 12px;"></i> {{ notice['created_at'] }}
                                         {% if notice['branch'] %}
-                                            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">{{ notice['branch']|upper }}</span>
+                                            <span class="badge" style="background: rgba(3, 105, 161, 0.15); color: #0284c7; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-left: 5px;">{{ notice['branch']|upper }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
                                 <form action="/admin/delete-notice/{{ notice['id'] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this notice?');" style="margin: 0;">
-                                    <button type="submit" style="background: #ff7675; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 600; font-family: inherit;">
+                                    <button type="submit" class="btn-danger" style="padding: 8px 16px; border-radius: 5rem; font-size: 12px;">
                                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Delete Notice
                                     </button>
                                 </form>
@@ -457,14 +457,14 @@
 
                 <!-- Review Section for Applications -->
                 {% if pending_forms %}
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm); margin-bottom: 30px;">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
+                <div class="glass-panel" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; border-radius: 16px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
                         <i data-lucide="file-check" style="color: #fdcb6e;"></i> Pending Admission & Exam Applications
                     </h3>
                     <div class="table-container" style="overflow-x: auto;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #eee; text-align: left;">
+                                <tr style="text-align: left;">
                                     <th style="padding: 12px;">ID</th>
                                     <th style="padding: 12px;">Type</th>
                                     <th style="padding: 12px;">User</th>
@@ -475,18 +475,18 @@
                             </thead>
                             <tbody>
                                 {% for form in pending_forms[:5] %}
-                                <tr style="border-bottom: 1px solid #eee;">
+                                <tr>
                                     <td style="padding: 12px;">#{{ form['id'] }}</td>
                                     <td style="padding: 12px;">{{ form['type'] }}</td>
                                     <td style="padding: 12px;">{{ form['username'] or 'Guest' }}</td>
                                     <td style="padding: 12px;">{{ form['submitted_at'] }}</td>
                                     <td style="padding: 12px;">
-                                        <span style="background: #ffeaa7; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #d35400; font-size: 13px;">
+                                        <span class="badge" style="background: rgba(253, 203, 110, 0.25); color: var(--accent-color);">
                                             {{ form['status'] }}
                                         </span>
                                     </td>
                                     <td style="padding: 12px;">
-                                        <a href="/admin/view-form/{{ form['id'] }}" class="badge badge-success" style="text-decoration: none;">Review</a>
+                                        <a href="/admin/view-form/{{ form['id'] }}" class="btn-glass" style="text-decoration: none; padding: 4px 12px; font-size: 12px; border-radius: 999px;">Review</a>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -498,14 +498,14 @@
 
                 <!-- Complaints Log for Admin -->
                 {% if admin_complaints %}
-                <div class="auth-container" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
+                <div class="glass-panel" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; border-radius: 16px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
                         <i data-lucide="message-square" style="color: #ff7675;"></i> Active Student Complaints Log
                     </h3>
                     <div class="table-container" style="overflow-x: auto;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #eee; text-align: left;">
+                                <tr style="text-align: left;">
                                     <th style="padding: 12px;">Teacher</th>
                                     <th style="padding: 12px;">Student</th>
                                     <th style="padding: 12px;">Class</th>
@@ -517,7 +517,7 @@
                             </thead>
                             <tbody>
                                 {% for comp in admin_complaints %}
-                                <tr style="border-bottom: 1px solid #eee; font-size: 14px;">
+                                <tr style="font-size: 14px;">
                                     <td style="padding: 12px; font-weight: 600; color: var(--text-dark);">{{ comp['teacher_name'] }}</td>
                                     <td style="padding: 12px;">{{ comp['student_name'] }}</td>
                                     <td style="padding: 12px;">
@@ -621,41 +621,39 @@
                 {% endif %}
 
                 <!-- User Management Section -->
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
+                <div class="glass-panel" style="margin: 0; max-width: 100%; padding: 25px; border-radius: 16px;">
+                    <h3 style="margin-bottom: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
                         <i data-lucide="users" style="color: var(--primary-color);"></i> User Accounts Directory
                     </h3>
-                    <div class="table-container" style="overflow-x: auto; max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+                    <div class="table-container" style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
                         <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
-                                <tr style="border-bottom: 2px solid #eee; text-align: left;">
-                                    <th style="padding: 12px; background: #f8f9fa;">Username</th>
-                                    <th style="padding: 12px; background: #f8f9fa;">Email Address</th>
-                                    <th style="padding: 12px; background: #f8f9fa;">System Role</th>
-                                    <th style="padding: 12px; text-align: center; background: #f8f9fa;">Actions</th>
+                            <thead style="position: sticky; top: 0; z-index: 1;">
+                                <tr style="text-align: left;">
+                                    <th style="padding: 12px;">Username</th>
+                                    <th style="padding: 12px;">Email Address</th>
+                                    <th style="padding: 12px;">System Role</th>
+                                    <th style="padding: 12px; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% if all_users %}
                                 {% for u in all_users %}
-                                <tr style="border-bottom: 1px solid #eee;" id="user-row-{{ u.id }}">
+                                <tr id="user-row-{{ u.id }}">
                                     <td style="padding: 12px; font-weight: 600;">{{ u.username }}</td>
-                                    <td style="padding: 12px; color: #636e72;">{{ u.email }}</td>
+                                    <td style="padding: 12px;">{{ u.email }}</td>
                                     <td style="padding: 12px;">
-                                        <span style="padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
-                                            background: {% if u.role == 'admin' %}#dff9fb{% elif u.role == 'teacher' %}#e8f8f5{% else %}#fff4e5{% endif %};
-                                            color: {% if u.role == 'admin' %}#0984e3{% elif u.role == 'teacher' %}#00b894{% else %}#e67e22{% endif %};">
+                                        <span class="badge role-{{ u.role }}">
                                             {{ u.role|title }}
                                         </span>
                                     </td>
                                     <td style="padding: 12px; text-align: center;">
                                         <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
                                             <form action="/admin/reset-password/{{ u.id }}" method="POST" onsubmit="return confirm('Reset password for {{ u.username }}?');" style="display: inline;">
-                                                <button type="submit" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Reset Password">
+                                                <button type="submit" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 4px;" title="Reset Password">
                                                     <i data-lucide="key" style="color: #fdcb6e; width: 18px; height: 18px;"></i>
                                                 </button>
                                             </form>
-                                            <button onclick="deleteUserAJAX({{ u.id }})" type="button" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Delete User">
+                                            <button onclick="deleteUserAJAX({{ u.id }})" type="button" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 4px;" title="Delete User">
                                                 <i data-lucide="trash-2" style="color: #ff7675; width: 18px; height: 18px;"></i>
                                             </button>
                                         </div>
@@ -933,6 +931,7 @@
         }
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ux_optimization.js') }}" defer></script>
 </body>
 
 </html>

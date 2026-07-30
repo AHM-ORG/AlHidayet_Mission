@@ -12,9 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.5.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="{{ url_for('static', filename='js/ux_optimization.js') }}?v=3.5.0"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 
     <style>
@@ -97,7 +98,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            font-family: 'Fredoka', sans-serif;
+            font-family: 'Outfit', sans-serif;
             font-weight: 600;
         }
 
@@ -810,6 +811,7 @@
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/ux_optimization.js') }}" defer></script>
 </body>
 
 </html>

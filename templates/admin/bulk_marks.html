@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bulk Mark Entry - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
@@ -33,6 +33,118 @@
             margin-top: 20px;
             box-shadow: var(--shadow-sm);
             position: relative;
+        }
+
+        /* Mobile Specific Overrides & Borderless Design System */
+        @media (max-width: 992px) {
+            /* Hide multi-column grid table completely on phone screens */
+            .table-responsive {
+                display: none !important;
+            }
+            .mobile-view-mode-bar {
+                display: none !important;
+            }
+            #mobile-single-student-card {
+                display: block !important;
+            }
+            .bulk-card {
+                padding: 16px !important;
+                border: none !important;
+                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12) !important;
+            }
+            .bulk-card *, .mobile-subject-card *, #mobile-single-student-card * {
+                border: none !important;
+                outline: none !important;
+            }
+            .mobile-save-bar {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                padding: 12px 16px !important;
+                background: rgba(15, 23, 42, 0.96) !important;
+                backdrop-filter: blur(16px) !important;
+                -webkit-backdrop-filter: blur(16px) !important;
+                z-index: 99999 !important;
+                box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45) !important;
+                border: none !important;
+            }
+            .mobile-save-bar button {
+                width: 100% !important;
+                min-height: 48px !important;
+                font-size: 15px !important;
+                font-weight: 700 !important;
+                border-radius: 12px !important;
+                border: none !important;
+            }
+            .theme-toggle-btn {
+                bottom: 84px !important;
+                right: 14px !important;
+                z-index: 100000 !important;
+            }
+            .main-content, .content-wrapper, #mobile-single-student-card {
+                padding-bottom: 95px !important;
+            }
+        }
+
+        /* Dark Mode Container Overrides */
+        [data-theme="dark"] .bulk-card,
+        body.dark-mode .bulk-card,
+        html[data-theme="dark"] .bulk-card {
+            background: rgba(15, 23, 42, 0.95) !important;
+            color: #f8fafc !important;
+            border: none !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        [data-theme="dark"] .bulk-card select,
+        [data-theme="dark"] .bulk-card input,
+        [data-theme="dark"] select,
+        [data-theme="dark"] input,
+        body.dark-mode select,
+        body.dark-mode input,
+        html[data-theme="dark"] select,
+        html[data-theme="dark"] input {
+            background: rgba(30, 41, 59, 0.95) !important;
+            color: #f8fafc !important;
+            border: none !important;
+        }
+
+        [data-theme="dark"] #mobile-single-student-card,
+        body.dark-mode #mobile-single-student-card,
+        html[data-theme="dark"] #mobile-single-student-card {
+            background: rgba(15, 23, 42, 0.95) !important;
+            color: #f8fafc !important;
+            border: none !important;
+        }
+
+        [data-theme="dark"] .mobile-subject-card,
+        body.dark-mode .mobile-subject-card,
+        html[data-theme="dark"] .mobile-subject-card {
+            background: rgba(30, 41, 59, 0.95) !important;
+            color: #f8fafc !important;
+            border: none !important;
+        }
+
+        [data-theme="dark"] .mobile-subject-card .sub-title,
+        body.dark-mode .mobile-subject-card .sub-title,
+        html[data-theme="dark"] .mobile-subject-card .sub-title {
+            color: #38bdf8 !important;
+        }
+
+        [data-theme="dark"] .mobile-subject-card .sub-label,
+        body.dark-mode .mobile-subject-card .sub-label,
+        html[data-theme="dark"] .mobile-subject-card .sub-label {
+            color: #cbd5e1 !important;
+        }
+
+        [data-theme="dark"] .mobile-subject-card input.marks-input,
+        body.dark-mode .mobile-subject-card input.marks-input,
+        html[data-theme="dark"] .mobile-subject-card input.marks-input {
+            background: rgba(15, 23, 42, 0.95) !important;
+            color: #38bdf8 !important;
+            border: none !important;
         }
         .responsive-table {
             width: 100%;
@@ -344,10 +456,18 @@
               {% if messages %}
                 <div class="flash-messages" style="margin-bottom: 20px;">
                   {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'error' else 'danger' }}" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: {% if category == 'error' %}#fdf2f2{% else %}#f0fdf4{% endif %}; color: {% if category == 'error' %}var(--danger-color){% else %}var(--success-color){% endif %}; border: 1px solid {% if category == 'error' %}#fca5a5{% else %}#bbf7d0{% endif %};">
-                      <i data-lucide="{% if category == 'error' %}alert-circle{% else %}check-circle{% endif %}" style="width: 20px; height: 20px;"></i>
+                    {% set is_err = (category == 'error' or category == 'danger') %}
+                    {% if is_err %}
+                    <div class="alert alert-danger" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: #fdf2f2; color: var(--danger-color); border: 1px solid #fca5a5;">
+                      <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
                       <span>{{ message }}</span>
                     </div>
+                    {% else %}
+                    <div class="alert alert-success" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: #f0fdf4; color: var(--success-color); border: 1px solid #bbf7d0;">
+                      <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+                      <span>{{ message }}</span>
+                    </div>
+                    {% endif %}
                   {% endfor %}
                 </div>
               {% endif %}
@@ -578,7 +698,62 @@
                             {% endif %}
                         </span>
                     </div>
+                </div>
 
+                <!-- Mobile View Switcher (Visible on Mobile <= 992px) -->
+                <div class="mobile-view-mode-bar" style="display: none; width: 100%; margin: 15px 0 10px 0; gap: 8px;">
+                    <button type="button" id="btn-mode-card" onclick="switchMobileMarkMode('card')" class="auth-btn active" style="flex: 1; min-height: 44px; padding: 10px 12px; font-size: 13px; font-weight: 700; border-radius: 12px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i data-lucide="user-check" style="width:16px;height:16px;"></i> One-by-One Entry
+                    </button>
+                    <button type="button" id="btn-mode-table" onclick="switchMobileMarkMode('table')" class="auth-btn" style="flex: 1; min-height: 44px; padding: 10px 12px; font-size: 13px; font-weight: 700; border-radius: 12px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                        <i data-lucide="table" style="width:16px;height:16px;"></i> Full Grid Table
+                    </button>
+                </div>
+
+                <!-- Single Student Mobile Card Entry View -->
+                <div id="mobile-single-student-card" style="display: none; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; margin: 10px 0 20px 0; padding: 18px 14px; border: none; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-md);">
+                    <!-- Student Switch Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px;">
+                        <button type="button" onclick="navigateStudent(-1)" class="auth-btn" style="width: auto; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--surface-soft); color: var(--text-dark); border-radius: 10px; border: none; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i> Prev
+                        </button>
+
+                        <select id="mobile-student-select" onchange="selectStudentIndex(parseInt(this.value))" class="no-tom-select" style="flex: 1; font-weight: 700; text-align: center; padding: 10px; border-radius: 10px; border: none; background: var(--surface-soft); color: var(--text-dark); font-size: 14px; box-shadow: var(--shadow-sm);">
+                            {% for student in students %}
+                                <option value="{{ loop.index0 }}">Roll {{ student.roll_number }} - {{ student.full_name or student.username }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button type="button" onclick="navigateStudent(1)" class="auth-btn" style="width: auto; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--primary-color); color: white; border-radius: 10px; border: none; display: inline-flex; align-items: center; gap: 4px;">
+                            Next <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+
+                    <!-- Active Student Banner -->
+                    <div style="background: var(--surface-soft); padding: 12px 14px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">
+                                Roll No: <span id="card-student-roll" style="color: var(--primary-color); font-weight: 800; font-size: 1.1em;">-</span>
+                            </div>
+                            <div id="card-student-name" style="font-weight: 700; font-size: 1.1em; color: var(--text-dark); margin-top: 2px;">-</div>
+                        </div>
+                        <span id="card-student-counter" style="font-size: 0.85em; font-weight: 700; background: rgba(31,111,120,0.15); color: var(--primary-color); padding: 4px 12px; border-radius: 20px; white-space: nowrap;">-</span>
+                    </div>
+
+                    <!-- Dynamic Subject Inputs Container -->
+                    <div id="card-subject-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Filled by JavaScript dynamically -->
+                    </div>
+
+                    <!-- Bottom Step Control Bar -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 20px; padding-top: 14px;">
+                        <button type="button" onclick="navigateStudent(-1)" class="auth-btn" style="flex: 1; padding: 12px; font-size: 13px; font-weight: 600; background: var(--surface-soft); color: var(--text-dark); border-radius: 12px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                            <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i> Previous
+                        </button>
+                        <button type="button" onclick="saveAndNextStudent()" class="auth-btn" style="flex: 1.5; padding: 12px; font-size: 14px; font-weight: 700; background: #10b981; color: white; border-radius: 12px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            Save & Next <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -677,11 +852,11 @@
                                     {{ student.roll_number }}
                                 </td>
                                 <td class="sticky-col-name" style="font-weight: 500; color: var(--text-dark);">
-                                    <div>{{ student.full_name or student.username }}</div>
+                                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ student.full_name or student.username }}">{{ student.full_name or student.username }}</div>
                                     {% if student.whatsapp_no %}
-                                    <div style="font-size: 0.8em; margin-top: 4px;">
-                                        <a href="https://wa.me/91{{ student.whatsapp_no }}" target="_blank" style="color: #25D366; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Message Guardian on WhatsApp">
-                                            <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i> {{ student.whatsapp_no }}
+                                    <div style="font-size: 0.8em; margin-top: 2px;">
+                                        <a href="https://wa.me/91{{ student.whatsapp_no }}" target="_blank" style="color: #25D366; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;" title="WhatsApp Guardian">
+                                            <i data-lucide="message-circle" style="width: 12px; height: 12px;"></i> <span class="hide-mobile-text">{{ student.whatsapp_no }}</span>
                                         </a>
                                     </div>
                                     {% endif %}
@@ -852,6 +1027,28 @@
                         {% endif %}
                     {% endif %}
                 </div>
+
+                <!-- Floating Mobile Action Bar (Visible only on Mobile <= 992px) -->
+                <div class="mobile-save-bar">
+                    {% if is_locked %}
+                    <button type="button" class="auth-btn" disabled style="background:#94a3b8;">
+                        <i data-lucide="lock" style="width:16px;height:16px;"></i> Locked
+                    </button>
+                    {% else %}
+                        {% if role == 'teacher' %}
+                        <button type="submit" name="submit_action" value="draft" class="auth-btn" style="background:#f59e0b; color:white;">
+                            <i data-lucide="save" style="width:16px;height:16px;"></i> Draft
+                        </button>
+                        <button type="submit" name="submit_action" value="submit" class="auth-btn" style="background:#10b981; color:white;">
+                            <i data-lucide="send" style="width:16px;height:16px;"></i> Submit
+                        </button>
+                        {% else %}
+                        <button type="submit" name="submit_action" value="approve" class="auth-btn" style="background:var(--primary-color); color:white;">
+                            <i data-lucide="check-circle" style="width:16px;height:16px;"></i> Save Marks
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
             </form>
 
             {% elif selected_class %}
@@ -874,6 +1071,7 @@
         </main>
     </div>
 
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>lucide.createIcons();</script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script>
@@ -1071,21 +1269,207 @@
             });
         }
 
-        function toggleLimitInput(type) {
-            const checkbox = document.getElementById(type + '_enabled');
-            const input = document.getElementById(type + '_max');
-            if (checkbox && input) {
-                input.disabled = !checkbox.checked;
-                if (checkbox.checked) {
-                    input.style.background = '';
-                    input.style.cursor = '';
-                    input.focus();
-                } else {
-                    input.style.background = '#e2e8f0';
-                    input.style.cursor = 'not-allowed';
+        // Mobile One-by-One Student Card Entry Engine
+        let currentStudentIndex = 0;
+        const mobileStudents = JSON.parse(`[
+            {% for student in students %}
+            {
+                "id": {{ student.id }},
+                "roll": "{{ student.roll_number }}",
+                "name": "{{ (student.full_name or student.username)|replace('"', '') }}"
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]`);
+
+        const mobileSubjects = JSON.parse(`[
+            {% for sub in subjects %}
+            {
+                "name": "{{ sub|replace('"', '') }}",
+                "isDisabled": {% if ((role == 'teacher' and sub != selected_subject) or (is_class_test and sub not in configured_class_test_subjects)) %}true{% else %}false{% endif %},
+                "oralLimit": {% if subject_oral_limit.get(sub) is not none %}{{ subject_oral_limit.get(sub) }}{% else %}null{% endif %},
+                "writtenLimit": {% if subject_written_limit.get(sub) is not none %}{{ subject_written_limit.get(sub) }}{% else %}null{% endif %},
+                "ctLimit": {% if subject_ct_limit.get(sub) is not none %}{{ subject_ct_limit.get(sub) }}{% else %}null{% endif %},
+                "fullMarks": {{ subject_full_marks.get(sub, full_marks) }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]`);
+
+        function switchMobileMarkMode(mode) {
+            const cardView = document.getElementById('mobile-single-student-card');
+            const tableView = document.querySelector('.table-responsive');
+            const modeBar = document.querySelector('.mobile-view-mode-bar');
+            const btnCard = document.getElementById('btn-mode-card');
+            const btnTable = document.getElementById('btn-mode-table');
+
+            if (!cardView) return;
+
+            if (mode === 'card') {
+                cardView.style.setProperty('display', 'block', 'important');
+                if (tableView) tableView.style.setProperty('display', 'none', 'important');
+                if (modeBar) modeBar.style.setProperty('display', 'none', 'important');
+                if (btnCard) {
+                    btnCard.style.background = 'var(--primary-color)';
+                    btnCard.style.color = 'white';
+                }
+                if (btnTable) {
+                    btnTable.style.background = 'rgba(255,255,255,0.7)';
+                    btnTable.style.color = 'var(--text-dark)';
+                }
+                renderSingleStudentCard(currentStudentIndex);
+            } else {
+                cardView.style.setProperty('display', 'none', 'important');
+                if (tableView) tableView.style.setProperty('display', 'block', 'important');
+                if (btnTable) {
+                    btnTable.style.background = 'var(--primary-color)';
+                    btnTable.style.color = 'white';
+                }
+                if (btnCard) {
+                    btnCard.style.background = 'rgba(255,255,255,0.7)';
+                    btnCard.style.color = 'var(--text-dark)';
                 }
             }
         }
+
+        function selectStudentIndex(index) {
+            if (index >= 0 && index < mobileStudents.length) {
+                currentStudentIndex = index;
+                renderSingleStudentCard(currentStudentIndex);
+            }
+        }
+
+        function navigateStudent(delta) {
+            let nextIdx = currentStudentIndex + delta;
+            if (nextIdx < 0) nextIdx = mobileStudents.length - 1;
+            if (nextIdx >= mobileStudents.length) nextIdx = 0;
+            selectStudentIndex(nextIdx);
+        }
+
+        function saveAndNextStudent() {
+            if (typeof showMobileProgress === 'function') showMobileProgress(100);
+            navigateStudent(1);
+        }
+
+        function renderSingleStudentCard(index) {
+            if (!mobileStudents.length) return;
+            const student = mobileStudents[index];
+            const rollEl = document.getElementById('card-student-roll');
+            const nameEl = document.getElementById('card-student-name');
+            const countEl = document.getElementById('card-student-counter');
+            const selectEl = document.getElementById('mobile-student-select');
+
+            if (rollEl) rollEl.textContent = student.roll;
+            if (nameEl) nameEl.textContent = student.name;
+            if (countEl) countEl.textContent = (index + 1) + ' of ' + mobileStudents.length;
+            if (selectEl) selectEl.value = index;
+
+            const listEl = document.getElementById('card-subject-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+
+            mobileSubjects.forEach(sub => {
+                const studentId = student.id;
+                const subName = sub.name;
+
+                const tableAbCheck = document.querySelector(`input[name="absent_${studentId}_${subName}"]`);
+                const tableOralInp = document.querySelector(`input[name="oral_marks_${studentId}_${subName}"]`);
+                const tableWrittenInp = document.querySelector(`input[name="written_marks_${studentId}_${subName}"]`);
+                const tableCtInp = document.querySelector(`input[name="ct_marks_${studentId}_${subName}"]`);
+                const tableObtInp = document.querySelector(`input[name="marks_${studentId}_${subName}"]`);
+
+                const isAbsent = tableAbCheck ? tableAbCheck.checked : false;
+
+                const subCard = document.createElement('div');
+                subCard.className = 'mobile-subject-card';
+                
+                let inputsHtml = '';
+                const hasComponents = (sub.oralLimit !== null || sub.writtenLimit !== null || sub.ctLimit !== null);
+
+                if (hasComponents) {
+                    inputsHtml += `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">`;
+                    if (sub.oralLimit !== null) {
+                        const val = tableOralInp ? tableOralInp.value : '';
+                        inputsHtml += `
+                        <div style="flex: 1; min-width: 70px;">
+                            <label class="sub-label" style="font-size: 11px; font-weight: 700; display: block; margin-bottom: 4px;">ORAL (Max ${sub.oralLimit})</label>
+                            <input type="number" class="card-inp-oral marks-input" data-student="${studentId}" data-subject="${subName}" value="${val}" min="0" max="${sub.oralLimit}" placeholder="OR" style="width: 100% !important; min-height: 42px !important; text-align: center; border-radius: 10px; border: none;" ${sub.isDisabled || isAbsent ? 'readonly' : ''}>
+                        </div>`;
+                    }
+                    if (sub.writtenLimit !== null) {
+                        const val = tableWrittenInp ? tableWrittenInp.value : '';
+                        inputsHtml += `
+                        <div style="flex: 1; min-width: 70px;">
+                            <label class="sub-label" style="font-size: 11px; font-weight: 700; display: block; margin-bottom: 4px;">WRITTEN (Max ${sub.writtenLimit})</label>
+                            <input type="number" class="card-inp-written marks-input" data-student="${studentId}" data-subject="${subName}" value="${val}" min="0" max="${sub.writtenLimit}" placeholder="WR" style="width: 100% !important; min-height: 42px !important; text-align: center; border-radius: 10px; border: none;" ${sub.isDisabled || isAbsent ? 'readonly' : ''}>
+                        </div>`;
+                    }
+                    if (sub.ctLimit !== null) {
+                        const val = tableCtInp ? tableCtInp.value : '';
+                        inputsHtml += `
+                        <div style="flex: 1; min-width: 70px;">
+                            <label class="sub-label" style="font-size: 11px; font-weight: 700; display: block; margin-bottom: 4px;">CLASS TEST (Max ${sub.ctLimit})</label>
+                            <input type="number" class="card-inp-ct marks-input" data-student="${studentId}" data-subject="${subName}" value="${val}" min="0" max="${sub.ctLimit}" placeholder="CT" style="width: 100% !important; min-height: 42px !important; text-align: center; border-radius: 10px; border: none;" ${sub.isDisabled || isAbsent ? 'readonly' : ''}>
+                        </div>`;
+                    }
+                    inputsHtml += `</div>`;
+                } else {
+                    const val = tableObtInp ? tableObtInp.value : '';
+                    inputsHtml = `
+                    <div style="margin-top: 10px;">
+                        <label class="sub-label" style="font-size: 11px; font-weight: 700; display: block; margin-bottom: 4px;">OBTAINED MARK (Max ${sub.fullMarks})</label>
+                        <input type="number" class="card-inp-obt marks-input" data-student="${studentId}" data-subject="${subName}" value="${val}" min="0" max="${sub.fullMarks}" placeholder="Mark" style="width: 100% !important; min-height: 44px !important; font-size: 16px !important; text-align: center; border-radius: 10px; border: none;" ${sub.isDisabled || isAbsent ? 'readonly' : ''}>
+                    </div>`;
+                }
+
+                subCard.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <div class="sub-title" style="font-weight: 700; font-size: 15px; color: var(--primary-color);">${subName} <span style="font-size: 12px; font-weight: 500; opacity: 0.85;">(FM: ${sub.fullMarks})</span></div>
+                        ${!sub.isDisabled ? `
+                        <label class="card-ab-label" style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 10px; border-radius: 8px; border: none;">
+                            <input type="checkbox" class="card-inp-ab" data-student="${studentId}" data-subject="${subName}" ${isAbsent ? 'checked' : ''} style="accent-color:#ef4444;">
+                            <span style="font-size: 11px; font-weight: 700;">AB</span>
+                        </label>` : ''}
+                    </div>
+                    ${inputsHtml}
+                `;
+
+                listEl.appendChild(subCard);
+
+                // Bi-directional binding to table inputs
+                const cardAb = subCard.querySelector('.card-inp-ab');
+                const cardOral = subCard.querySelector('.card-inp-oral');
+                const cardWritten = subCard.querySelector('.card-inp-written');
+                const cardCt = subCard.querySelector('.card-inp-ct');
+                const cardObt = subCard.querySelector('.card-inp-obt');
+
+                if (cardAb && tableAbCheck) {
+                    cardAb.addEventListener('change', () => {
+                        tableAbCheck.checked = cardAb.checked;
+                        tableAbCheck.dispatchEvent(new Event('change'));
+                        renderSingleStudentCard(currentStudentIndex);
+                    });
+                }
+                if (cardOral && tableOralInp) {
+                    cardOral.addEventListener('input', () => { tableOralInp.value = cardOral.value; });
+                }
+                if (cardWritten && tableWrittenInp) {
+                    cardWritten.addEventListener('input', () => { tableWrittenInp.value = cardWritten.value; });
+                }
+                if (cardCt && tableCtInp) {
+                    cardCt.addEventListener('input', () => { tableCtInp.value = cardCt.value; });
+                }
+                if (cardObt && tableObtInp) {
+                    cardObt.addEventListener('input', () => { tableObtInp.value = cardObt.value; });
+                }
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (mobileStudents.length > 0 && (window.matchMedia('(max-width: 1200px)').matches || window.innerWidth <= 1200)) {
+                switchMobileMarkMode('card');
+            }
+        });
     </script>
 </body>
 </html>

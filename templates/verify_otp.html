@@ -75,7 +75,7 @@
                 </div>
 
                 <div class="form-actions" style="justify-content: center; flex-direction: column; gap: 10px; align-items: center; margin-top: 15px;">
-                    <a href="{{ url_for('resend_otp', context=context) }}" style="font-weight: 600; color: var(--primary-color);">Resend Code</a>
+                    <a href="{{ url_for('resend_otp', context=context) }}" style="font-weight: var(--font-weight-subheading); color: var(--primary-color);">Resend Code</a>
                     
                     {% if context == 'login' %}
                         {% if session.get('otp_phone') and session.get('otp_method') == 'email' %}

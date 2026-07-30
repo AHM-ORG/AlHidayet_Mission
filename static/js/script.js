@@ -48,19 +48,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Mobile Loading Progress UI Engine
+    let mobileProgressBar = document.getElementById('mobile-progress-bar');
+    if (!mobileProgressBar) {
+        mobileProgressBar = document.createElement('div');
+        mobileProgressBar.id = 'mobile-progress-bar';
+        mobileProgressBar.innerHTML = '<div class="mobile-progress-inner"></div>';
+        document.body.prepend(mobileProgressBar);
+    }
+    const mobileProgressInner = mobileProgressBar.querySelector('.mobile-progress-inner');
+
+    window.showMobileProgress = (progressPercent) => {
+        if (!window.matchMedia('(max-width: 992px)').matches) return;
+        mobileProgressBar.classList.add('active');
+        if (typeof progressPercent === 'number') {
+            mobileProgressInner.classList.remove('indeterminate');
+            mobileProgressInner.style.width = Math.min(100, Math.max(0, progressPercent)) + '%';
+        } else {
+            mobileProgressInner.classList.add('indeterminate');
+        }
+    };
+
+    window.hideMobileProgress = () => {
+        if (!mobileProgressBar) return;
+        mobileProgressInner.style.width = '100%';
+        setTimeout(() => {
+            mobileProgressBar.classList.remove('active');
+            mobileProgressInner.classList.remove('indeterminate');
+            mobileProgressInner.style.width = '0%';
+        }, 300);
+    };
+
+    // Auto-hook mobile form submissions for loading progress feedback
+    document.addEventListener('submit', (e) => {
+        if (window.matchMedia('(max-width: 992px)').matches) {
+            window.showMobileProgress();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.classList.add('btn-loading');
+            }
+        }
+    });
+
     if (sidebar) {
         if (!sidebar.id) sidebar.id = 'sidebar';
 
-        // Restore scroll position
-        const savedScroll = localStorage.getItem('sidebar-scroll');
-        if (savedScroll) {
-            sidebar.scrollTop = parseInt(savedScroll, 10);
-        }
-
-        // Save scroll position on scroll
-        sidebar.addEventListener('scroll', () => {
-            localStorage.setItem('sidebar-scroll', sidebar.scrollTop);
-        });
+        // Ensure sidebar starts cleanly at top by default without upward scrolling bug
+        localStorage.removeItem('sidebar-scroll');
+        sidebar.scrollTop = 0;
 
         const topBar = document.querySelector('.top-bar');
         const topBarLeft = document.querySelector('.top-bar-left') || topBar;
@@ -73,18 +108,23 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(sidebarOverlay);
         }
 
-        if (!sidebarToggle && topBarLeft) {
+        if (!sidebarToggle) {
             sidebarToggle = document.createElement('button');
             sidebarToggle.type = 'button';
             sidebarToggle.className = 'sidebar-toggle-btn';
             sidebarToggle.setAttribute('aria-label', 'Open dashboard menu');
             sidebarToggle.setAttribute('aria-controls', sidebar.id);
             sidebarToggle.setAttribute('aria-expanded', 'false');
-            sidebarToggle.innerHTML = '<i data-lucide="menu"></i>';
-            topBarLeft.prepend(sidebarToggle);
+            sidebarToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>';
+            document.body.appendChild(sidebarToggle);
         }
 
-        const setSidebarOpen = (isOpen) => {
+        let isHistoryPushed = false;
+
+        const setSidebarOpen = (isOpen, isFromPopstate = false) => {
+            const currentlyOpen = sidebar.classList.contains('active') || document.body.classList.contains('sidebar-open');
+            if (currentlyOpen === isOpen) return;
+
             sidebar.classList.toggle('active', isOpen);
             sidebarOverlay.classList.toggle('active', isOpen);
             document.body.classList.toggle('sidebar-open', isOpen);
@@ -92,7 +132,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 sidebarToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 sidebarToggle.setAttribute('aria-label', isOpen ? 'Close dashboard menu' : 'Open dashboard menu');
             }
+
+            // Phone Hardware Back Button (Popstate) Integration
+            if (window.matchMedia('(max-width: 992px)').matches) {
+                if (isOpen && !isHistoryPushed) {
+                    history.pushState({ mobileDrawerOpen: true }, '');
+                    isHistoryPushed = true;
+                } else if (!isOpen && isHistoryPushed && !isFromPopstate) {
+                    isHistoryPushed = false;
+                    if (history.state && history.state.mobileDrawerOpen) {
+                        history.back();
+                    }
+                }
+            }
         };
+
+        // Listen for phone hardware back button / back swipe gesture
+        window.addEventListener('popstate', (e) => {
+            const isMobileOpen = sidebar.classList.contains('active') || document.body.classList.contains('sidebar-open');
+            if (isMobileOpen) {
+                isHistoryPushed = false;
+                setSidebarOpen(false, true);
+                return;
+            }
+
+            // Close active popups or modals if open
+            const activeModal = document.querySelector('.modal.show, .modal.active, [data-modal].active');
+            if (activeModal) {
+                activeModal.classList.remove('show', 'active');
+            }
+        });
 
         const closeSidebarOnMobile = () => {
             if (window.matchMedia('(max-width: 992px)').matches) {
@@ -101,8 +170,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                setSidebarOpen(!sidebar.classList.contains('active'));
+            sidebarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = sidebar.classList.contains('active') || document.body.classList.contains('sidebar-open');
+                setSidebarOpen(!isOpen);
             });
         }
 

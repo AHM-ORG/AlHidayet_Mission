@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teachers List - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
@@ -121,24 +121,24 @@
                         {% endif %}
                     </div>
 
-                    <div class="table-scroll-container">
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <div class="table-scroll-container table-responsive" style="overflow-x: auto; max-width: 100%;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 1100px;">
                         <thead>
                             <tr style="border-bottom: 2px solid #eee; text-align: left;">
-                                <th style="padding: 12px;">SL</th>
-                                <th style="padding: 12px;">Name</th>
-                                <th style="padding: 12px;">Username</th>
-                                <th style="padding: 12px;">Email</th>
-                                <th style="padding: 12px;">Phone</th>
-                                <th style="padding: 12px;">Type</th>
-                                <th style="padding: 12px;">Qualification</th>
-                                <th style="padding: 12px;">CV</th>
-                                <th style="padding: 12px;">Joining Date</th>
-                                <th style="padding: 12px;">Aadhaar</th>
-                                <th style="padding: 12px;">Bank Details</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 45px;">SL</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 140px;">Name</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 110px;">Username</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 160px;">Email</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 110px;">Phone</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 100px;">Type</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 110px;">Qualification</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 75px;">CV</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 110px;">Joining Date</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 110px;">Aadhaar</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 150px;">Bank Details</th>
                                 {% if role == 'admin' %}
-                                <th style="padding: 12px; min-width: 210px;">Password</th>
-                                <th style="padding: 12px; min-width: 210px;">Edit Section</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 180px;">Password</th>
+                                <th style="padding: 12px; white-space: nowrap; min-width: 160px;">Edit Section</th>
                                 {% endif %}
                             </tr>
                         </thead>
@@ -185,7 +185,7 @@
                                                 <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Reset Password
                                             </button>
                                         </form>
-                                        <button onclick="openChangePasswordModal({{ teacher.id }}, '{{ teacher.username }}')" type="button" class="badge" style="background-color: #3498db; border: none; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; width: 100%; justify-content: center; box-sizing: border-box;">
+                                        <button onclick="openChangePasswordModal('{{ teacher.id }}', '{{ teacher.username }}')" type="button" class="badge" style="background-color: #3498db; border: none; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; width: 100%; justify-content: center; box-sizing: border-box;">
                                             <i data-lucide="key-round" style="width: 12px; height: 12px;"></i> Change Password
                                         </button>
                                     </div>
@@ -195,7 +195,7 @@
                                         <a href="/admin/edit-teacher/{{ teacher.id }}" class="badge badge-warning" style="background-color: #f39c12; color: white; text-decoration: none;">
                                             <i data-lucide="pencil" style="width: 14px; height: 14px;"></i> Edit
                                         </a>
-                                        <button onclick="deleteUserAJAX({{ teacher.id }}, 'teacher')" type="button" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white;">
+                                        <button onclick="deleteUserAJAX('{{ teacher.id }}', 'teacher')" type="button" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white;">
                                             <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Remove
                                         </button>
                                     </div>

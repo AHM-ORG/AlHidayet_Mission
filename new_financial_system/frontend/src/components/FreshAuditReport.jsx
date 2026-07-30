@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 const FreshAuditReport = () => {
   const [transactions, setTransactions] = useState([]);
@@ -21,27 +21,33 @@ const FreshAuditReport = () => {
       });
   }, []);
 
-  const filteredTransactions = transactions.filter(t => {
-    let matchesDate = true;
-    let matchesClass = true;
-    
-    if (startDate) {
-      matchesDate = matchesDate && new Date(t.date_created) >= new Date(startDate);
-    }
-    if (endDate) {
-      matchesDate = matchesDate && new Date(t.date_created) <= new Date(endDate);
-    }
-    if (classFilter) {
-      matchesClass = t.class_name && t.class_name.toLowerCase().includes(classFilter.toLowerCase());
-    }
-    
-    return matchesDate && matchesClass;
-  });
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      let matchesDate = true;
+      let matchesClass = true;
+      
+      if (startDate) {
+        matchesDate = matchesDate && new Date(t.date_created) >= new Date(startDate);
+      }
+      if (endDate) {
+        matchesDate = matchesDate && new Date(t.date_created) <= new Date(endDate);
+      }
+      if (classFilter) {
+        matchesClass = t.class_name && t.class_name.toLowerCase().includes(classFilter.toLowerCase());
+      }
+      
+      return matchesDate && matchesClass;
+    });
+  }, [transactions, startDate, endDate, classFilter]);
+
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
 
   return (
     <div className="p-8 max-w-6xl mx-auto font-sans text-gray-800 bg-white min-h-screen">
       <div className="print:hidden mb-8 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-6 border-gray-100">
-        <h1 className="text-3xl font-light mb-4 md:mb-0">System Audit Report</h1>
+        <h1 className="text-3xl font-bold mb-4 md:mb-0">System Audit Report</h1>
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex flex-col">
             <label className="text-xs text-gray-500 mb-1">Start Date</label>
@@ -55,7 +61,7 @@ const FreshAuditReport = () => {
             <label className="text-xs text-gray-500 mb-1">Class Filter</label>
             <input type="text" placeholder="e.g. Grade 1" className="border px-3 py-1.5 rounded text-sm focus:outline-none focus:border-blue-400" value={classFilter} onChange={e => setClassFilter(e.target.value)} />
           </div>
-          <button onClick={() => window.print()} className="mt-5 bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-900 transition">
+          <button onClick={handlePrint} className="mt-5 bg-gray-800 text-white px-4 py-1.5 rounded text-sm hover:bg-gray-900 transition">
             Print Report
           </button>
         </div>
@@ -108,4 +114,5 @@ const FreshAuditReport = () => {
   );
 };
 
-export default FreshAuditReport;
+export default React.memo(FreshAuditReport);
+

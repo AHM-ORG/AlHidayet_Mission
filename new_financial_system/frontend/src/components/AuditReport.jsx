@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 const AuditReport = () => {
   const [reportType, setReportType] = useState('monthly'); // 'monthly' or 'yearly'
@@ -25,9 +25,21 @@ const AuditReport = () => {
     fetchAudit();
   }, [reportType]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
+
+  const totals = useMemo(() => {
+    return data.reduce(
+      (acc, r) => ({
+        expectedFees: acc.expectedFees + (r.expected_fees || 0),
+        aidApplied: acc.aidApplied + (r.total_aid_applied || 0),
+        netExpected: acc.netExpected + (r.net_expected || 0),
+        totalCollected: acc.totalCollected + (r.total_collected || 0),
+      }),
+      { expectedFees: 0, aidApplied: 0, netExpected: 0, totalCollected: 0 }
+    );
+  }, [data]);
 
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white print:m-0 print:p-0 font-sans text-gray-900">
@@ -39,7 +51,7 @@ const AuditReport = () => {
       <div className="max-w-6xl mx-auto p-8 print:hidden">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-light tracking-tight text-gray-900">Audit Report Generator</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Audit Report Generator</h1>
             <p className="text-gray-500 text-sm mt-1">Select timeframe and generate printable A4 reports.</p>
           </div>
           <div className="flex items-center gap-4">
@@ -88,7 +100,7 @@ const AuditReport = () => {
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b-2 border-gray-300 print:border-black text-sm uppercase tracking-wider text-gray-700 font-semibold print:text-black">
+              <tr className="border-b-2 border-gray-300 print:border-black text-sm uppercase tracking-wider text-gray-700 font-medium print:text-black">
                 <th className="py-3 px-2">{reportType === 'monthly' ? 'Month' : 'Year'}</th>
                 <th className="py-3 px-2 text-right">Expected Fees</th>
                 <th className="py-3 px-2 text-right">Aid Applied</th>
@@ -102,7 +114,7 @@ const AuditReport = () => {
                   <td className="py-4 px-2 font-medium">{row.month || row.year}</td>
                   <td className="py-4 px-2 text-right">₹{row.expected_fees.toFixed(2)}</td>
                   <td className="py-4 px-2 text-right text-red-600 print:text-black">₹{row.total_aid_applied.toFixed(2)}</td>
-                  <td className="py-4 px-2 text-right font-semibold">₹{row.net_expected.toFixed(2)}</td>
+                  <td className="py-4 px-2 text-right font-medium">₹{row.net_expected.toFixed(2)}</td>
                   <td className="py-4 px-2 text-right font-bold text-green-700 print:text-black">₹{row.total_collected.toFixed(2)}</td>
                 </tr>
               ))}
@@ -117,16 +129,16 @@ const AuditReport = () => {
                 <tr className="border-t-2 border-gray-900 print:border-black font-bold text-gray-900 print:text-black text-sm">
                   <td className="py-4 px-2">GRAND TOTAL</td>
                   <td className="py-4 px-2 text-right">
-                    ₹{data.reduce((sum, r) => sum + r.expected_fees, 0).toFixed(2)}
+                    ₹{totals.expectedFees.toFixed(2)}
                   </td>
                   <td className="py-4 px-2 text-right">
-                    ₹{data.reduce((sum, r) => sum + r.total_aid_applied, 0).toFixed(2)}
+                    ₹{totals.aidApplied.toFixed(2)}
                   </td>
                   <td className="py-4 px-2 text-right">
-                    ₹{data.reduce((sum, r) => sum + r.net_expected, 0).toFixed(2)}
+                    ₹{totals.netExpected.toFixed(2)}
                   </td>
                   <td className="py-4 px-2 text-right">
-                    ₹{data.reduce((sum, r) => sum + r.total_collected, 0).toFixed(2)}
+                    ₹{totals.totalCollected.toFixed(2)}
                   </td>
                 </tr>
               </tfoot>
@@ -144,4 +156,5 @@ const AuditReport = () => {
   );
 };
 
-export default AuditReport;
+export default React.memo(AuditReport);
+

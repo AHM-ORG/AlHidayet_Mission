@@ -5,24 +5,29 @@ const StudentLedger = ({ studentId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // If using routing, studentId might come from useParams()
-  // For this component, we'll assume it's passed as a prop, or we can use a hardcoded fallback for demonstration
   const idToFetch = studentId || 1; 
 
   useEffect(() => {
+    let isMounted = true;
     fetch(`/api/ledger/${idToFetch}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch ledger');
         return res.json();
       })
       .then(data => {
-        setLedger(data);
-        setLoading(false);
+        if (isMounted) {
+          setLedger(data);
+          setLoading(false);
+        }
       })
       .catch(err => {
-        setError(err.message);
-        setLoading(false);
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
       });
+
+    return () => { isMounted = false; };
   }, [idToFetch]);
 
   if (loading) return <div className="p-8 text-gray-500">Loading ledger...</div>;
@@ -35,7 +40,7 @@ const StudentLedger = ({ studentId }) => {
     <div className="p-8 max-w-4xl mx-auto font-sans text-gray-800 bg-white min-h-screen">
       <div className="mb-8 pb-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end">
         <div>
-          <h1 className="text-3xl font-light mb-2">{student.name}'s Ledger</h1>
+          <h1 className="text-3xl font-bold mb-2">{student.name}'s Ledger</h1>
           <p className="text-sm text-gray-500">Class: {student.class || 'N/A'} | ID: {student.id}</p>
         </div>
         <div className="mt-4 md:mt-0 text-right">
@@ -92,4 +97,5 @@ const StudentLedger = ({ studentId }) => {
   );
 };
 
-export default StudentLedger;
+export default React.memo(StudentLedger);
+

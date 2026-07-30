@@ -103,8 +103,8 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="margin: 0;">Students with Unpaid Fees</h3>
                         <div style="display: flex; gap: 10px; width: 100%; max-width: 500px; flex-wrap: wrap;">
-                            <input type="text" id="tableSearch" placeholder="Search by name, ID, or phone..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
-                            <select id="sortBySelect" onchange="handleReminderFeesSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                            <input type="text" id="tableSearch" placeholder="Search by name, ID, or phone..." style="flex: 1; min-width: 140px; max-width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 0;">
+                            <select id="sortBySelect" onchange="handleReminderFeesSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500; max-width: 100%;">
                                 <option value="roll">Sort: Roll No</option>
                                 <option value="name">Sort: Name</option>
                             </select>
@@ -128,6 +128,7 @@
                         {% endfor %}
                     </div>
 
+                    <div class="table-responsive">
                     <table style="width: 100%; border-collapse: collapse;" id="reminderTable">
                         <thead>
                             <tr style="border-bottom: 2px solid #eee;">
@@ -180,6 +181,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </main>

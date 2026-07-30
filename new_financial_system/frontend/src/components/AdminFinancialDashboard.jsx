@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import StudentLedgerView from './StudentLedgerView';
 
 const AdminFinancialDashboard = () => {
@@ -8,12 +8,12 @@ const AdminFinancialDashboard = () => {
   const [aidForm, setAidForm] = useState({ amount: '', aid_type: 'flat' });
   const [aidStatus, setAidStatus] = useState('');
 
-  const handleSearch = (e) => {
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
     if (searchId) setActiveStudentId(searchId);
-  };
+  }, [searchId]);
 
-  const handleApplyAid = async (e) => {
+  const handleApplyAid = useCallback(async (e) => {
     e.preventDefault();
     setAidStatus('Applying...');
     try {
@@ -32,17 +32,40 @@ const AdminFinancialDashboard = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setAidStatus('Aid successfully applied!');
-      // Typically we would trigger a re-fetch of the ledger here
     } catch (err) {
       setAidStatus(`Error: ${err.message}`);
     }
-  };
+  }, [activeStudentId, aidForm]);
+
+  const handleAidTypeChange = useCallback((e) => {
+    const value = e.target.value;
+    setAidForm(prev => ({ ...prev, aid_type: value }));
+  }, []);
+
+  const handleAidAmountChange = useCallback((e) => {
+    const value = e.target.value;
+    setAidForm(prev => ({ ...prev, amount: value }));
+  }, []);
+
+  const handleSearchIdChange = useCallback((e) => {
+    const val = e.target.value;
+    setSearchId(val);
+
+    // Predictive Early Execution: Prefetch ledger when ID length >= 1 in background
+    if (val && val.trim().length >= 1) {
+      const id = val.trim();
+      fetch(`/api/ledger/${id}`, {
+        headers: { 'X-User-Role': 'student', 'X-User-Id': id },
+        priority: 'low'
+      }).catch(() => {}); // silent fail for prefetch
+    }
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto p-8">
       <header className="mb-10 flex justify-between items-end border-b border-gray-100 pb-6">
         <div>
-          <h1 className="text-3xl font-light text-gray-900 tracking-tight">Financial Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Dashboard</h1>
           <p className="text-gray-500 mt-2 text-sm">Manage student accounts, ledgers, and financial aid.</p>
         </div>
       </header>
@@ -53,14 +76,15 @@ const AdminFinancialDashboard = () => {
         <div className="col-span-1 space-y-6">
           {/* Search Card */}
           <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Find Student</h3>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Find Student</h3>
             <form onSubmit={handleSearch} className="space-y-4">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Student ID</label>
                 <input 
                   type="number" 
                   value={searchId}
-                  onChange={e => setSearchId(e.target.value)}
+                  onChange={handleSearchIdChange}
+                  onFocus={handleSearchIdChange}
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all text-sm"
                   placeholder="Enter ID..."
                   required
@@ -75,13 +99,13 @@ const AdminFinancialDashboard = () => {
           {/* Financial Aid Card */}
           {activeStudentId && (
             <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Apply Financial Aid</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Apply Financial Aid</h3>
               <form onSubmit={handleApplyAid} className="space-y-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Aid Type</label>
                   <select 
                     value={aidForm.aid_type}
-                    onChange={e => setAidForm({...aidForm, aid_type: e.target.value})}
+                    onChange={handleAidTypeChange}
                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-sm"
                   >
                     <option value="flat">Flat Amount (₹)</option>
@@ -94,7 +118,7 @@ const AdminFinancialDashboard = () => {
                     type="number" 
                     step="0.01"
                     value={aidForm.amount}
-                    onChange={e => setAidForm({...aidForm, amount: e.target.value})}
+                    onChange={handleAidAmountChange}
                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 text-sm"
                     placeholder="e.g. 500"
                     required
@@ -129,4 +153,5 @@ const AdminFinancialDashboard = () => {
   );
 };
 
-export default AdminFinancialDashboard;
+export default React.memo(AdminFinancialDashboard);
+

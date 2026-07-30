@@ -200,7 +200,7 @@
         <!-- Main Workspace -->
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">Class Routine Manager</div>
+                <div class="top-bar-title lcp-element" style="font-family: 'Outfit', sans-serif; font-weight: 700;">Class Routine Manager</div>
             </header>
 
             <div class="content-wrapper" style="padding: 30px;">
@@ -229,7 +229,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: flex-start;">
                     <!-- LEFT COLUMN: ADD/EDIT ROUTINE SLOT FORM -->
                     <div class="routine-card" style="margin:0; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
-                        <h3 id="routine-form-title" style="color: var(--primary-color); margin-top: 0; margin-bottom: 20px; font-family: 'Fredoka', sans-serif; font-weight: 500;">
+                        <h3 id="routine-form-title" style="color: var(--primary-color); margin-top: 0; margin-bottom: 20px; font-family: 'Outfit', sans-serif; font-weight: 500;">
                             <i data-lucide="plus-circle" style="vertical-align:middle; margin-right: 5px;"></i> Add Routine Slot
                         </h3>
                         
@@ -308,7 +308,7 @@
                             
                             {% for class_name, days in classes.items() %}
                                 <div class="routine-card routine-schedule-card" style="margin-bottom: 25px; box-shadow: var(--shadow-sm); border: 1px solid #eee; position: relative;">
-                                    <h3 style="margin-top:0; color:var(--text-dark); font-family: 'Fredoka', sans-serif; font-weight: 500;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
+                                    <h3 style="margin-top:0; color:var(--text-dark); font-family: 'Outfit', sans-serif; font-weight: 500;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
                                     
                                     <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
                                         <button class="badge" style="background-color: var(--secondary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px;" onclick="toggleExamSchedule('{{ class_name }}', 'admin-exam-container-{{ loop.index }}')">
@@ -338,6 +338,7 @@
                                     {% for day, schedule in days.items() %}
                                         <div class="day-group" data-day-name="{{ day }}">
                                             <h4 class="day-header" style="color: var(--secondary-color); margin-top: 15px; border-bottom: 2px solid #fdf2f8; padding-bottom: 5px;">{{ day }}</h4>
+                                            <div class="table-responsive">
                                             <table class="routine-table" style="box-shadow:none;">
                                                 <thead>
                                                     <tr>
@@ -372,6 +373,7 @@
                                                     {% endfor %}
                                                 </tbody>
                                             </table>
+                                            </div>
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -392,7 +394,7 @@
                     
                     {% for class_name, days in classes.items() %}
                         <div class="routine-card routine-schedule-card" style="box-shadow: var(--shadow-sm); border: 1px solid #eee; position: relative;">
-                            <h3 style="margin-top:0; font-family: 'Fredoka', sans-serif;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
+                            <h3 style="margin-top:0; font-family: 'Outfit', sans-serif;">Class: {{ class_name }} <span style="font-size: 14px; color: #ff7675; margin-left: 10px; font-weight: normal; background: #fff5f5; padding: 3px 10px; border-radius: 20px; border: 1px solid #ffe5e5; display: inline-block; vertical-align: middle;"><i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; display: inline-block;"></i>Coaching Time: {{ coaching_class_time }}</span></h3>
                             
                             <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
                                 <button class="badge" style="background-color: var(--secondary-color); border: none; cursor: pointer; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px;" onclick="toggleExamSchedule('{{ class_name }}', 'std-exam-container-{{ loop.index }}')">
@@ -711,6 +713,7 @@
             }
         }
     </script>
+    <script src="{{ url_for('static', filename='js/ux_optimization.js') }}" defer></script>
 </body>
 
 </html>

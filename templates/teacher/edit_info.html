@@ -32,7 +32,7 @@
             padding-bottom: 10px;
             margin-bottom: 20px;
             font-size: 20px;
-            font-family: 'Fredoka', sans-serif;
+            font-family: 'Outfit', sans-serif;
             font-weight: 500;
         }
 
@@ -135,7 +135,7 @@
 
     <div class="container section" style="max-width: 900px; margin-top: 40px; margin-bottom: 40px;">
         <div style="text-align: center; margin-bottom: 40px;">
-            <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color); font-family: 'Fredoka', sans-serif;">Edit Profile Details</h1>
+            <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color); font-family: 'Outfit', sans-serif;">Edit Profile Details</h1>
             <p style="color: var(--text-light);">Submit corrections for Admin approval</p>
         </div>
 
@@ -182,7 +182,7 @@
                         {% endif %}
                         <input type="file" name="photo" accept="image/*" style="margin-top: 10px; font-size: 12px; width: 100%; max-width: 150px;">
                     </div>
-                    <div style="flex: 1; min-width: 250px;" class="form-grid">
+                    <div style="flex: 1; min-width: 0; max-width: 100%;" class="form-grid">
                         <div class="input-group">
                             <label>Joining Date</label>
                             <input type="text" class="readonly-field" readonly value="{{ teacher_info.joining_date if teacher_info else 'N/A' }}">

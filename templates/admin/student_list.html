@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student List - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Beautiful Premium Switch Toggle */
@@ -164,14 +164,14 @@
                 
                 <!-- MASTER TABS -->
                 <div class="master-tabs" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap;">
-                    <div style="flex: 1; display: flex; gap: 15px;">
-                        <button class="master-tab-btn active" onclick="switchMasterTab(event, 'tab-students')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); transition: 0.3s;">All Students</button>
-                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-classes')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s;">By Class</button>
-                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-teachers')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s;">Teachers</button>
+                    <div class="master-tabs-nav" style="flex: 1; display: flex; gap: 10px; overflow-x: auto;">
+                        <button class="master-tab-btn active" onclick="switchMasterTab(event, 'tab-students')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); transition: 0.3s; white-space: nowrap;">All Students</button>
+                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-classes')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s; white-space: nowrap;">By Class</button>
+                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-teachers')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s; white-space: nowrap;">Teachers</button>
                     </div>
-                    <div style="flex: 1; max-width: 500px; display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" id="directorySearch" onkeyup="filterDirectory()" placeholder="Search by name, phone..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
-                        <select id="sortBySelect" onchange="handleStudentListSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                    <div class="master-tabs-search" style="flex: 1; max-width: 500px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" id="directorySearch" onkeyup="filterDirectory()" placeholder="Search by name, phone..." style="flex: 1; min-width: 140px; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
+                        <select id="sortBySelect" onchange="handleStudentListSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500; max-width: 100%;">
                             <option value="roll">Sort: Roll No</option>
                             <option value="name">Sort: Name</option>
                         </select>
@@ -194,20 +194,20 @@
                             </a>
                             {% endif %}
                         </div>
-                        <div class="table-scroll-container">
-                            <table style="width: 100%; border-collapse: collapse;">
+                        <div class="table-scroll-container table-responsive" style="overflow-x: auto; max-width: 100%;">
+                            <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
                                 <thead>
                                 <tr style="border-bottom: 2px solid #eee; text-align: left;">
-                                    <th style="padding: 12px;">SL</th>
-                                    <th style="padding: 12px;">Name</th>
-                                    <th style="padding: 12px;">Login ID (Phone)</th>
-                                    <th style="padding: 12px;">Class</th>
-                                    <th style="padding: 12px;">Roll</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 45px;">SL</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 150px;">Name</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 140px;">Login ID (Phone)</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 80px;">Class</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 60px;">Roll</th>
                                     {% if role == 'admin' %}
-                                    <th style="padding: 12px; color: #e74c3c;">Unique Code</th>
-                                    <th style="padding: 12px;">Permissions</th>
+                                    <th style="padding: 12px; color: #e74c3c; white-space: nowrap; min-width: 110px;">Unique Code</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 160px;">Permissions</th>
                                     {% endif %}
-                                    <th style="padding: 12px;">Action</th>
+                                    <th style="padding: 12px; white-space: nowrap; min-width: 180px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -219,8 +219,8 @@
                                     <td style="padding: 12px;">{{ student.class or 'N/A' }}</td>
                                     <td style="padding: 12px;">{{ student.roll_number or 'N/A' }}</td>
                                     {% if role == 'admin' %}
-                                    <td style="padding: 12px;">
-                                        <span style="background: #ffeaa7; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #d35400;">
+                                    <td style="padding: 12px; white-space: nowrap;">
+                                        <span style="background: #ffeaa7; padding: 6px 10px; border-radius: 4px; font-weight: bold; color: #d35400; white-space: nowrap; display: inline-block;">
                                             {{ student.unique_code or 'N/A' }}
                                         </span>
                                     </td>
@@ -360,8 +360,8 @@
                                     <td style="padding: 12px;" class="searchable">{{ student.full_name or student.username }}</td>
                                     <td style="padding: 12px;">{{ student.roll_number or 'N/A' }}</td>
                                     {% if role == 'admin' %}
-                                    <td style="padding: 12px;">
-                                        <span style="background: #ffeaa7; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #d35400;">
+                                    <td style="padding: 12px; white-space: nowrap;">
+                                        <span style="background: #ffeaa7; padding: 6px 10px; border-radius: 4px; font-weight: bold; color: #d35400; white-space: nowrap; display: inline-block;">
                                             {{ student.unique_code or 'N/A' }}
                                         </span>
                                     </td>

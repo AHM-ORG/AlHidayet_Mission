@@ -39,6 +39,38 @@ app.config.update(
 )
 app.jinja_env.auto_reload = True
 
+@app.route('/static/images/logo.png')
+@app.route('/static/logo.png')
+@app.route('/logo.png')
+@app.route('/templates/admin/logo.png')
+def serve_official_logo():
+    return send_from_directory(os.path.join(app.root_path, 'templates', 'admin'), 'logo.png')
+
+@app.context_processor
+def inject_official_logo():
+    return dict(logo_url='/static/images/logo.png')
+
+@app.after_request
+def inject_global_ux_assets(response):
+    try:
+        if response.status_code == 200 and response.content_type and response.content_type.startswith('text/html'):
+            data = response.get_data(as_text=True)
+            
+            # Inject Anti-FOUC Instant Theme Evaluator into <head> if not present
+            if '<head>' in data and 'document.documentElement.setAttribute("data-theme"' not in data:
+                theme_script = '<head><script>(function(){var t=localStorage.getItem("theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.setAttribute("data-theme","dark");}else{document.documentElement.setAttribute("data-theme","light");}})();</script>'
+                data = data.replace('<head>', theme_script, 1)
+                
+            # Inject UX Optimization Script before </body>
+            if 'ux_optimization.js' not in data and '</body>' in data:
+                script_tag = '<script src="/static/js/ux_optimization.js" defer></script></body>'
+                data = data.replace('</body>', script_tag, 1)
+                
+            response.set_data(data)
+    except Exception:
+        pass
+    return response
+
 @app.template_filter('clean_name')
 def clean_name_filter(s):
     if not s:
@@ -3937,7 +3969,7 @@ BRANCHES = ['bhogram']
 CATEGORIES = ['photos', 'videos']
 
 # Branding Configuration
-LOGO_URL = "https://i.postimg.cc/rpQPT9pk/logo-(1).jpg"
+LOGO_URL = "/static/images/logo.png"
 ESTD_YEAR = "2010"
 
 @app.context_processor
@@ -5229,8 +5261,14 @@ def admin_applications():
 def admin_profile_edits():
     if 'user' in session and session['role'] in ['admin', 'teacher']:
         conn = get_db_connection()
-        logo_url = conn.execute("SELECT content FROM settings WHERE key='logo_url'").fetchone()
-        logo_url = logo_url[0] if logo_url else None
+        logo_url = None
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, content TEXT)")
+            logo_row = conn.execute("SELECT content FROM settings WHERE key='logo_url'").fetchone()
+            logo_url = logo_row[0] if logo_row else None
+        except Exception as e:
+            print(f"Error fetching logo_url: {e}")
+            logo_url = None
         if session.get('branch'):
             applications = conn.execute('''
                 SELECT a.id, a.type, a.status, a.submitted_at, u.username 

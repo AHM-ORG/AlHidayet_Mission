@@ -181,7 +181,6 @@
 
         .tab-content {
             display: none;
-            background: #fff;
             border-radius: 0 8px 8px 8px;
             box-shadow: var(--shadow-sm);
         }
@@ -494,15 +493,15 @@
                             </button>
                         </form>
 
-                        <div style="margin-top: 40px; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #f0f0f0;">
-                            <h4 style="margin-top: 0; margin-bottom: 10px; color: #2d3436; font-size: 15px;"><i class="fas fa-info-circle" style="color:var(--primary-color);"></i> Expected CSV Header Layout:</h4>
-                            <p style="font-size: 13px; color: #7f8c8d; line-height: 1.5; margin: 0 0 10px 0;">
+                        <div class="info-box" style="margin-top: 40px; padding: 22px; border-radius: 14px;">
+                            <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 15px;"><i class="fas fa-info-circle" style="color:var(--primary-color);"></i> Expected CSV Header Layout:</h4>
+                            <p style="font-size: 13px; opacity: 0.85; line-height: 1.5; margin: 0 0 12px 0;">
                                 Ensure your CSV file has the exact headers below (the columns can be in any order):
                             </p>
-                            <code style="display: block; background: #eaeaea; padding: 10px; border-radius: 4px; font-size: 13px; color: #2d3436; font-weight: 600;">
+                            <code style="display: block; background: rgba(31, 111, 120, 0.12); padding: 12px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--primary-color);">
                                 username, date, status, remarks
                             </code>
-                            <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 12px; color: #7f8c8d; line-height: 1.6;">
+                            <ul style="margin: 12px 0 0 0; padding-left: 20px; font-size: 12px; opacity: 0.85; line-height: 1.6;">
                                 <li><strong>username</strong>: Teacher's system login ID OR Student's Unique ID (e.g. <code>AHM-XXXXXX</code>)</li>
                                 <li><strong>date</strong>: Calendar date in <code>YYYY-MM-DD</code> format</li>
                                 <li><strong>status</strong>: <code>Present</code>, <code>Absent</code>, <code>Late</code>, <code>Half Day</code>, or <code>On Leave</code></li>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 
 const AdminFeeManager = () => {
   const [classId, setClassId] = useState('');
@@ -14,7 +14,7 @@ const AdminFeeManager = () => {
 
   const [activeModal, setActiveModal] = useState(null); // 'customFee' | 'financialAid' | null
 
-  const handleUpdateFees = async (e) => {
+  const handleUpdateFees = useCallback(async (e) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/class/update_fees', {
@@ -31,9 +31,9 @@ const AdminFeeManager = () => {
       console.error(err);
       alert('Failed to update fees.');
     }
-  };
+  }, [classId, monthlyFee, readmissionFee]);
 
-  const handleGenerateMonthly = async () => {
+  const handleGenerateMonthly = useCallback(async () => {
     if (!classId) return alert('Please enter a Class ID first.');
     try {
       const res = await fetch('/api/fees/generate_monthly', {
@@ -47,9 +47,9 @@ const AdminFeeManager = () => {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [classId]);
 
-  const handleAddCustomFee = async (e) => {
+  const handleAddCustomFee = useCallback(async (e) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/fees/add_adhoc', {
@@ -68,9 +68,9 @@ const AdminFeeManager = () => {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [studentId, customAmount, customReason]);
 
-  const handleSetAid = async (e) => {
+  const handleSetAid = useCallback(async (e) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/aid/set', {
@@ -89,11 +89,23 @@ const AdminFeeManager = () => {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [studentId, aidAmount, aidReason]);
+
+  const closeModal = useCallback(() => {
+    setActiveModal(null);
+  }, []);
+
+  const openCustomFeeModal = useCallback(() => {
+    setActiveModal('customFee');
+  }, []);
+
+  const openFinancialAidModal = useCallback(() => {
+    setActiveModal('financialAid');
+  }, []);
 
   return (
     <div className="p-8 max-w-4xl mx-auto font-sans text-gray-800">
-      <h1 className="text-3xl font-light mb-8">Fee Management</h1>
+      <h1 className="text-3xl font-bold mb-8">Fee Management</h1>
       
       <div className="bg-white p-6 rounded shadow-sm border border-gray-100 mb-8">
         <h2 className="text-xl font-medium mb-4">Class-wise Fees</h2>
@@ -121,10 +133,10 @@ const AdminFeeManager = () => {
       </div>
 
       <div className="flex gap-4">
-        <button onClick={() => setActiveModal('customFee')} className="bg-gray-800 text-white px-6 py-2 rounded hover:bg-gray-900 transition">
+        <button onClick={openCustomFeeModal} className="bg-gray-800 text-white px-6 py-2 rounded hover:bg-gray-900 transition">
           Add Custom Fee / Due
         </button>
-        <button onClick={() => setActiveModal('financialAid')} className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 transition">
+        <button onClick={openFinancialAidModal} className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 transition">
           Set Financial Aid
         </button>
       </div>
@@ -138,7 +150,7 @@ const AdminFeeManager = () => {
               <input type="number" placeholder="Amount" className="border px-3 py-2 rounded" value={customAmount} onChange={e => setCustomAmount(e.target.value)} required />
               <input type="text" placeholder="Reason (Required)" className="border px-3 py-2 rounded" value={customReason} onChange={e => setCustomReason(e.target.value)} required />
               <div className="flex justify-end gap-2 mt-4">
-                <button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
               </div>
             </form>
@@ -155,7 +167,7 @@ const AdminFeeManager = () => {
               <input type="number" placeholder="Reduction Amount" className="border px-3 py-2 rounded" value={aidAmount} onChange={e => setAidAmount(e.target.value)} required />
               <input type="text" placeholder="Reason for Aid" className="border px-3 py-2 rounded" value={aidReason} onChange={e => setAidReason(e.target.value)} required />
               <div className="flex justify-end gap-2 mt-4">
-                <button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
                 <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Apply Aid</button>
               </div>
             </form>
@@ -166,4 +178,5 @@ const AdminFeeManager = () => {
   );
 };
 
-export default AdminFeeManager;
+export default React.memo(AdminFeeManager);
+

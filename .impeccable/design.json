@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-29T13:08:00Z",
+  "title": "Design System: Al-Hidayet Mission",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Deep Muted Teal", "canonical": "#1f6f78" },
+      "primary-dark": { "role": "primary-dark", "displayName": "Dark Teal", "canonical": "#15535a" },
+      "secondary": { "role": "secondary", "displayName": "Royal Blue", "canonical": "#2f80ed" },
+      "accent": { "role": "accent", "displayName": "Warm Gold", "canonical": "#d59f2f" },
+      "neutral-bg": { "role": "neutral-bg", "displayName": "Off-White Canvas", "canonical": "#f6f8fb" },
+      "neutral-surface": { "role": "neutral-surface", "displayName": "Pure White Surface", "canonical": "#ffffff" },
+      "neutral-border": { "role": "neutral-border", "displayName": "Slate Border", "canonical": "#dbe3ea" },
+      "text-dark": { "role": "text-dark", "displayName": "Charcoal Text", "canonical": "#1f2937" }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 4px 14px rgba(15, 23, 42, 0.06)", "purpose": "Resting cards and control elements." },
+      { "name": "shadow-md", "value": "0 14px 34px rgba(15, 23, 42, 0.10)", "purpose": "Hover card elevation and popovers." },
+      { "name": "shadow-lg", "value": "0 22px 60px rgba(15, 23, 42, 0.14)", "purpose": "Modal dialog containers." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Standard snappy UI easing." },
+      { "name": "ease-apple-fluid", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Apple fluid curve for entrance and physical scale transitions." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Instant micro-feedback duration." },
+      { "name": "duration-normal", "value": "220ms", "purpose": "Standard modal and card transition duration." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button with instant active scale feedback.",
+      "html": "<button class=\"ds-btn-primary\">SAVE CHANGES</button>",
+      "css": ".ds-btn-primary { background: #1f6f78; color: #ffffff; padding: 12px 24px; font-weight: 600; font-family: 'Fredoka', sans-serif; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.2); transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-primary:hover { transform: translateY(-1.5px); background: #15535a; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3); } .ds-btn-primary:active { transform: scale(0.96) translateY(0); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); transition-duration: 100ms; }"
+    },
+    {
+      "name": "Dashboard Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Interactive card widget with bottom accent border.",
+      "html": "<div class=\"ds-card\"><h3>Total Students</h3><p class=\"ds-stat\">1,250</p></div>",
+      "css": ".ds-card { background: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06); border-bottom: 4px solid #1f6f78; transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; } .ds-card:hover { transform: translateY(-5px); box-shadow: 0 14px 34px rgba(15, 23, 42, 0.10); } .ds-card:active { transform: scale(0.97); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Modern Campus Sanctuary",
+    "overview": "The Al-Hidayet Mission design language pairs structured institutional authority with warm, accessible clarity.",
+    "dos": ["Do use GPU-accelerated transition properties", "Do apply scale(0.97) on pointer-down active states"],
+    "donts": ["Don't use transition: all", "Don't use sluggish ease-in animation curves"]
+  }
+}

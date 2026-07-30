@@ -1,0 +1,22 @@
+{
+  "name": "Al-Hidayet Mission",
+  "short_name": "AHM Mission",
+  "description": "Al-Hidayet Mission Academic Portal & School Management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070c14",
+  "theme_color": "#070c14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

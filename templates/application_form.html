@@ -61,7 +61,7 @@
             border: 2px solid #eee;
             border-radius: 8px;
             font-family: 'Outfit', sans-serif;
-            transition: all 0.3s;
+            transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
         }
 
         .input-group input:focus,
@@ -80,7 +80,7 @@
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background 180ms var(--ease-out);
             display: block;
             width: 100%;
         }
@@ -493,6 +493,7 @@
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/ux_optimization.js') }}" defer></script>
 </body>
 
 </html>

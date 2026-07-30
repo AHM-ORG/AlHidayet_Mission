@@ -150,7 +150,7 @@
 
                         <!-- Manual Schedule Component -->
                         <div id="manual-schedule-box" style="display: none; grid-column: 1 / -1; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; margin-top: 10px; box-sizing: border-box;">
-                            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 6px; font-family: 'Fredoka', sans-serif;">
+                            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-dark); display: flex; align-items: center; gap: 6px; font-family: 'Outfit', sans-serif;">
                                 <i data-lucide="list-todo" style="width:16px; height:16px;"></i> Edit Exam Routine Schedule
                             </h4>
                             <input type="hidden" name="schedule_text_json" id="schedule_text_json" value="[]">
@@ -281,13 +281,14 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h3 style="margin: 0;">Choose a Student</h3>
                         <div style="display: flex; gap: 10px; width: 100%; max-width: 500px; flex-wrap: wrap;">
-                            <input type="text" id="tableSearch" onkeyup="filterSelectStudentTable()" placeholder="Search by name..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
-                            <select id="sortBySelect" onchange="handleSelectStudentSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                            <input type="text" id="tableSearch" onkeyup="filterSelectStudentTable()" placeholder="Search by name..." style="flex: 1; min-width: 140px; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
+                            <select id="sortBySelect" onchange="handleSelectStudentSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500; max-width: 100%;">
                                 <option value="roll">Sort: Roll No</option>
                                 <option value="name">Sort: Name</option>
                             </select>
                         </div>
                     </div>
+                    <div class="table-responsive">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="border-bottom: 2px solid #eee;">
@@ -309,6 +310,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </main>

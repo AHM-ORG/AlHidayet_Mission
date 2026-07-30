@@ -356,7 +356,7 @@
                     "currency": "INR",
                     "name": "Al Hidayet Mission",
                     "description": "Monthly Fee - " + month,
-                    "image": "https://i.postimg.cc/rpQPT9pk/logo-(1).jpg",
+                    "image": "{{ logo_url or '/static/images/logo.png' }}",
                     "order_id": data.order_id, 
                     "handler": function (response){
                         // Verify Payment on Backend
