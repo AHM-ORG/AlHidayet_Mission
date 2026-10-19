@@ -13,10 +13,13 @@ from functools import wraps
 from dotenv import load_dotenv
 import csv
 import io
-import google.generativeai as genai
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-import google.generativeai as genai
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
 try:
     import razorpay
