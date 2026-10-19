@@ -42,14 +42,41 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true',
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
     TEMPLATES_AUTO_RELOAD=True,
-    SEND_FILE_MAX_AGE_DEFAULT=0
+    SEND_FILE_MAX_AGE_DEFAULT=43200
 )
 app.jinja_env.auto_reload = True
 
+import gzip
+
+APP_STATIC_VERSION = os.getenv('APP_STATIC_VERSION', '2.5.1')
+
 @app.context_processor
 def inject_cache_bust():
-    import time
-    return {'cache_bust': int(time.time())}
+    return {'cache_bust': APP_STATIC_VERSION}
+
+@app.after_request
+def compress_and_cache(response):
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=86400'
+
+    if (
+        response.status_code >= 200 and
+        response.status_code < 300 and
+        'Content-Encoding' not in response.headers and
+        not response.direct_passthrough
+    ):
+        accept_encoding = request.headers.get('Accept-Encoding', '').lower()
+        if 'gzip' in accept_encoding:
+            content_type = response.headers.get('Content-Type', '').lower()
+            if any(content_type.startswith(ct) for ct in ('text/', 'application/javascript', 'application/json')):
+                data = response.get_data()
+                if len(data) > 600:
+                    compressed = gzip.compress(data, compresslevel=6)
+                    response.set_data(compressed)
+                    response.headers['Content-Encoding'] = 'gzip'
+                    response.headers['Content-Length'] = len(compressed)
+                    response.headers['Vary'] = 'Accept-Encoding'
+    return response
 
 @app.template_filter('clean_name')
 def clean_name_filter(s):
@@ -1406,17 +1433,15 @@ def add_security_headers(response):
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
     
-    # Always send no-cache headers for HTML, CSS, and JS to prevent stale mobile cache
-    if response.content_type and (
-        response.content_type.startswith('text/html') or
-        response.content_type.startswith('text/css') or
-        'javascript' in response.content_type
-    ):
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+    # Static assets: allow 24-hour browser caching to prevent massive mobile internet drain
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=86400'
+        response.headers.pop('Pragma', None)
+        response.headers.pop('Expires', None)
+    elif response.content_type and response.content_type.startswith('text/html'):
+        response.headers['Cache-Control'] = 'no-cache'
         
-        if response.status_code == 200:
+        if response.status_code == 200 and not response.direct_passthrough:
             try:
                 data = response.get_data(as_text=True)
                 
