@@ -373,30 +373,28 @@
                 <div class="testimonial-track">
                     {% for review in reviews %}
                     <div class="review-card">
-                        <div>
-                            <div class="review-meta">
-                                <div class="review-avatar">
-                                    {{ review.visitor_name[0] | upper }}
-                                </div>
-                                <div class="review-author-info">
-                                    <h3>{{ review.visitor_name }}</h3>
-                                    <span class="review-date">{{ review.created_at[:10] }}</span>
-                                </div>
+                        <div class="review-meta">
+                            <div class="review-avatar">
+                                {{ review.visitor_name[0] | upper }}
                             </div>
-                            <div class="review-rating">
-                                {% for i in range(5) %}
-                                    {% if i < review.rating %}
-                                        <i class="fas fa-star text-star"></i>
-                                    {% else %}
-                                        <i class="far fa-star text-star-empty"></i>
-                                    {% endif %}
-                                {% endfor %}
+                            <div class="review-author-info">
+                                <h3>{{ review.visitor_name }}</h3>
+                                <span class="review-date">{{ review.created_at[:10] }}</span>
                             </div>
-                            <p class="review-text">
-                                <i class="fas fa-quote-left quote-icon"></i>
-                                {{ review.review_text }}
-                            </p>
                         </div>
+                        <div class="review-rating">
+                            {% for i in range(5) %}
+                                {% if i < review.rating %}
+                                    <i class="fas fa-star text-star"></i>
+                                {% else %}
+                                    <i class="far fa-star text-star-empty"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p class="review-text">
+                            <i class="fas fa-quote-left quote-icon"></i>
+                            {{ review.review_text }}
+                        </p>
                     </div>
                     {% else %}
                     <div class="no-reviews-card">
@@ -408,30 +406,28 @@
                     {% if reviews and reviews|length > 1 %}
                     {% for review in reviews %}
                     <div class="review-card" aria-hidden="true">
-                        <div>
-                            <div class="review-meta">
-                                <div class="review-avatar">
-                                    {{ review.visitor_name[0] | upper }}
-                                </div>
-                                <div class="review-author-info">
-                                    <h3>{{ review.visitor_name }}</h3>
-                                    <span class="review-date">{{ review.created_at[:10] }}</span>
-                                </div>
+                        <div class="review-meta">
+                            <div class="review-avatar">
+                                {{ review.visitor_name[0] | upper }}
                             </div>
-                            <div class="review-rating">
-                                {% for i in range(5) %}
-                                    {% if i < review.rating %}
-                                        <i class="fas fa-star text-star"></i>
-                                    {% else %}
-                                        <i class="far fa-star text-star-empty"></i>
-                                    {% endif %}
-                                {% endfor %}
+                            <div class="review-author-info">
+                                <h3>{{ review.visitor_name }}</h3>
+                                <span class="review-date">{{ review.created_at[:10] }}</span>
                             </div>
-                            <p class="review-text">
-                                <i class="fas fa-quote-left quote-icon"></i>
-                                {{ review.review_text }}
-                            </p>
                         </div>
+                        <div class="review-rating">
+                            {% for i in range(5) %}
+                                {% if i < review.rating %}
+                                    <i class="fas fa-star text-star"></i>
+                                {% else %}
+                                    <i class="far fa-star text-star-empty"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p class="review-text">
+                            <i class="fas fa-quote-left quote-icon"></i>
+                            {{ review.review_text }}
+                        </p>
                     </div>
                     {% endfor %}
                     {% endif %}
