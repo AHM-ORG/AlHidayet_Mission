@@ -2355,21 +2355,21 @@ def upload_file_to_drive_and_map(local_path, filename, mime_type=None, folder_id
     uploaded_to_cloud = False
     drive_file_id = None
 
-    # 1. Try Google Drive Service Account
-    if is_google_drive_configured():
-        g_id, g_url = upload_to_google_drive(processed_bytes, filename, mime_type=mime_type, folder_id=folder_id)
-        if g_id:
-            drive_file_id = g_id
-            public_url = g_url
-            uploaded_to_cloud = True
-
-    # 2. Try Supabase fallback if Google Drive wasn't configured or failed
-    if not uploaded_to_cloud and is_supabase_configured():
+    # 1. Primary Cloud Storage: Supabase Storage (Fast CDN, Permanent, No quota limitations)
+    if is_supabase_configured():
         cloud_url = upload_file_to_supabase(processed_bytes, storage_path, content_type=mime_type)
         if cloud_url:
             public_url = cloud_url
             uploaded_to_cloud = True
             print(f" [SUPABASE STORAGE] Successfully uploaded {storage_path} to Supabase bucket '{SUPABASE_STORAGE_BUCKET}'")
+
+    # 2. Secondary Cloud Storage: Google Drive Service Account fallback
+    if not uploaded_to_cloud and is_google_drive_configured():
+        g_id, g_url = upload_to_google_drive(processed_bytes, filename, mime_type=mime_type, folder_id=folder_id)
+        if g_id:
+            drive_file_id = g_id
+            public_url = g_url
+            uploaded_to_cloud = True
 
     # Record in storage_mappings and drive_mappings for backwards compatibility
     def _save_mapping(db_conn):
