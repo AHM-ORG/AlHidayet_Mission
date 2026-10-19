@@ -716,22 +716,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    let cachedScrollable = 1;
+    const recalcScrollMetrics = () => {
+        cachedScrollable = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+    };
+    recalcScrollMetrics();
+    window.addEventListener('resize', recalcScrollMetrics, { passive: true });
+
     const updateScrollEffects = () => {
+        const y = window.scrollY;
         if (header) {
-            header.classList.toggle('is-scrolled', window.scrollY > 8);
+            header.classList.toggle('is-scrolled', y > 8);
         }
 
-        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-        const progressValue = scrollable > 0 ? window.scrollY / scrollable : 0;
+        const progressValue = y > 0 ? y / cachedScrollable : 0;
         progress.style.transform = `scaleX(${Math.min(Math.max(progressValue, 0), 1)})`;
-
-        if (hero && !reduceMotion) {
-            hero.style.backgroundPosition = `center ${Math.round(window.scrollY * 0.18)}px`;
-        }
-
-        if (heroVisual && !reduceMotion) {
-            heroVisual.style.setProperty('--hero-visual-shift', `${Math.round(window.scrollY * -0.035)}px`);
-        }
     };
 
     let ticking = false;
@@ -829,11 +828,10 @@ document.addEventListener('DOMContentLoaded', () => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('is-visible');
-                } else {
-                    entry.target.classList.remove('is-visible');
+                    observer.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.12 });
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
         observedTargets.forEach((el) => observer.observe(el));
     } else {

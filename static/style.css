@@ -90,7 +90,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    scroll-behavior: smooth;
 }
 
 html {
@@ -98,6 +97,7 @@ html {
     max-width: 100%;
     overflow-x: clip;
     scroll-padding-top: calc(var(--header-height) + 12px);
+    scroll-behavior: smooth;
 }
 
 body {
@@ -2455,24 +2455,23 @@ tbody tr:hover {
 
 .reveal-on-scroll {
     opacity: 0;
-    transform: translate3d(0, 26px, 0) scale(.98);
+    transform: translate3d(0, 20px, 0);
     transition:
-        opacity 620ms cubic-bezier(.2, .8, .2, 1),
-        transform 620ms cubic-bezier(.2, .8, .2, 1);
+        opacity 480ms cubic-bezier(.16, 1, .3, 1),
+        transform 480ms cubic-bezier(.16, 1, .3, 1);
     transition-delay: var(--reveal-delay, 0ms);
-    will-change: opacity, transform;
 }
 
 .reveal-on-scroll[data-reveal="left"] {
-    transform: translate3d(-28px, 10px, 0) scale(.98);
+    transform: translate3d(-20px, 0, 0);
 }
 
 .reveal-on-scroll[data-reveal="right"] {
-    transform: translate3d(28px, 10px, 0) scale(.98);
+    transform: translate3d(20px, 0, 0);
 }
 
 .reveal-on-scroll[data-reveal="zoom"] {
-    transform: translate3d(0, 14px, 0) scale(.94);
+    transform: translate3d(0, 10px, 0) scale(.96);
 }
 
 .reveal-on-scroll.is-visible {
@@ -2481,17 +2480,14 @@ tbody tr:hover {
 }
 
 .text-reveal-on-scroll {
-    --text-rise: 18px;
+    --text-rise: 14px;
     position: relative;
     opacity: 0;
     transform: translate3d(0, var(--text-rise), 0);
-    filter: blur(4px);
     transition:
-        opacity 680ms cubic-bezier(.2, .8, .2, 1),
-        transform 680ms cubic-bezier(.2, .8, .2, 1),
-        filter 680ms cubic-bezier(.2, .8, .2, 1);
+        opacity 500ms cubic-bezier(.16, 1, .3, 1),
+        transform 500ms cubic-bezier(.16, 1, .3, 1);
     transition-delay: var(--text-delay, 0ms);
-    will-change: opacity, transform, filter;
 }
 
 /* Text reveal underline disabled to prevent unwanted lines cutting into cards */
@@ -2502,7 +2498,6 @@ tbody tr:hover {
 .text-reveal-on-scroll.is-visible {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-    filter: blur(0);
 }
 
 .scroll-text-split {
@@ -2512,18 +2507,16 @@ tbody tr:hover {
 .scroll-word {
     display: inline-block;
     opacity: 0;
-    transform: translate3d(0, .78em, 0) rotateX(18deg);
-    transform-origin: 50% 100%;
+    transform: translate3d(0, .5em, 0);
     transition:
-        opacity 620ms cubic-bezier(.2, .8, .2, 1),
-        transform 620ms cubic-bezier(.2, .8, .2, 1);
+        opacity 480ms cubic-bezier(.16, 1, .3, 1),
+        transform 480ms cubic-bezier(.16, 1, .3, 1);
     transition-delay: calc(var(--text-delay, 0ms) + var(--word-delay, 0ms));
-    will-change: opacity, transform;
 }
 
 .text-reveal-on-scroll.is-visible .scroll-word {
     opacity: 1;
-    transform: translate3d(0, 0, 0) rotateX(0);
+    transform: translate3d(0, 0, 0);
 }
 
 .hero-tag.text-reveal-on-scroll {

@@ -175,9 +175,9 @@
 
     <!-- Notice Board Section -->
     <section id="notice-board" class="section notices-section" style="position: relative; background: radial-gradient(circle at 50% 50%, rgba(12, 35, 64, 0.03) 0%, rgba(229, 152, 25, 0.02) 50%, #f8fafc 100%); overflow: hidden; border-bottom: 1px solid var(--border-color);">
-        <!-- Subtle luminous ambient backgrounds -->
-        <div style="position: absolute; top: -120px; left: -100px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(12, 35, 64, 0.08) 0%, rgba(12, 35, 64, 0) 70%); filter: blur(70px); border-radius: 50%; pointer-events: none;"></div>
-        <div style="position: absolute; bottom: -120px; right: -100px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(229, 152, 25, 0.08) 0%, rgba(229, 152, 25, 0) 70%); filter: blur(70px); border-radius: 50%; pointer-events: none;"></div>
+        <!-- Subtle luminous ambient backgrounds (GPU friendly) -->
+        <div style="position: absolute; top: -120px; left: -100px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(12, 35, 64, 0.06) 0%, rgba(12, 35, 64, 0.02) 45%, transparent 70%); border-radius: 50%; pointer-events: none;"></div>
+        <div style="position: absolute; bottom: -120px; right: -100px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(229, 152, 25, 0.06) 0%, rgba(229, 152, 25, 0.02) 45%, transparent 70%); border-radius: 50%; pointer-events: none;"></div>
         
         <div class="container" style="position: relative; z-index: 2;">
             <div class="section-header text-center">
