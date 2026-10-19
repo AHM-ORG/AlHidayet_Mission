@@ -2230,11 +2230,21 @@ def get_google_drive_service():
             info = json.loads(sa_json)
             creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
             
-        # 2. Check service_account.json file
+        # 2. Check service_account.json file paths
         if not creds:
-            sa_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE') or os.path.join(app.root_path, 'service_account.json')
-            if os.path.exists(sa_file):
-                creds = service_account.Credentials.from_service_account_file(sa_file, scopes=scopes)
+            possible_files = [
+                os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE'),
+                os.path.join(app.root_path, 'service_account.json'),
+                r"C:\Users\mdasw\Downloads\stellar-spark-498915-d5-8e6c1785fd68.json"
+            ]
+            for sa_file in possible_files:
+                if sa_file and os.path.exists(sa_file):
+                    try:
+                        creds = service_account.Credentials.from_service_account_file(sa_file, scopes=scopes)
+                        print(f" [GOOGLE DRIVE] Loaded Service Account key from: {sa_file}")
+                        break
+                    except Exception as fe:
+                        print(f" [GOOGLE DRIVE] Failed loading {sa_file}: {fe}")
                 
         if creds:
             _drive_service = build('drive', 'v3', credentials=creds, cache_discovery=False)
