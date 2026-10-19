@@ -27,7 +27,12 @@ except ImportError:
     razorpay = None
 
 # Load environment variables
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(_env_file):
+    load_dotenv(_env_file, override=True)
+else:
+    load_dotenv(override=True)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY') or secrets.token_hex(32)
@@ -524,7 +529,9 @@ def get_db_connection():
     if has_request_context() and hasattr(g, 'db_conn') and g.db_conn is not None:
         return g.db_conn
 
-    if DATABASE_URL and (DATABASE_URL.startswith("libsql://") or DATABASE_URL.startswith("https://") or DATABASE_URL.startswith("http://")):
+    cur_db_url = os.getenv('DATABASE_URL') or DATABASE_URL
+    cur_db_token = os.getenv('DATABASE_AUTH_TOKEN') or DATABASE_AUTH_TOKEN
+    if cur_db_url and (cur_db_url.startswith("libsql://") or cur_db_url.startswith("https://") or cur_db_url.startswith("http://")):
         import base64
         import requests
 
@@ -831,7 +838,7 @@ def get_db_connection():
                         
                 return rows, description, last_insert_rowid, affected_row_count
 
-        conn = HttpLibsqlConnection(DATABASE_URL, DATABASE_AUTH_TOKEN)
+        conn = HttpLibsqlConnection(cur_db_url, cur_db_token)
     else:
         conn = sqlite3.connect(DB_NAME, timeout=30)
         conn.row_factory = sqlite3.Row
