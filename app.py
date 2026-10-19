@@ -1234,7 +1234,9 @@ def init_db():
             password TEXT NOT NULL,
             role TEXT NOT NULL,
             security_key TEXT NOT NULL,
-            branch TEXT
+            branch TEXT,
+            temp_password TEXT,
+            phone TEXT
         )
     ''')
     c.execute('''
@@ -1613,12 +1615,13 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
-    # Migrate users for phone column
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN phone TEXT")
-        print(" [DB MIGRATE] Added phone column to users table")
-    except sqlite3.OperationalError:
-        pass
+    # Migrate users for missing columns
+    for col in ['phone', 'temp_password', 'branch']:
+        try:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
+            print(f" [DB MIGRATE] Added {col} column to users table")
+        except sqlite3.OperationalError:
+            pass
 
     # Migrate visitor_reviews columns
     try:
@@ -1641,7 +1644,7 @@ def init_db():
             pass
 
     # Migrate teacher_info for missing columns
-    for col in ['full_name', 'phone_number', 'address', 'aadhaar_number', 'assigned_classes', 'bank_details']:
+    for col in ['full_name', 'phone_number', 'address', 'aadhaar_number', 'assigned_classes', 'bank_details', 'photo_path', 'qualification', 'joining_date', 'cl_quota', 'cv_path']:
         try:
             c.execute(f"ALTER TABLE teacher_info ADD COLUMN {col} TEXT")
             print(f" [DB MIGRATE] Added {col} column to teacher_info")
@@ -7826,15 +7829,32 @@ def smart_upload():
 def teacher_list():
     if 'user' in session and session['role'] in ['admin', 'teacher']:
         conn = get_db_connection()
-        teachers = conn.execute('''
-            SELECT u.id, u.username, u.email, u.temp_password, ti.full_name, ti.phone_number, ti.qualification, ti.joining_date,
-                   ti.aadhaar_number, ti.assigned_classes, ti.bank_details, ti.teacher_type, ti.cv_path
-            FROM users u
-            LEFT JOIN teacher_info ti ON u.id = ti.user_id
-            WHERE u.role = 'teacher'
-            ORDER BY COALESCE(ti.full_name, u.username)
-        ''').fetchall()
-        conn.close()
+        try:
+            teachers = conn.execute('''
+                SELECT u.id, u.username, u.email, u.temp_password, ti.full_name, ti.phone_number, ti.qualification, ti.joining_date,
+                       ti.aadhaar_number, ti.assigned_classes, ti.bank_details, ti.teacher_type, ti.cv_path
+                FROM users u
+                LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE u.role = 'teacher'
+                ORDER BY COALESCE(ti.full_name, u.username)
+            ''').fetchall()
+        except Exception as e:
+            print(f" [TEACHER LIST DB ERROR] {e}")
+            try:
+                teachers = conn.execute('''
+                    SELECT u.id, u.username, u.email, NULL as temp_password,
+                           ti.full_name, ti.phone_number, ti.qualification, ti.joining_date,
+                           ti.aadhaar_number, ti.assigned_classes, ti.bank_details, ti.teacher_type, ti.cv_path
+                    FROM users u
+                    LEFT JOIN teacher_info ti ON u.id = ti.user_id
+                    WHERE u.role = 'teacher'
+                    ORDER BY COALESCE(ti.full_name, u.username)
+                ''').fetchall()
+            except Exception as e2:
+                print(f" [TEACHER LIST FALLBACK ERROR] {e2}")
+                teachers = []
+        finally:
+            conn.close()
         logo_url = LOGO_URL
         return render_template('admin/teacher_list.html', teachers=teachers, role=session['role'], logo_url=logo_url)
     return redirect(url_for('home'))
