@@ -2200,18 +2200,110 @@ def determine_relative_storage_path(local_path, filename):
         pass
     return filename
 
-def upload_file_to_supabase_and_map(local_path, filename, mime_type=None, folder_id=None, conn=None):
+# ============================================================================
+# GOOGLE DRIVE SERVICE ACCOUNT CLIENT (Permanent, Non-expiring 15 GB)
+# ============================================================================
+_drive_service = None
+
+def get_google_drive_service():
     """
-    Supabase Storage Upload & Mapping Pipeline with Automated Compression Firewall:
-    1. Determines relative storage path preserving the identical directory structure.
-    2. Passes assets exceeding 2MB through the automated compression firewall:
+    Initializes and caches the Google Drive v3 client using Service Account credentials.
+    Supports either:
+    1. A service_account.json file located at the project root or specified in GOOGLE_SERVICE_ACCOUNT_FILE
+    2. A raw JSON string in GOOGLE_SERVICE_ACCOUNT_JSON (ideal for cloud platforms like PythonAnywhere)
+    """
+    global _drive_service
+    if _drive_service is not None:
+        return _drive_service
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        
+        scopes = ['https://www.googleapis.com/auth/drive']
+        creds = None
+        
+        # 1. Check raw JSON env variable
+        sa_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
+        if sa_json:
+            import json
+            info = json.loads(sa_json)
+            creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+            
+        # 2. Check service_account.json file
+        if not creds:
+            sa_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE') or os.path.join(app.root_path, 'service_account.json')
+            if os.path.exists(sa_file):
+                creds = service_account.Credentials.from_service_account_file(sa_file, scopes=scopes)
+                
+        if creds:
+            _drive_service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+            print(" [GOOGLE DRIVE] Service Account authenticated successfully.")
+            return _drive_service
+    except Exception as e:
+        print(f" [GOOGLE DRIVE INIT WARNING] Could not initialize Service Account: {e}")
+        
+    return None
+
+def is_google_drive_configured():
+    return get_google_drive_service() is not None
+
+def upload_to_google_drive(file_bytes, filename, mime_type=None, folder_id=None):
+    """
+    Uploads file bytes directly to Google Drive via Service Account.
+    Sets public reader access so images load everywhere and returns (file_id, public_url).
+    """
+    service = get_google_drive_service()
+    if not service:
+        return None, None
+
+    try:
+        from googleapiclient.http import MediaIoBaseUpload
+        import io
+        
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type or 'application/octet-stream', resumable=True)
+        file_metadata = {'name': filename}
+        
+        target_folder = folder_id or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+        if target_folder:
+            file_metadata['parents'] = [target_folder]
+            
+        uploaded = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, webViewLink'
+        ).execute()
+        
+        file_id = uploaded.get('id')
+        if file_id:
+            try:
+                service.permissions().create(
+                    fileId=file_id,
+                    body={'type': 'anyone', 'role': 'reader'}
+                ).execute()
+            except Exception as pe:
+                print(f" [GOOGLE DRIVE PERM WARNING] Permission setting skipped: {pe}")
+                
+            public_url = f"https://lh3.googleusercontent.com/d/{file_id}"
+            print(f" [GOOGLE DRIVE] Successfully uploaded {filename} (ID: {file_id})")
+            return file_id, public_url
+    except Exception as e:
+        print(f" [GOOGLE DRIVE UPLOAD ERROR] {filename}: {e}")
+        
+    return None, None
+
+def upload_file_to_drive_and_map(local_path, filename, mime_type=None, folder_id=None, conn=None):
+    """
+    Dual Cloud Storage Upload & Mapping Pipeline with Automated Compression Firewall:
+    1. Passes assets exceeding 2MB through the automated compression firewall:
        - Images (.jpg, .jpeg, .png): Pillow RGBA/P to standard RGB, quality=80 optimized JPEG.
        - PDFs (.pdf): pypdf lossless stream deflation using zlib filters.
        - Office Docs (.docx, .xlsx): Passthrough directly.
        - Files <= 2MB: Bypasses calculations entirely to conserve server CPU.
-    3. Pushes to Supabase Storage bucket 'documents'.
+    2. Primary cloud storage: Google Drive (15 GB Service Account).
+    3. Secondary cloud storage: Supabase Storage.
     4. Records public URL and metadata into storage_mappings and drive_mappings.
-    5. Safely manages local cleanup when uploaded to cloud.
+    5. Safely cleans up local file when uploaded to cloud.
     """
     if not os.path.exists(local_path):
         return None
@@ -2246,15 +2338,23 @@ def upload_file_to_supabase_and_map(local_path, filename, mime_type=None, folder
             except Exception as ce:
                 print(f" [FIREWALL ERROR] PDF compression failed for {filename}: {ce}")
         else:
-            # Office documents (.docx, .xlsx, etc.) pass through directly
             processed_bytes = file_bytes
 
-    # Determine storage path preserving exact relative structure
     storage_path = determine_relative_storage_path(local_path, filename)
     public_url = f"/static/uploads/{storage_path}"
     uploaded_to_cloud = False
+    drive_file_id = None
 
-    if is_supabase_configured():
+    # 1. Try Google Drive Service Account
+    if is_google_drive_configured():
+        g_id, g_url = upload_to_google_drive(processed_bytes, filename, mime_type=mime_type, folder_id=folder_id)
+        if g_id:
+            drive_file_id = g_id
+            public_url = g_url
+            uploaded_to_cloud = True
+
+    # 2. Try Supabase fallback if Google Drive wasn't configured or failed
+    if not uploaded_to_cloud and is_supabase_configured():
         cloud_url = upload_file_to_supabase(processed_bytes, storage_path, content_type=mime_type)
         if cloud_url:
             public_url = cloud_url
@@ -2267,11 +2367,11 @@ def upload_file_to_supabase_and_map(local_path, filename, mime_type=None, folder
         c.execute('''
             INSERT OR REPLACE INTO storage_mappings (filename, storage_path, public_url, mime_type, file_size, updated_at)
             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ''', (filename, storage_path, public_url, mime_type, len(processed_bytes)))
+        ''', (filename, drive_file_id or storage_path, public_url, mime_type, len(processed_bytes)))
         c.execute('''
             INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id)
             VALUES (?, ?)
-        ''', (filename, storage_path))
+        ''', (filename, drive_file_id or storage_path))
 
     if conn is not None:
         try:
@@ -2306,13 +2406,13 @@ def upload_file_to_supabase_and_map(local_path, filename, mime_type=None, folder
                 print(f" [STORAGE MAPPING EXCEPTION] {e}")
                 break
 
-    return storage_path
+    return drive_file_id or storage_path
 
 # Backward compatibility alias
-upload_file_to_drive_and_map = upload_file_to_supabase_and_map
+upload_file_to_supabase_and_map = upload_file_to_drive_and_map
 
 def delete_old_mapped_file(file_path):
-    """Deletes mapped file from Supabase storage and local mappings."""
+    """Deletes mapped file from Google Drive / Supabase storage and local mappings."""
     if not file_path:
         return
     filename = os.path.basename(file_path)
@@ -2327,6 +2427,7 @@ def delete_old_mapped_file(file_path):
                 storage_path = row2['drive_file_id']
                 
         if storage_path:
+            delete_from_google_drive(storage_path)
             delete_file_from_supabase(storage_path)
             
         c.execute("DELETE FROM storage_mappings WHERE filename = ?", (filename,))
@@ -2337,13 +2438,33 @@ def delete_old_mapped_file(file_path):
         print(f" [STORAGE DELETE ERROR] Failed to delete old mapped file {filename}: {e}")
 
 def delete_from_google_drive(file_id):
-    """Backwards compatibility shim for delete_from_google_drive."""
+    """Deletes a file from Google Drive via Service Account or Supabase."""
     if not file_id:
         return False
+    service = get_google_drive_service()
+    if service:
+        try:
+            service.files().delete(fileId=file_id).execute()
+            print(f" [GOOGLE DRIVE] Deleted file {file_id}")
+            return True
+        except Exception as e:
+            print(f" [GOOGLE DRIVE DELETE ERROR] {file_id}: {e}")
     return delete_file_from_supabase(file_id)
 
 def find_file_in_google_drive(filename):
-    """Backwards compatibility shim searching storage mappings."""
+    """Searches for file in Google Drive or DB mappings."""
+    service = get_google_drive_service()
+    if service:
+        try:
+            escaped = filename.replace("'", "\\'")
+            q = f"name = '{escaped}' and trashed = false"
+            res = service.files().list(q=q, fields='files(id, name)').execute()
+            files = res.get('files', [])
+            if files:
+                return files[0]['id']
+        except Exception as e:
+            print(f" [GOOGLE DRIVE FIND ERROR] {filename}: {e}")
+
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -2359,7 +2480,12 @@ def find_file_in_google_drive(filename):
 
 @app.route('/drive/view/<path:file_id>')
 def drive_view(file_id):
-    """View route redirected or served from Supabase Storage."""
+    """View route redirected to Google Drive CDN or Supabase Storage."""
+    if file_id.startswith('http'):
+        return redirect(file_id)
+    # Check if alphanumeric Drive file ID (doesn't contain slashes or file extension)
+    if '/' not in file_id and '.' not in file_id:
+        return redirect(f"https://lh3.googleusercontent.com/d/{file_id}")
     if is_supabase_configured():
         from storage_pipeline import supabase, SUPABASE_STORAGE_BUCKET
         public_url = supabase.storage.from_(SUPABASE_STORAGE_BUCKET).get_public_url(file_id)

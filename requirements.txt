@@ -7,3 +7,6 @@ pypdf>=5.0.0
 reportlab>=4.0.0
 razorpay>=2.0.0
 requests>=2.31.0
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
+google-auth-httplib2>=0.2.0

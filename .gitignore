@@ -1,4 +1,8 @@
 .env
+service_account.json
+*service_account*.json
+credentials.json
+client_secret*.json
 *.db
 *.db.bak
 *.bak
