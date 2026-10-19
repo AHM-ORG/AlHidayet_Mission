@@ -13,13 +13,14 @@ venv/
 static/uploads/
 records/
 
-# Ignore all photos and images
+# Ignore all photos and images except static brand images
 *.jpg
 *.jpeg
 *.png
 *.gif
 *.webp
 *.ico
+!static/images/*
 
 # Temporary scratch files and directories
 scratch/

@@ -57,7 +57,7 @@
     <header class="main-header" role="banner">
         <div class="container header-container">
             <a href="/" class="logo" aria-label="Al-Hidayet Mission Home">
-                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img" onerror="this.onerror=null; this.src='https://i.postimg.cc/rpQPT9pk/logo-(1).jpg';">
                 <span class="logo-text">Al-Hidayet <span class="highlight">Mission</span></span>
             </a>
             <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
@@ -163,7 +163,7 @@
             <div class="hero-image">
                 <div class="hero-seal-card hero-img-halo">
                     <div class="hero-seal-disc">
-                        <img src="{{ url_for('static', filename='images/logo_clean.png') }}" alt="Al-Hidayet Mission Seal" class="hero-seal-img hero-img-main">
+                        <img src="{{ logo_url or 'https://i.postimg.cc/rpQPT9pk/logo-(1).jpg' }}" alt="Al-Hidayet Mission Seal" class="hero-seal-img hero-img-main" onerror="this.onerror=null; this.src='https://i.postimg.cc/rpQPT9pk/logo-(1).jpg';">
                     </div>
                     <div class="hero-floating-chip">
                         <i class="fas fa-certificate" style="color: var(--accent-gold);"></i> Government Regd.

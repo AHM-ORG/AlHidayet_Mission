@@ -69,8 +69,18 @@ DATABASE_AUTH_TOKEN = os.getenv('DATABASE_AUTH_TOKEN')
 import requests
 turso_session = requests.Session()
 
+def is_cloud_db_enabled(url=None, token=None):
+    u = url or os.getenv('DATABASE_URL') or DATABASE_URL
+    t = token or os.getenv('DATABASE_AUTH_TOKEN') or DATABASE_AUTH_TOKEN
+    if not u or not t:
+        return False
+    t_clean = str(t).strip().strip('"\'')
+    if t_clean.startswith("<") or len(t_clean) < 30:
+        return False
+    return u.startswith("libsql://") or u.startswith("https://") or u.startswith("http://")
+
 def consolidate_databases():
-    if DATABASE_URL and (DATABASE_URL.startswith("libsql://") or DATABASE_URL.startswith("https://") or DATABASE_URL.startswith("http://")):
+    if is_cloud_db_enabled():
         print(" [DB CONSOLIDATION] Skipping local database consolidation for cloud database.")
         return
     import shutil
@@ -525,13 +535,9 @@ def generate_unique_student_code(c):
             return code
 
 def get_db_connection():
-    from flask import g, has_request_context
-    if has_request_context() and hasattr(g, 'db_conn') and g.db_conn is not None:
-        return g.db_conn
-
     cur_db_url = os.getenv('DATABASE_URL') or DATABASE_URL
     cur_db_token = os.getenv('DATABASE_AUTH_TOKEN') or DATABASE_AUTH_TOKEN
-    if cur_db_url and (cur_db_url.startswith("libsql://") or cur_db_url.startswith("https://") or cur_db_url.startswith("http://")):
+    if is_cloud_db_enabled(cur_db_url, cur_db_token):
         import base64
         import requests
 
@@ -846,7 +852,6 @@ def get_db_connection():
     
     from flask import g, has_request_context
     if has_request_context():
-        g.db_conn = conn
         if 'db_connections' not in g:
             g.db_connections = []
         g.db_connections.append(conn)
@@ -2529,12 +2534,17 @@ def inject_branding():
             pass
         return {'bank_name': bank_details_str, 'branch_name': '', 'account_no': '', 'ifsc_code': ''}
 
-    conn = get_db_connection()
+    committee = []
     try:
-        committee = [dict(row) for row in conn.execute("SELECT * FROM managing_committee ORDER BY order_num ASC, id ASC").fetchall()]
-    except sqlite3.OperationalError:
+        conn = get_db_connection()
+        try:
+            committee = [dict(row) for row in conn.execute("SELECT * FROM managing_committee ORDER BY order_num ASC, id ASC").fetchall()]
+        except Exception:
+            committee = []
+        finally:
+            conn.close()
+    except Exception:
         committee = []
-    conn.close()
 
     return dict(
         logo_url=LOGO_URL, 
