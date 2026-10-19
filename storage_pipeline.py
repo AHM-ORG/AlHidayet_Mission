@@ -1,9 +1,22 @@
 import os
 import sqlite3
 from io import BytesIO
-from PIL import Image
-from pypdf import PdfWriter
-from supabase import create_client, Client
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+try:
+    from pypdf import PdfWriter
+except ImportError:
+    PdfWriter = None
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None
+    Client = None
 from dotenv import load_dotenv
 
 # Load environment configuration

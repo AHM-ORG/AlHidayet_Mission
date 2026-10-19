@@ -1799,17 +1799,29 @@ def migrate_pending_media_drive_id():
 # ============================================================================
 # SUPABASE STORAGE PIPELINE & AUTOMATED COMPRESSION FIREWALL
 # ============================================================================
-import storage_pipeline
-from storage_pipeline import (
-    is_supabase_configured,
-    optimize_image,
-    optimize_pdf,
-    get_content_type,
-    TARGET_FILE_LIMIT,
-    SUPABASE_STORAGE_BUCKET,
-    upload_file_to_supabase,
-    delete_file_from_supabase
-)
+try:
+    import storage_pipeline
+    from storage_pipeline import (
+        is_supabase_configured,
+        optimize_image,
+        optimize_pdf,
+        get_content_type,
+        TARGET_FILE_LIMIT,
+        SUPABASE_STORAGE_BUCKET,
+        upload_file_to_supabase,
+        delete_file_from_supabase
+    )
+except Exception as _storage_err:
+    print(f" [STORAGE PIPELINE WARNING] {repr(_storage_err)}")
+    storage_pipeline = None
+    is_supabase_configured = lambda: False
+    optimize_image = None
+    optimize_pdf = None
+    get_content_type = lambda ext: 'application/octet-stream'
+    TARGET_FILE_LIMIT = 2 * 1024 * 1024
+    SUPABASE_STORAGE_BUCKET = 'documents'
+    upload_file_to_supabase = None
+    delete_file_from_supabase = None
 
 def determine_relative_storage_path(local_path, filename):
     """
