@@ -9,10 +9,10 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -21,24 +21,35 @@
     <style>
         /* Modern Premium Gallery styles */
         :root {
-            --gallery-primary: #8b5cf6;
-            --gallery-primary-hover: #7c3aed;
-            --gallery-dark: #0f172a;
-            --gallery-dark-slate: #1e293b;
-            --gallery-glass: rgba(255, 255, 255, 0.75);
-            --gallery-radius-lg: 20px;
-            --gallery-radius-md: 12px;
-            --gallery-transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --gallery-primary: var(--primary-navy);
+            --gallery-primary-hover: var(--primary-midnight);
+            --gallery-accent: var(--accent-gold);
+            --gallery-dark: #07172B;
+            --gallery-dark-slate: #0C2340;
+            --gallery-glass: rgba(255, 255, 255, 0.88);
+            --gallery-radius-lg: 24px;
+            --gallery-radius-md: 16px;
+            --gallery-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .gallery-header {
-            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            background: linear-gradient(135deg, var(--primary-midnight) 0%, var(--primary-navy) 100%);
             color: #fff;
-            padding: 90px 0 70px;
+            padding: 95px 0 75px;
             text-align: center;
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 -10px 20px rgba(0,0,0,0.15);
+        }
+
+        .gallery-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(229, 152, 25, 0.35) 25%, var(--accent-gold) 50%, rgba(229, 152, 25, 0.35) 75%, transparent 100%);
         }
 
         /* Floating background particles */
@@ -55,7 +66,7 @@
 
         .particle {
             position: absolute;
-            background: rgba(139, 92, 246, 0.15);
+            background: rgba(229, 152, 25, 0.12);
             border-radius: 50%;
             filter: blur(10px);
             animation: float-around 20s infinite linear;
@@ -69,15 +80,15 @@
         }
 
         .gallery-title {
-            font-family: 'Fredoka', sans-serif;
-            font-size: 48px;
+            font-family: var(--font-heading);
+            font-size: 46px;
             font-weight: 700;
             margin-bottom: 12px;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.02em;
             color: #fff;
             position: relative;
             z-index: 2;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            text-shadow: 0 4px 10px rgba(0,0,0,0.25);
         }
 
         .gallery-subtitle {
@@ -561,39 +572,77 @@
 </head>
 
 <body class="bg-pattern">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#gallery-content" class="skip-link">Skip to main content</a>
 
     <!-- Header -->
-    <header class="main-header">
+    <header class="main-header" role="banner">
         <div class="container header-container">
             <div class="logo">
-                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none;">
-                    <img src="{{ logo_url }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
-                    <span class="logo-text" style="margin:0;">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                <a href="/" aria-label="Al-Hidayet Mission Home" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                    <span class="logo-text" style="margin:0;">Al-Hidayet <span class="highlight">Mission</span></span>
                 </a>
             </div>
-            <nav class="main-nav">
+            <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
                 <a href="/" class="nav-link">Home</a>
                 <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link active" aria-current="page">Gallery</a>
                 <a href="/#faq" class="nav-link">FAQ</a>
                 <a href="/#contact" class="nav-link">Contact</a>
-                <a href="/services" class="nav-link">Services</a>
-                <a href="/gallery" class="nav-link active">Gallery</a>
+                <div class="nav-drawer-account-section">
+                    <div class="drawer-account-card">
+                        <div class="account-card-header">
+                            <div class="account-avatar">
+                                <i data-lucide="{{ 'user-check' if session.get('user') else 'shield-check' }}"></i>
+                            </div>
+                            <div class="account-meta">
+                                <span class="account-badge">
+                                    <span class="badge-dot"></span>
+                                    {{ 'Active Session' if session.get('user') else 'Official Portal' }}
+                                </span>
+                                <span class="account-title">{{ 'Signed In Account' if session.get('user') else 'Student & Parent Access' }}</span>
+                            </div>
+                        </div>
+                        <div class="account-card-actions">
+                            <a href="/dashboard" class="account-btn account-btn-primary">
+                                <i data-lucide="layout-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                            {% if session.get('user') %}
+                            <a href="/logout" class="account-btn account-btn-outline">
+                                <i data-lucide="log-out"></i>
+                                <span>Logout</span>
+                            </a>
+                            {% else %}
+                            <a href="/login/student" class="account-btn account-btn-outline">
+                                <i data-lucide="log-in"></i>
+                                <span>Portal Login</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </nav>
-            <div class="header-cta">
-                {% if session.get('user') %}
-                    <a href="/dashboard" class="btn btn-outline">Dashboard</a>
-                {% else %}
-                    <a href="/login/student" class="btn btn-outline">Login</a>
+            <div class="header-cta" style="display: flex; align-items: center; gap: 8px;">
+                <a href="/dashboard" class="btn btn-primary"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                {% if not session.get('user') %}
+                <a href="/login/student" class="btn btn-outline-gold"><i data-lucide="log-in"></i> Portal</a>
                 {% endif %}
             </div>
-            <button class="mobile-menu-btn">
-                <i data-lucide="menu"></i>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNav">
+                <span class="hamburger-box">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
             </button>
         </div>
     </header>
 
     <!-- Page Banner with floaty particles -->
-    <div class="gallery-header">
+    <div class="gallery-header" id="gallery-content">
         <div class="particle-container" id="particleContainer"></div>
         <div class="container">
             <h1 class="gallery-title">School Gallery</h1>
@@ -713,7 +762,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
 

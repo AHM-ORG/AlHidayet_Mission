@@ -14,7 +14,7 @@
         rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -222,7 +222,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
     </script>
@@ -496,7 +496,7 @@
             });
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

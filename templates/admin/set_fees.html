@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Set Fees - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 </head>
@@ -29,6 +29,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -90,60 +91,103 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Set Fees</div>
-            </header>
-            <div class="content-wrapper">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Fee Configuration</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-amber" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="indian-rupee" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Cash Manager
+                    </span>
                 
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 24px;">
                 <!-- ALERTS -->
                 {% with messages = get_flashed_messages() %}
                 {% if messages %}
-                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-                    {{ messages[0] }}
+                <div class="alert alert-success" style="margin-bottom: 20px; padding: 14px 18px; border-radius: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-weight: 500; display:flex; align-items:center; gap:10px;">
+                    <i data-lucide="check-circle" style="width:18px; height:18px; color:#059669;"></i>
+                    <span>{{ messages[0] }}</span>
                 </div>
                 {% endif %}
                 {% endwith %}
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; align-items: start;">
                     <!-- Class-wise form -->
-                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3 style="color: #0984e3;"><i data-lucide="users"></i> Class-wise Fees</h3>
-                        <p style="color: #666; font-size: 14px;">Set the monthly fee for an entire class.</p>
-                        <form action="/admin/set-fees" method="post" style="margin-top: 20px;">
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:17px; color:var(--primary-color); font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="users" style="width:20px; height:20px; color:#2563eb;"></i> Class-wise Monthly Fees
+                        </h3>
+                        <p style="margin:4px 0 20px; color:#64748b; font-size:13px;">Set the baseline monthly fee structure for an entire grade.</p>
+                        
+                        <form action="/admin/set-fees" method="post" style="display:flex; flex-direction:column; gap:16px;">
                             <input type="hidden" name="update_type" value="class">
                             <input type="hidden" name="branch" value="bhogram">
-                            <div class="input-group">
-                                <label>Class:</label>
-                                <select name="class" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Target Class:</label>
+                                <select name="class" required style="width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;" class="search-select">
                                     {% for c in classes %}
                                     <option value="{{ c }}">{{ c }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="input-group">
-                                <label>Monthly Fee (INR):</label>
-                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 800">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Monthly Fee (₹ INR):</label>
+                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 800" style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-gold)'" onblur="this.style.borderColor='#e2e8f0'">
                             </div>
                             <input type="hidden" name="hostel_fee" value="0">
                             
-                            <button type="submit" class="auth-btn" style="background: #00b894;">Set Class Fee</button>
+                            <button type="submit" style="margin-top:8px; padding:11px 18px; border-radius:10px; border:none; background:var(--primary-color); color:#fff; font-weight:600; font-size:14px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='var(--primary-color)'">
+                                Apply Class Fee
+                            </button>
                         </form>
                     </div>
 
                     <!-- Student-wise form -->
-                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3 style="color: #6c5ce7;"><i data-lucide="user"></i> Student-wise Fees</h3>
-                        <p style="color: #666; font-size: 14px;">Set a custom monthly fee for a specific student.</p>
-                        <form action="/admin/set-fees" method="post" style="margin-top: 20px;">
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:17px; color:var(--primary-color); font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="user" style="width:20px; height:20px; color:var(--accent-gold);"></i> Student Custom Fee Override
+                        </h3>
+                        <p style="margin:4px 0 20px; color:#64748b; font-size:13px;">Assign a personalized fee concession or custom monthly amount.</p>
+                        
+                        <form action="/admin/set-fees" method="post" style="display:flex; flex-direction:column; gap:16px;">
                             <input type="hidden" name="update_type" value="student">
                             {% set filter_id = 'setfee' %}
                             {% include 'partials/class_student_filter.html' %}
-                            <div class="input-group">
-                                <label>Monthly Fee (INR):</label>
-                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 1200">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Custom Monthly Fee (₹ INR):</label>
+                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 1200" style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-gold)'" onblur="this.style.borderColor='#e2e8f0'">
                             </div>
                             <input type="hidden" name="hostel_fee" value="0">
                             
-                            <button type="submit" class="auth-btn" style="background: #6c5ce7; margin-top: auto;">Set Student Fee</button>
+                            <button type="submit" style="margin-top:auto; padding:11px 18px; border-radius:10px; border:none; background:linear-gradient(135deg, var(--accent-gold), var(--accent-dark)); color:#fff; font-weight:600; font-size:14px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.opacity='0.92'" onmouseout="this.style.opacity='1'">
+                                Save Custom Fee
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -196,6 +240,6 @@
             }
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student List - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Beautiful Premium Switch Toggle */
@@ -90,6 +90,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -151,20 +152,43 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">User Directory</div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">User Directory</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+                </div>
             </header>
             <div class="content-wrapper">
                 
                 <!-- MASTER TABS -->
-                <div class="master-tabs" style="margin-bottom: 20px; display: flex; gap: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap;">
-                    <div style="flex: 1; display: flex; gap: 15px;">
-                        <button class="master-tab-btn active" onclick="switchMasterTab(event, 'tab-students')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); transition: 0.3s;">All Students</button>
-                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-classes')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s;">By Class</button>
-                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-teachers')" style="padding: 10px 20px; font-size: 16px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; transition: 0.3s;">Teachers</button>
+                <div class="master-tabs-bar">
+                    <div class="master-tabs-nav">
+                        <button class="master-tab-btn active" onclick="switchMasterTab(event, 'tab-students')">All Students</button>
+                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-classes')">By Class</button>
+                        <button class="master-tab-btn" onclick="switchMasterTab(event, 'tab-teachers')">Teachers</button>
                     </div>
-                    <div style="flex: 1; max-width: 500px; display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" id="directorySearch" onkeyup="filterDirectory()" placeholder="Search by name, phone..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
-                        <select id="sortBySelect" onchange="handleStudentListSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                    <div class="master-tabs-controls">
+                        <input type="text" id="directorySearch" onkeyup="filterDirectory()" placeholder="Search by name, phone...">
+                        <select id="sortBySelect" onchange="handleStudentListSort()">
                             <option value="roll">Sort: Roll No</option>
                             <option value="name">Sort: Name</option>
                         </select>
@@ -180,7 +204,7 @@
                     {% else %}
                     <div class="auth-container" style="max-width: 100%; text-align: left; margin-bottom: 30px; padding-bottom: 10px;">
                         <div class="table-scroll-container">
-                            <table style="width: 100%; border-collapse: collapse;">
+                            <table class="dash-table directory-table" style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                 <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                     <th style="padding: 12px;">SL</th>
@@ -252,7 +276,6 @@
                                                     data-admission-date="{{ student.date_of_admission or 'N/A' }}"
                                                     data-monthly-fee="{{ student.monthly_fee or '0' }}"
                                                     data-bank-details="{{ student.bank_details or 'N/A' }}"
-                                                    data-sl-no="{{ student.sl_no or 'N/A' }}"
                                                     data-session="{{ student.session or 'N/A' }}"
                                                     data-mode-of-admission="{{ student.mode_of_admission or 'N/A' }}"
                                                     data-coaching-opted="{{ 'Yes' if student.coaching_opted == 1 else 'No' }}"
@@ -316,7 +339,7 @@
                             Class: {{ class_name }}
                         </h3>
                             <div class="table-scroll-container">
-                                <table style="width: 100%; border-collapse: collapse;">
+                                <table class="dash-table directory-table" style="width: 100%; border-collapse: collapse;">
                                     <thead>
                                 <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                     <th style="padding: 12px;">SL</th>
@@ -386,7 +409,6 @@
                                                     data-admission-date="{{ student.date_of_admission or 'N/A' }}"
                                                     data-monthly-fee="{{ student.monthly_fee or '0' }}"
                                                     data-bank-details="{{ student.bank_details or 'N/A' }}"
-                                                    data-sl-no="{{ student.sl_no or 'N/A' }}"
                                                     data-session="{{ student.session or 'N/A' }}"
                                                     data-mode-of-admission="{{ student.mode_of_admission or 'N/A' }}"
                                                     data-coaching-opted="{{ 'Yes' if student.coaching_opted == 1 else 'No' }}"
@@ -432,7 +454,7 @@
                 <div id="tab-teachers" class="master-tab-content" style="display: none;">
                     <div class="auth-container" style="max-width: 100%; text-align: left;">
                         <div class="table-scroll-container">
-                            <table style="width: 100%; border-collapse: collapse;">
+                            <table class="dash-table directory-table" style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                 <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                     <th style="padding: 12px;">SL</th>
@@ -541,17 +563,20 @@
             // Reset all master tab buttons
             document.querySelectorAll('.master-tab-btn').forEach(btn => {
                 btn.classList.remove('active');
-                btn.style.color = '#666';
-                btn.style.borderBottom = '3px solid transparent';
+                btn.style.removeProperty('color');
+                btn.style.removeProperty('border-bottom');
             });
             
             // Show the active tab
-            document.getElementById(tabId).style.display = 'block';
+            const target = document.getElementById(tabId);
+            if (target) target.style.display = 'block';
             
             // Style the active button
-            evt.currentTarget.classList.add('active');
-            evt.currentTarget.style.color = 'var(--primary-color)';
-            evt.currentTarget.style.borderBottom = '3px solid var(--primary-color)';
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            }
+            // Trigger recalculation of table scroll hint on mobile
+            window.dispatchEvent(new Event('resize'));
         }
 
         function showTab(evt, tabId) {
@@ -565,11 +590,16 @@
             });
             
             // Show the active tab
-            document.getElementById(tabId).style.display = 'block';
+            const target = document.getElementById(tabId);
+            if (target) target.style.display = 'block';
             
             // Style the active button
-            evt.currentTarget.style.background = 'var(--primary-color)';
-            evt.currentTarget.style.color = 'white';
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.style.background = 'var(--primary-color)';
+                evt.currentTarget.style.color = 'white';
+            }
+            // Trigger recalculation of table scroll hint on mobile
+            window.dispatchEvent(new Event('resize'));
         }
 
         // showToast is provided globally by static/js/script.js
@@ -670,10 +700,9 @@
             }
 
             const fields = [
-                { label: 'Form Serial No / SL No', value: data.slNo, icon: 'hash' },
                 { label: 'Academic Session', value: data.session, icon: 'calendar' },
                 { label: 'Login ID (Phone)', value: data.username, icon: 'phone' },
-                { label: 'Whatsapp Number', value: data.whatsappNo, icon: 'phone' },
+                { label: 'Guardian\'s Whatsapp No', value: data.whatsappNo, icon: 'phone' },
                 { label: 'Gender', value: data.gender, icon: 'user' },
                 { label: 'Date of Birth', value: data.dob, icon: 'calendar' },
                 { label: 'Religion', value: data.religion, icon: 'info' },
@@ -821,7 +850,7 @@
             }
         }
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     
     <!-- PREMIUM DETAIL VIEW MODAL -->
     <div id="studentDetailModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(45, 52, 54, 0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">

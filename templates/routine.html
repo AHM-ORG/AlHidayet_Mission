@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Routine - Bhogram Al-Hidayet Mission</title>
+    <title>Class Routine - Al-Hidayet Mission (Main Branch)</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
     
@@ -95,16 +95,19 @@
 </head>
 
 <body class="bg-pattern">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#routine-content" class="skip-link">Skip to main content</a>
+
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" aria-label="Dashboard Sidebar">
             <div class="sidebar-header">
                 <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
-                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
-                    <span style="font-weight:700; font-size:14px;">Bhogram Al-Hidayet Mission</span>
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission" style="width:34px; height:34px; border-radius:8px; object-fit:cover;">
+                    <span style="font-weight:700; font-size:14px;">Al-Hidayet Mission (Main Branch)</span>
                 </a>
             </div>
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" aria-label="Dashboard Navigation">
                 <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
 
                 {% if role == 'admin' %}
@@ -114,6 +117,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -174,9 +178,38 @@
         </aside>
 
         <!-- Main Workspace -->
-        <main class="main-content">
-            <header class="top-bar">
-                <div class="top-bar-title" style="font-family: 'Fredoka', sans-serif; font-weight: 600;">Class Routine Manager</div>
+        <main class="main-content" id="routine-content">
+            <header class="top-bar" role="banner" aria-label="Routine Workspace Top Bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Class Routine Manager</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-navy" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="calendar" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Schedule & Periods
+                    </span>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
 
             <div class="content-wrapper" style="padding: 30px;">
@@ -201,7 +234,7 @@
                         <form method="POST">
                             <input type="hidden" name="add_slot" value="1">
                             
-                            <input type="hidden" name="branch" value="bhogram">
+                            <input type="hidden" name="branch" value="main">
 
                              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
                                  <div class="input-group">
@@ -275,34 +308,36 @@
                                     
                                     {% for day, schedule in days.items() %}
                                         <h4 style="color: var(--secondary-color); margin-top: 15px; border-bottom: 2px solid #fdf2f8; padding-bottom: 5px;">{{ day }}</h4>
-                                        <table class="routine-table" style="box-shadow:none;">
-                                            <thead>
-                                                <tr>
-                                                    <th>Time</th>
-                                                    <th>Subject</th>
-                                                    <th>Teacher</th>
-                                                    <th style="width:80px; text-align:center;">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for slot in schedule %}
-                                                <tr style="border-bottom: 1px solid #eee;">
-                                                    <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
-                                                    <td><strong>{{ slot.subject }}</strong></td>
-                                                    <td>{{ slot.teacher_name | clean_name }}</td>
-                                                    <td style="text-align:center;">
-                                                        <form method="POST" class="delete-slot-form" style="margin:0;">
-                                                            <input type="hidden" name="delete_slot" value="1">
-                                                            <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                                                            <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
-                                                                <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
-                                                            </button>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                                        <div class="table-scroll-container">
+                                            <table class="routine-table dash-table" style="box-shadow:none;">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Time</th>
+                                                        <th>Subject</th>
+                                                        <th>Teacher</th>
+                                                        <th style="width:80px; text-align:center;">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for slot in schedule %}
+                                                    <tr style="border-bottom: 1px solid #eee;">
+                                                        <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
+                                                        <td><strong>{{ slot.subject }}</strong></td>
+                                                        <td>{{ slot.teacher_name | clean_name }}</td>
+                                                        <td style="text-align:center;">
+                                                            <form method="POST" class="delete-slot-form" style="margin:0;">
+                                                                <input type="hidden" name="delete_slot" value="1">
+                                                                <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
+                                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     {% endfor %}
                                 </div>
                             {% endfor %}
@@ -326,24 +361,26 @@
                             
                             {% for day, schedule in days.items() %}
                                 <h4 style="color: var(--secondary-color); margin-top: 15px; border-bottom: 2px solid #fdf2f8; padding-bottom: 5px;">{{ day }}</h4>
-                                <table class="routine-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Time</th>
-                                            <th>Subject</th>
-                                            <th>Teacher</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for slot in schedule %}
-                                        <tr>
-                                            <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
-                                            <td><strong>{{ slot.subject }}</strong></td>
-                                            <td>{{ slot.teacher_name | clean_name }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                <div class="table-scroll-container">
+                                    <table class="routine-table dash-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Subject</th>
+                                                <th>Teacher</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for slot in schedule %}
+                                            <tr>
+                                                <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
+                                                <td><strong>{{ slot.subject }}</strong></td>
+                                                <td>{{ slot.teacher_name | clean_name }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
                             {% endfor %}
                         </div>
                     {% endfor %}
@@ -357,7 +394,7 @@
     <!-- Scripts -->
     <script>lucide.createIcons();</script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -415,6 +452,7 @@
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

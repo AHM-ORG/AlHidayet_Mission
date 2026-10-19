@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Document - Automated Compression Firewall</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS & Icons -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --brand-primary: #6366f1;
+            --brand-primary-hover: #4f46e5;
+            --brand-accent: #06b6d4;
+            --brand-bg: #0f172a;
+            --brand-card: rgba(30, 41, 59, 0.7);
+            --brand-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 10% 20%, #0f172a 0%, #020617 90%);
+            color: var(--text-main);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 1.5rem;
+            min-height: 58px;
+            background: rgba(15, 23, 42, 0.90);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--brand-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.05rem;
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.88rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .nav-link:hover, .nav-link.active, .nav-link[aria-current="page"] {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-link:focus-visible, .navbar-brand:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -999px;
+            left: 16px;
+            z-index: 99999;
+            padding: 8px 16px;
+            background: #6366f1;
+            color: #ffffff !important;
+            font-weight: 700;
+            font-size: 13px;
+            border-radius: 0 0 8px 8px;
+            text-decoration: none;
+        }
+        .skip-link:focus {
+            top: 0;
+            outline: 2px solid #fff;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 2.5rem auto;
+            padding: 0 1.5rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.9rem;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .title {
+            font-size: 2.3rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem 0;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .glass-card {
+            background: var(--brand-card);
+            border: 1px solid var(--brand-border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #6366f1, #06b6d4, #10b981);
+        }
+
+        .firewall-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 14px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .firewall-banner i {
+            color: #38bdf8;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .firewall-banner-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+            color: #e0f2fe;
+            font-weight: 600;
+        }
+
+        .firewall-banner-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        .dropzone {
+            border: 2px dashed rgba(99, 102, 241, 0.35);
+            border-radius: 16px;
+            padding: 3.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(15, 23, 42, 0.4);
+            position: relative;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.06);
+            transform: translateY(-2px);
+        }
+
+        .dropzone-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem auto;
+            transition: transform 0.3s ease;
+        }
+
+        .dropzone:hover .dropzone-icon {
+            transform: scale(1.1);
+        }
+
+        .dropzone h3 {
+            font-size: 1.25rem;
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+        }
+
+        .dropzone p {
+            color: var(--text-muted);
+            margin: 0 0 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-preview {
+            display: none;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--brand-border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            margin-top: 1.5rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #38bdf8;
+            font-size: 1.4rem;
+        }
+
+        .file-details h5 {
+            margin: 0 0 0.2rem 0;
+            font-size: 0.95rem;
+            color: #fff;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-details p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .status-chip {
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-chip.bypass {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-chip.compress {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            margin-top: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert-box {
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #a7f3d0;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fecaca;
+        }
+
+        .pipeline-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .step-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--brand-border);
+            border-radius: 14px;
+            padding: 1.2rem;
+            text-align: center;
+        }
+
+        .step-num {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-card h6 {
+            margin: 0 0 0.3rem 0;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .step-card p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 640px) {
+            .pipeline-steps {
+                grid-template-columns: 1fr;
+            }
+            .title {
+                font-size: 1.8rem;
+            }
+            .glass-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#submit-content" class="skip-link">Skip to main content</a>
+
+    <nav class="navbar" aria-label="Storage Portal Navigation">
+        <a href="/" class="navbar-brand" aria-label="AHM Cloud Storage Home">
+            <i data-lucide="shield-check" style="color: #6366f1;"></i>
+            <span>AHM Cloud Storage</span>
+        </a>
+        <div class="nav-links">
+            <a href="/submissions" class="nav-link"><i data-lucide="globe"></i> Public Documents</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin/review-queue" class="nav-link"><i data-lucide="check-check"></i> Admin Queue</a>
+            <a href="/dashboard" class="nav-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            {% else %}
+            <a href="/login" class="nav-link"><i data-lucide="log-in"></i> Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container" id="submit-content">
+        <div class="header-section">
+            <div class="badge-pill">
+                <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Supabase High-Speed Pipeline
+            </div>
+            <h1 class="title">User Submission Portal</h1>
+            <p class="subtitle">Upload documents, photos, or academic records. All uploads pass through the automated compression firewall and admin verification queue.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-box alert-{{ category if category != 'message' else 'success' }}">
+                        <i data-lucide="info" style="width: 20px; height: 20px;"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="glass-card">
+            <!-- Firewall policy banner -->
+            <div class="firewall-banner">
+                <i data-lucide="cpu" style="width: 24px; height: 24px;"></i>
+                <div class="firewall-banner-content">
+                    <h4>Automated Compression Firewall Active (2 MB Limit)</h4>
+                    <p>Files &le; 2MB bypass server processing and upload straight to storage. Images &amp; PDFs exceeding 2MB are automatically compressed via Pillow &amp; pypdf deflate streams to optimize bandwidth.</p>
+                </div>
+            </div>
+
+            <form action="/submit" method="POST" enctype="multipart/form-data" id="submissionForm">
+                <div class="dropzone" id="dropzone">
+                    <input type="file" name="submission_file" id="submissionFile" class="file-input" required accept=".jpg,.jpeg,.png,.webp,.pdf,.docx,.xlsx">
+                    <div class="dropzone-icon">
+                        <i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3>Drag &amp; Drop or Browse File</h3>
+                    <p>Supported formats: JPG, PNG, WebP, PDF, DOCX, XLSX</p>
+                    <span style="font-size: 0.8rem; color: #64748b;">Target limit: 2MB (Auto-compressed if exceeded)</span>
+                </div>
+
+                <div class="file-preview" id="filePreview">
+                    <div class="file-info">
+                        <div class="file-avatar">
+                            <i data-lucide="file-text" id="previewIcon"></i>
+                        </div>
+                        <div class="file-details">
+                            <h5 id="previewFileName">filename.ext</h5>
+                            <p id="previewFileSize">0.00 MB</p>
+                        </div>
+                    </div>
+                    <div id="compressionBadge"></div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn" disabled>
+                    <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                    <span>Submit for Admin Review</span>
+                </button>
+            </form>
+
+            <div class="pipeline-steps">
+                <div class="step-card">
+                    <span class="step-num">1</span>
+                    <h6>Compression Firewall</h6>
+                    <p>Calculates raw payload and conditionally compresses images/PDFs.</p>
+                </div>
+                <div class="step-card">
+                    <span class="step-num">2</span>
+                    <h6>Supabase Storage</h6>
+                    <p>Permanent backend service key ensures persistent, high-speed upload.</p>
+                </div>
+                <div class="step-card">
+                    <span class="step-num">3</span>
+                    <h6>Moderation Queue</h6>
+                    <p>Defaults to <code>pending_review</code> until verified by admin.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const fileInput = document.getElementById('submissionFile');
+        const dropzone = document.getElementById('dropzone');
+        const filePreview = document.getElementById('filePreview');
+        const previewFileName = document.getElementById('previewFileName');
+        const previewFileSize = document.getElementById('previewFileSize');
+        const compressionBadge = document.getElementById('compressionBadge');
+        const submitBtn = document.getElementById('submitBtn');
+
+        const TARGET_LIMIT = 2 * 1024 * 1024; // 2MB
+
+        fileInput.addEventListener('change', handleFile);
+
+        ['dragenter', 'dragover'].forEach(name => {
+            dropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+            dropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            });
+        });
+
+        function handleFile() {
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                
+                previewFileName.textContent = file.name;
+                previewFileSize.textContent = `${sizeMB} MB (${file.size.toLocaleString()} bytes)`;
+                
+                if (file.size <= TARGET_LIMIT) {
+                    compressionBadge.innerHTML = `<span class="status-chip bypass"><i data-lucide="check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> &le; 2MB Direct Bypass</span>`;
+                } else {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                        compressionBadge.innerHTML = `<span class="status-chip compress"><i data-lucide="minimize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Pillow Compression Active</span>`;
+                    } else if (ext === 'pdf') {
+                        compressionBadge.innerHTML = `<span class="status-chip compress"><i data-lucide="minimize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> pypdf Deflate Active</span>`;
+                    } else {
+                        compressionBadge.innerHTML = `<span class="status-chip bypass"><i data-lucide="arrow-right" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Binary Passthrough</span>`;
+                    }
+                }
+                
+                filePreview.style.display = 'flex';
+                submitBtn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+</html>

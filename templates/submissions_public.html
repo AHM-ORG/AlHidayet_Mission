@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Published Documents & Submissions - Al Hidayet Mission</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS & Icons -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --brand-primary: #6366f1;
+            --brand-accent: #06b6d4;
+            --brand-bg: #0f172a;
+            --brand-card: rgba(30, 41, 59, 0.7);
+            --brand-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 10% 20%, #0f172a 0%, #020617 90%);
+            color: var(--text-main);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 1.5rem;
+            min-height: 58px;
+            background: rgba(15, 23, 42, 0.90);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--brand-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.05rem;
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.88rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .nav-link:hover, .nav-link.active, .nav-link[aria-current="page"] {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-link:focus-visible, .navbar-brand:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -999px;
+            left: 16px;
+            z-index: 99999;
+            padding: 8px 16px;
+            background: #6366f1;
+            color: #ffffff !important;
+            font-weight: 700;
+            font-size: 13px;
+            border-radius: 0 0 8px 8px;
+            text-decoration: none;
+        }
+        .skip-link:focus {
+            top: 0;
+            outline: 2px solid #fff;
+        }
+
+        .btn-header-submit {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff !important;
+            padding: 0.5rem 1.25rem !important;
+            border-radius: 9999px !important;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 3rem auto;
+            padding: 0 1.5rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .hero-banner {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .badge-verified {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.9rem;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem 0;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .post-card {
+            background: var(--brand-card);
+            border: 1px solid var(--brand-border);
+            border-radius: 18px;
+            overflow: hidden;
+            backdrop-filter: blur(16px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .post-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.4);
+        }
+
+        .media-preview-container {
+            height: 200px;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .post-card:hover .media-preview-img {
+            transform: scale(1.05);
+        }
+
+        .doc-icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            color: #94a3b8;
+        }
+
+        .doc-icon-wrapper i {
+            width: 48px;
+            height: 48px;
+            color: #818cf8;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .post-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .post-tag {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            text-transform: uppercase;
+        }
+
+        .post-date {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .post-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0 0 0.5rem 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .post-author {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0 0 1.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .card-footer {
+            margin-top: auto;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 0.6rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--brand-border);
+            border-radius: 10px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-view:hover {
+            background: #6366f1;
+            border-color: #6366f1;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 5rem 2rem;
+            background: var(--brand-card);
+            border: 1px dashed var(--brand-border);
+            border-radius: 20px;
+        }
+
+        .empty-icon {
+            width: 72px;
+            height: 72px;
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+        }
+
+        .empty-state h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            margin: 0 0 1.5rem 0;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#submissions-content" class="skip-link">Skip to main content</a>
+
+    <nav class="navbar" aria-label="Storage Portal Navigation">
+        <a href="/" class="navbar-brand" aria-label="AHM Cloud Storage Home">
+            <i data-lucide="shield-check" style="color: #6366f1;"></i>
+            <span>AHM Cloud Storage</span>
+        </a>
+        <div class="nav-links">
+            <a href="/submissions" class="nav-link active" aria-current="page"><i data-lucide="globe"></i> Public Documents</a>
+            <a href="/submit" class="nav-link btn-header-submit"><i data-lucide="upload-cloud"></i> Submit File</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin/review-queue" class="nav-link"><i data-lucide="check-check"></i> Admin Queue</a>
+            <a href="/dashboard" class="nav-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            {% else %}
+            <a href="/login" class="nav-link"><i data-lucide="log-in"></i> Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container" id="submissions-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 2rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #a7f3d0; display: flex; align-items: center; gap: 0.75rem;">
+                        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="hero-banner">
+            <div class="badge-verified">
+                <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i> Moderated &amp; Authorized
+            </div>
+            <h1 class="hero-title">Public Knowledge &amp; Submissions</h1>
+            <p class="hero-subtitle">Official documents, certificates, and student contributions authorized by the school administration board.</p>
+        </div>
+
+        {% if posts and posts|length > 0 %}
+        <div class="posts-grid">
+            {% for post in posts %}
+            {% set ext = post.file_name.split('.')[-1].lower() if '.' in post.file_name else '' %}
+            <div class="post-card">
+                <div class="media-preview-container">
+                    {% if ext in ['jpg', 'jpeg', 'png', 'webp', 'gif'] %}
+                        <img src="{{ post.file_url }}" alt="{{ post.file_name }}" class="media-preview-img" loading="lazy">
+                    {% elif ext == 'pdf' %}
+                        <div class="doc-icon-wrapper">
+                            <i data-lucide="file-text"></i>
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">PDF Document</span>
+                        </div>
+                    {% elif ext in ['docx', 'doc'] %}
+                        <div class="doc-icon-wrapper">
+                            <i data-lucide="file-code"></i>
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Word Document</span>
+                        </div>
+                    {% elif ext in ['xlsx', 'xls'] %}
+                        <div class="doc-icon-wrapper">
+                            <i data-lucide="sheet"></i>
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Excel Spreadsheet</span>
+                        </div>
+                    {% else %}
+                        <div class="doc-icon-wrapper">
+                            <i data-lucide="file"></i>
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Asset File</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    <div class="post-meta">
+                        <span class="post-tag">{{ ext|upper or 'DOC' }}</span>
+                        <span class="post-date">{{ post.created_at[:10] if post.created_at else 'Recent' }}</span>
+                    </div>
+                    <h4 class="post-title" title="{{ post.file_name }}">{{ post.file_name }}</h4>
+                    <p class="post-author">
+                        <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+                        <span>Submitted by: {{ post.user_id }}</span>
+                    </p>
+                    <div class="card-footer">
+                        <a href="{{ post.file_url }}" target="_blank" class="btn-view">
+                            <i data-lucide="external-link" style="width: 15px; height: 15px;"></i>
+                            <span>View / Download</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i data-lucide="inbox" style="width: 36px; height: 36px;"></i>
+            </div>
+            <h3>No Published Submissions Yet</h3>
+            <p>New submissions are held in the admin moderation queue until approved. Be the first to submit a document!</p>
+            <a href="/submit" class="btn-header-submit" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                <span>Submit First Document</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

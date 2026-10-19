@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Take Attendance: {{ meeting.meeting_name }} - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .meeting-header-card {
@@ -126,6 +126,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -187,9 +188,32 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <a href="/admin/guardian-meetings" style="display:flex; align-items:center; gap:6px; text-decoration:none; color:var(--text-color); font-weight:600; font-size:14px;">
-                    <i data-lucide="arrow-left" style="width:18px; height:18px;"></i> Back to Directory
-                </a>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/admin/guardian-meetings" style="display:flex; align-items:center; gap:6px; text-decoration:none; color:#ffffff; font-weight:600; font-size:14px;">
+                        <i data-lucide="arrow-left" style="width:18px; height:18px;"></i> Back to Directory
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-navy" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="clipboard-signature" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Session Attendance
+                    </span>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
 
             <div class="content-wrapper">
@@ -236,8 +260,8 @@
                         <form action="/admin/guardian-meetings/{{ meeting.id }}/attendance" method="POST">
                             <input type="hidden" name="attendee_type" value="teacher">
                             
-                            <div style="overflow-x: auto;">
-                                <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                            <div class="table-scroll-container" style="overflow-x: auto;">
+                                <table class="roster-table dash-table" style="width: 100%; border-collapse: collapse;">
                                     <thead>
                                         <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                             <th style="width: 30%;">Teacher Name</th>
@@ -328,8 +352,8 @@
                             <input type="hidden" name="attendee_type" value="guardian">
                             <input type="hidden" name="class_name" value="{{ selected_class }}">
                             
-                            <div style="overflow-x: auto;">
-                                <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                            <div class="table-scroll-container" style="overflow-x: auto;">
+                                <table class="roster-table dash-table" style="width: 100%; border-collapse: collapse;">
                                     <thead>
                                         <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                             <th style="width: 10%;">Roll No</th>
@@ -402,8 +426,8 @@
                             <div>
                                 <h3 style="margin: 0 0 20px; color: var(--primary-color);">Dynamic Guest & Other Attendees</h3>
                                 
-                                <div style="overflow-x: auto;">
-                                    <table class="roster-table" style="width: 100%; border-collapse: collapse;">
+                                <div class="table-scroll-container" style="overflow-x: auto;">
+                                    <table class="roster-table dash-table" style="width: 100%; border-collapse: collapse;">
                                         <thead>
                                             <tr style="border-bottom: 2px solid #eee; text-align: left;">
                                                 <th>Attendee Name</th>
@@ -511,7 +535,7 @@
             window.history.pushState({}, '', url);
         }
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

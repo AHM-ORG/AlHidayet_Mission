@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audit Report - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -30,6 +30,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -91,32 +92,95 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Financial Audit Report</div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Financial Audit Report</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-emerald" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="check-check" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Audited Ledger
+                    </span>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
-            <div class="content-wrapper">
-                <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; margin-bottom: 30px;">
-                    <div class="auth-container" style="max-width: 100%; border-top-color: #2ecc71;">
-                        <p style="color: #7f8c8d; font-size: 14px;">Total Fees Collected</p>
-                        <h2 style="color: #2ecc71;">₹{{ fees }}</h2>
+
+            <div class="content-wrapper" style="padding: 24px;">
+                <!-- Key Audit Metric Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 28px;">
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px; position:relative; overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <span style="font-size:12px; font-weight:700; color:#059669; text-transform:uppercase; letter-spacing:0.06em;">Total Revenue</span>
+                                <h2 style="margin:8px 0 4px; font-family:var(--font-heading); font-size:28px; font-weight:800; color:#0f172a;">₹{{ fees }}</h2>
+                                <p style="margin:0; font-size:12.5px; color:#64748b;">Cumulative tuition & student collections</p>
+                            </div>
+                            <div style="width:48px; height:48px; border-radius:12px; background:#ecfdf5; display:flex; align-items:center; justify-content:center; color:#059669;">
+                                <i data-lucide="coins" style="width:24px; height:24px;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="auth-container" style="max-width: 100%; border-top-color: #e74c3c;">
-                        <p style="color: #7f8c8d; font-size: 14px;">Total Expenses</p>
-                        <h2 style="color: #e74c3c;">₹{{ expenses }}</h2>
+
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px; position:relative; overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <span style="font-size:12px; font-weight:700; color:#dc2626; text-transform:uppercase; letter-spacing:0.06em;">Total Expenditure</span>
+                                <h2 style="margin:8px 0 4px; font-family:var(--font-heading); font-size:28px; font-weight:800; color:#0f172a;">₹{{ expenses }}</h2>
+                                <p style="margin:0; font-size:12.5px; color:#64748b;">Salaries, maintenance & operational costs</p>
+                            </div>
+                            <div style="width:48px; height:48px; border-radius:12px; background:#fef2f2; display:flex; align-items:center; justify-content:center; color:#dc2626;">
+                                <i data-lucide="receipt" style="width:24px; height:24px;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="auth-container" style="max-width: 100%; border-top-color: var(--primary-color);">
-                        <p style="color: #7f8c8d; font-size: 14px;">Net Balance</p>
-                        <h2 style="color: var(--primary-color);">₹{{ balance }}</h2>
+
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px; position:relative; overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <span style="font-size:12px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.06em;">Net Surplus / Balance</span>
+                                <h2 style="margin:8px 0 4px; font-family:var(--font-heading); font-size:28px; font-weight:800; color:var(--primary-color);">₹{{ balance }}</h2>
+                                <p style="margin:0; font-size:12.5px; color:#64748b;">Current treasury fiscal liquidity</p>
+                            </div>
+                            <div style="width:48px; height:48px; border-radius:12px; background:rgba(12, 35, 64, 0.06); display:flex; align-items:center; justify-content:center; color:var(--primary-color);">
+                                <i data-lucide="scale" style="width:24px; height:24px;"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="auth-container" style="max-width: 600px; margin: 0 auto;">
-                    <h3>Revenue vs Expense Analysis</h3>
-                    <canvas id="auditChart"></canvas>
+                <!-- Chart Analysis Card -->
+                <div style="max-width: 620px; margin: 0 auto;">
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:28px; text-align:center;">
+                        <h3 style="margin:0 0 6px; font-family:var(--font-heading); font-size:18px; color:var(--primary-color); font-weight:700;">Revenue vs Expense Distribution</h3>
+                        <p style="margin:0 0 24px; color:#64748b; font-size:13px;">Visual ratio of institutional income against operational outlay</p>
+                        <div style="max-width: 380px; margin: 0 auto;">
+                            <canvas id="auditChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
+
     <script>
         lucide.createIcons();
         const ctx = document.getElementById('auditChart').getContext('2d');
@@ -125,21 +189,29 @@
             data: {
                 labels: ['Fees Collected', 'Expenses'],
                 datasets: [{
-                    data: [Number("{{ fees }}"), Number("{{ expenses }}")],
-                    backgroundColor: ['#2ecc71', '#e74c3c'],
+                    data: [Number("{{ fees }}") || 0, Number("{{ expenses }}") || 0],
+                    backgroundColor: ['#059669', '#dc2626'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            font: { family: "'Outfit', sans-serif", size: 13 },
+                            padding: 20
+                        }
                     }
-                }
+                },
+                cutout: '68%'
             }
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
-
 </html>

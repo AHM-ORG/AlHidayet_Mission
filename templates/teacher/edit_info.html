@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -119,12 +119,12 @@
 <body class="bg-pattern" style="background-color: #F7F9FC; font-family: 'Outfit', sans-serif;">
 
     <!-- Header -->
-    <header class="main-header" style="background: #fff;">
+    <header class="main-header " >
         <div class="container header-container">
             <div class="logo">
-                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #333; text-decoration: none;">
+                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #ffffff; text-decoration: none;">
                     <i data-lucide="arrow-left"></i>
-                    <span class="logo-text">Back to <span class="highlight">Dashboard</span></span>
+                    <span class="logo-text" >Back to <span class="highlight">Dashboard</span></span>
                 </a>
             </div>
             <div class="header-cta">
@@ -266,7 +266,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
 

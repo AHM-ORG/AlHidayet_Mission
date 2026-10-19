@@ -1,0 +1,443 @@
+@import "tailwindcss";
+
+:root {
+  --primary-color: #1f6f78;
+  --primary-dark: #145058;
+  --primary-soft: rgba(31, 111, 120, 0.12);
+  --ink: #22302f;
+  --paper: #f4f2ec;
+  --sheet: #fffff0;
+  --school-red: #d60000;
+  --school-navy: #1a237e;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ============================= APP CHROME ============================= */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0e3a40 0%, #0b2e33 100%);
+  color: #dcebe9;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #b8cfcc;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.sidebar-item.active {
+  background: rgba(31, 111, 120, 0.35);
+  color: #fff;
+  border-left-color: #5fc4cf;
+}
+.sidebar-label {
+  padding: 16px 18px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #6f948f;
+}
+
+.top-bar {
+  height: 58px;
+  background: #fffdf8;
+  border-bottom: 1px solid #e4e0d4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* ============================= SHEET (A4) ============================= */
+
+.sheet-scroll {
+  padding: 4px 16px 40px;
+  overflow-x: auto;
+}
+
+/* On screen the sheet sizes to its content (no dead whitespace).
+   The full A4 height is only enforced in @media print. */
+.annual-page {
+  width: 210mm;
+  position: relative;
+  padding: 6mm 7mm;
+  box-sizing: border-box;
+  background-color: var(--sheet);
+  margin: 0 auto 22px auto;
+  color: #000;
+  border: 1px solid #d8d4c6;
+  box-shadow: 0 6px 22px rgba(20, 40, 40, 0.14);
+  font-family: "Times New Roman", Times, serif;
+  overflow: hidden;
+}
+
+.watermark {
+  position: absolute;
+  top: 26%;
+  left: 15%;
+  width: 70%;
+  height: 48%;
+  background-image: url("/images/ahm-logo.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.07;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.border-container {
+  border: 3px double #000;
+  width: 100%;
+  padding: 5px 6px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+}
+
+.sheet-header {
+  text-align: center;
+  position: relative;
+  margin-bottom: 3px;
+  border-bottom: 2px solid var(--school-red);
+  padding-bottom: 3px;
+  flex-shrink: 0;
+  width: 100%;
+}
+.sheet-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  position: absolute;
+  top: 0;
+}
+.sheet-logo.left { left: 4px; }
+.sheet-logo.right { right: 4px; }
+
+.ahm-h1 {
+  color: var(--school-red);
+  font-size: 20pt;
+  margin: 0;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 1px 1px 0 #eee;
+}
+.sheet-addr {
+  font-size: 8.5pt;
+  margin: 1px 0;
+  color: #444;
+}
+.sheet-title {
+  background-color: var(--school-red);
+  color: #fff;
+  font-weight: bold;
+  font-size: 11pt;
+  padding: 2px 22px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-top: 3px;
+}
+
+/* -------- info row -------- */
+.info-tbl {
+  margin-bottom: 3px;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.info-tbl td {
+  text-align: left;
+  padding: 1px 3px;
+  border: 1px solid #000;
+  color: #000;
+  font-size: 9pt;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.info-tbl td.lbl {
+  background-color: var(--school-navy);
+  color: #fff;
+  text-align: center;
+  font-weight: bold;
+}
+.info-tbl .val {
+  font-weight: bold;
+  font-size: 10pt;
+  padding-left: 5px;
+}
+.info-tbl .val.green {
+  color: #006400;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* -------- main marks table -------- */
+.annual-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  margin-bottom: 3px;
+  table-layout: fixed;
+  box-sizing: border-box;
+}
+.annual-tbl td,
+.annual-tbl th {
+  border: 1px solid #444;
+  padding: 2.5px 1px;
+  text-align: center;
+  color: #000;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow: hidden;
+  font-size: 8pt;
+}
+.annual-tbl td.subj {
+  text-align: left;
+  font-weight: bold;
+  padding-left: 8px;
+}
+.th-main { background-color: #333; color: #fff; font-weight: bold; }
+.th-u1 { background-color: #cce5ff; color: #000; font-weight: bold; }
+.bg-unit1 { background-color: #f0f8ff; }
+.th-u2 { background-color: #d4edda; color: #000; font-weight: bold; }
+.bg-unit2 { background-color: #f8fff9; }
+.th-final { background-color: #f8d7da; color: #000; font-weight: bold; }
+.bg-final { background-color: #fff5f6; }
+.th-total { background-color: #fff3cd; color: #000; font-weight: bold; }
+.bg-total { background-color: #fff9db; font-weight: bold; }
+.bg-grade { background-color: #fff; font-weight: bold; }
+.bg-monthly { background-color: #f9f9f9; }
+.sub-tot { font-weight: bold; background-color: rgba(0, 0, 0, 0.05); }
+.th-neutral { background-color: #eee; color: #000; font-weight: bold; }
+
+/* -------- footer (FIXED: grid, no overlap) -------- */
+.footer-wrapper {
+  width: 100%;
+  margin: 3mm auto 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+  align-items: start;
+  box-sizing: border-box;
+}
+.footer-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+}
+
+.sub-table {
+  border: 1.5px solid #000;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 8.5pt;
+  box-sizing: border-box;
+}
+.sub-table td,
+.sub-table th {
+  border: 1px solid #000;
+  line-height: 1.25;
+  text-align: center;
+  word-wrap: break-word;
+  overflow: hidden;
+  padding: 4px 3px;
+  color: #000;
+}
+.sub-table th.sub-header {
+  background-color: #333;
+  color: #fff;
+  font-weight: bold;
+  font-size: 8pt;
+  padding: 3px 2px;
+}
+.sub-table td.lbl-cell {
+  text-align: left;
+  padding-left: 4px;
+  font-weight: bold;
+}
+.sub-table tr.tint { background: #ffffcc; }
+.sub-table tr.zebra { background: #eee; }
+
+.stamp-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin: 1mm auto 0 auto;
+  background-color: transparent;
+  width: 70%;
+  max-width: 130px;
+  padding: 3px;
+}
+.stamp-container img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.status-stamp {
+  font-size: 11pt;
+  font-weight: 900;
+  font-family: "Arial Black", Arial, sans-serif;
+  padding: 1px 8px;
+  transform: rotate(-6deg);
+  opacity: 0.95;
+  background: rgba(255, 255, 255, 0.95);
+  margin-top: 2px;
+  display: inline-block;
+  letter-spacing: 1px;
+}
+.status-stamp.passed { color: #2e7d32; border: 2px solid #2e7d32; }
+.status-stamp.failed { color: #c62828; border: 2px solid #c62828; }
+
+/* -------- signatures (FIXED: clear of stamp) -------- */
+.sig-wrapper {
+  width: 100%;
+  margin: 4mm auto 1mm auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5mm;
+  align-items: end;
+  box-sizing: border-box;
+}
+.sig-box {
+  border-top: 1.5px solid #000;
+  text-align: center;
+  font-size: 8.5pt;
+  font-weight: bold;
+  padding-top: 4px;
+  position: relative;
+  box-sizing: border-box;
+}
+.sig-box img {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 62px;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* -------- empty states -------- */
+.sheet-empty {
+  text-align: center;
+  padding: 30px 20px;
+  font-style: italic;
+  color: #7f8c8d;
+  border: 1px dashed #bbb;
+  margin: 12px;
+  font-family: "Outfit", sans-serif;
+  font-size: 13px;
+}
+
+/* ============================= PRINT ============================= */
+
+@page {
+  size: A4 portrait;
+  margin: 5mm;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+  html,
+  body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .app-chrome,
+  .toolbar,
+  .sheet-scroll {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  .sidebar,
+  .top-bar,
+  .toolbar,
+  .print-hide {
+    display: none !important;
+  }
+  .app-shell {
+    display: block !important;
+  }
+  .main-area {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+  .tab-pane {
+    display: none !important;
+  }
+  .tab-pane.print-active {
+    display: block !important;
+  }
+  .annual-page {
+    width: 100% !important;
+    min-height: 286mm !important;
+    height: 286mm !important;
+    padding: 2mm !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    background-color: var(--sheet) !important;
+  }
+  /* push the footer/signature block to the bottom of the paper only */
+  .border-container {
+    min-height: 280mm !important;
+  }
+  .annual-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+}

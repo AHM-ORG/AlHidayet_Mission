@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expenses - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 </head>
@@ -30,6 +30,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -91,77 +92,133 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Expense Tracker</div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Expense Tracker</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-amber" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="receipt" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Expenses: {{ expenses|length if expenses else 0 }}
+                    </span>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
-            <div class="content-wrapper">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3>Record New Expense</h3>
-                        <form action="/admin/spend" method="post" enctype="multipart/form-data">
-                            <div class="input-group">
-                                <label>Amount:</label>
-                                <input type="number" name="amount" required step="0.01">
+
+            <div class="content-wrapper" style="padding: 24px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; align-items: start;">
+                    <!-- Record Expense Form -->
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:17px; color:var(--primary-color); font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="plus-circle" style="width:20px; height:20px; color:var(--accent-gold);"></i> Record New Expenditure
+                        </h3>
+                        <p style="margin:4px 0 20px; color:#64748b; font-size:13px;">Document institutional expenses and upload supporting vouchers.</p>
+                        
+                        <form action="/admin/spend" method="post" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:16px;">
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Expense Amount (₹ INR):</label>
+                                <input type="number" name="amount" required step="0.01" min="0" placeholder="e.g. 2450.00" style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-gold)'" onblur="this.style.borderColor='#e2e8f0'">
                             </div>
-                            <div class="input-group">
-                                <label>Category:</label>
-                                <select name="category" required
-                                    style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Category:</label>
+                                <select name="category" required style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:13.5px; background:white; outline:none;" class="search-select">
                                     <option value="Salary">Salary</option>
                                     <option value="Maintenance">Maintenance</option>
                                     <option value="Electricity">Electricity</option>
                                     <option value="Stationery">Stationery</option>
+                                    <option value="Food & Ration">Food & Ration</option>
                                     <option value="Others">Others</option>
                                 </select>
                             </div>
-                            <div class="input-group">
-                                <label>Description:</label>
-                                <textarea name="description"
-                                    style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;"
-                                    rows="3"></textarea>
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Description / Purpose:</label>
+                                <textarea name="description" placeholder="Provide details regarding this expenditure..." style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:13.5px; outline:none; resize:vertical; min-height:80px; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-gold)'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
                             </div>
-                            <div class="input-group">
-                                <label>Upload Proof of Spend (Optional):</label>
-                                <input type="file" name="proof" accept="image/*,application/pdf" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: white;">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Proof / Receipt Voucher (Optional):</label>
+                                <input type="file" name="proof" accept="image/*,application/pdf" style="width:100%; padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:10px; background:#f8fafc; font-size:13px;">
                             </div>
-                            <button type="submit" class="auth-btn">Record Expense</button>
+                            
+                            <button type="submit" style="margin-top:6px; padding:11px 18px; border-radius:10px; border:none; background:var(--primary-color); color:#fff; font-weight:600; font-size:14px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='var(--primary-color)'">
+                                Record Expense
+                            </button>
                         </form>
                     </div>
 
-                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3>Recent Expenses</h3>
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #eee;">
-                                    <th style="padding: 10px; text-align: left;">Category</th>
-                                    <th style="padding: 10px; text-align: left;">Amount</th>
-                                    <th style="padding: 10px; text-align: left;">Date</th>
-                                    <th style="padding: 10px; text-align: left;">Proof</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for e in expenses %}
-                                <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 10px;">{{ e.category }}</td>
-                                    <td style="padding: 10px;">{{ e.amount }}</td>
-                                    <td style="padding: 10px; font-size: 12px;">{{ e.date.split(' ')[0] }}</td>
-                                    <td style="padding: 10px;">
-                                        {% if e.proof_path %}
-                                            <a href="{{ url_for('static', filename='uploads/proofs/' + e.proof_path) }}" target="_blank" style="color: var(--primary-color); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i> View
-                                            </a>
-                                        {% else %}
-                                            <span style="color: var(--text-light); font-size: 13px;">No proof</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <!-- Recent Expenses List -->
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:24px;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:17px; color:var(--primary-color); font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="receipt" style="width:20px; height:20px; color:var(--accent-gold);"></i> Recent Expenditures
+                        </h3>
+                        <p style="margin:4px 0 18px; color:#64748b; font-size:13px;">Audit ledger entries logged for recent operations.</p>
+                        
+                        <div class="dash-table-container" style="overflow-x:auto; border-radius:12px; border:1px solid #e2e8f0;">
+                            <table class="dash-table" style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; text-align:left;">
+                                        <th style="padding:12px 14px; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em;">Category</th>
+                                        <th style="padding:12px 14px; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em;">Amount</th>
+                                        <th style="padding:12px 14px; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em;">Date</th>
+                                        <th style="padding:12px 14px; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em; text-align:center;">Voucher</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for e in expenses %}
+                                    <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                        <td style="padding:12px 14px; font-weight:600; color:var(--primary-color); font-size:13px;">
+                                            <span class="dash-badge badge-slate" style="padding:3px 9px; border-radius:12px; font-size:11.5px;">{{ e.category }}</span>
+                                        </td>
+                                        <td style="padding:12px 14px; font-weight:700; color:#0f172a; font-size:13.5px;">₹{{ "%.2f"|format(e.amount|float) if e.amount else "0.00" }}</td>
+                                        <td style="padding:12px 14px; font-size:12px; color:#64748b;">{{ e.date.split(' ')[0] if e.date else '—' }}</td>
+                                        <td style="padding:12px 14px; text-align:center;">
+                                            {% if e.proof_path %}
+                                                <a href="{{ url_for('static', filename='uploads/proofs/' + e.proof_path) }}" target="_blank" class="dash-btn-action" style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; background:rgba(12, 35, 64, 0.06); color:var(--primary-color); font-size:12px; font-weight:600; text-decoration:none;">
+                                                    <i data-lucide="file-text" style="width:13px; height:13px;"></i> View
+                                                </a>
+                                            {% else %}
+                                                <span style="color:#94a3b8; font-size:12px;">None</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not expenses %}
+                                    <tr>
+                                        <td colspan="4" style="padding:32px 20px; text-align:center; color:#94a3b8;">
+                                            <p style="margin:0; font-size:13px;">No recorded expenditures yet.</p>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
     <script>lucide.createIcons();</script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
@@ -181,7 +238,6 @@
             });
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
-
 </html>

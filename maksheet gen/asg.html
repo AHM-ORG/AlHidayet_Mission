@@ -1,0 +1,271 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Annual Result 2025</title>
+<style>
+@page Section1 {
+    size: 595.45pt 841.7pt; /* A4 Size */
+    margin: 0.5in 0.5in 0.5in 0.5in; /* Narrow Margins */
+    mso-header-margin: 0.5in;
+    mso-footer-margin: 0.5in;
+    mso-paper-source: 0;
+}
+div.Section1 { page: Section1; }
+
+body {
+    font-family: 'Times New Roman', serif;
+    font-size: 10pt;
+}
+
+/* Standard Tables for Word */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+td, th {
+    border: 1px solid black;
+    padding: 4px;
+}
+</style>
+</head>
+
+<body lang=EN-US style='tab-interval:36.0pt'>
+
+<div class=Section1>
+
+    <table width="100%" border="0" cellspacing="0" cellpadding="10" style="border: 4px double black; width: 100%;">
+        <tr>
+            <td style="border: none;">
+
+                <table width="100%" border="0" style="border: none; border-bottom: 2px solid #d60000; margin-bottom: 10px;">
+                    <tr>
+                        <td width="15%" style="border: none; text-align: left; vertical-align: top;">
+                            <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" width="60" height="60">
+                        </td>
+                        <td width="70%" style="border: none; text-align: center;">
+                            <h1 style="color: #d60000; font-size: 26pt; margin: 0; font-weight: 900;">AL - HIDAYET MISSION</h1>
+                            <div style="font-weight: bold; font-size: 12pt; color: #333;">(BHOGRAM BRANCH)</div>
+                            <div style="font-size: 9pt; color: #444;">BHOGRAM, P.O – BHOGRAM, P.S – HEMTABAD, U / DINAJPUR, 733134</div>
+                            <br>
+                            <span style="background-color: #d60000; color: white; font-weight: bold; font-size: 14pt; padding: 4px 20px; border-radius: 15px;">
+                                ANNUAL RESULT - 2025
+                            </span>
+                        </td>
+                        <td width="15%" style="border: none; text-align: right; vertical-align: top;">
+                            <img src="https://i.ibb.co/Jjk1qNkj/logo-1-removebg-preview.png" width="60" height="60">
+                        </td>
+                    </tr>
+                </table>
+
+                <table width="100%" cellspacing="0" cellpadding="4" style="border: 1px solid black; margin-bottom: 10px;">
+                    <tr>
+                        <td style="background-color: #1a237e; color: white; width: 10%; font-weight:bold;">NAME</td>
+                        <td style="width: 35%; color: #006400; font-weight: bold;">{{ name }}</td>
+                        
+                        <td style="background-color: #1a237e; color: white; width: 10%; font-weight:bold;">CLASS</td>
+                        <td style="width: 10%; font-weight: bold;">{{ class_name }}</td>
+                        
+                        <td style="background-color: #1a237e; color: white; width: 8%; font-weight:bold;">ROLL</td>
+                        <td style="width: 8%; font-weight: bold;">{{ roll }}</td>
+                        
+                        <td style="background-color: #1a237e; color: white; width: 8%; font-weight:bold;">SEC</td>
+                        <td style="width: 8%; font-weight: bold;">{{ section }}</td>
+                    </tr>
+                </table>
+
+                <table width="100%" cellspacing="0" cellpadding="4" style="border: 1px solid black; text-align: center; font-size: 9pt;">
+                    <thead>
+                        <tr style="color: white;">
+                            <th rowspan="3" style="background-color: #333; width: 15%;">SUBJECT</th>
+                            <th colspan="3" style="background-color: #0056b3;">1ST UNIT</th>
+                            <th colspan="3" style="background-color: #1e7e34;">2ND UNIT</th>
+                            <th colspan="4" style="background-color: #bd2130;">FINAL EXAM</th>
+                            <th rowspan="3" style="background-color: #d39e00;">TOTAL<br>(200)</th>
+                            <th rowspan="3" style="background-color: #333;">GR</th>
+                        </tr>
+                        <tr>
+                            <th style="background-color: #cce5ff; color: black;">OR</th>
+                            <th style="background-color: #cce5ff; color: black;">WR</th>
+                            <th style="background-color: #cce5ff; color: black;">TOT</th>
+                            <th style="background-color: #d4edda; color: black;">OR</th>
+                            <th style="background-color: #d4edda; color: black;">WR</th>
+                            <th style="background-color: #d4edda; color: black;">TOT</th>
+                            <th style="background-color: #f8d7da; color: black;">OR</th>
+                            <th style="background-color: #f8d7da; color: black;">WR</th>
+                            <th style="background-color: #f8d7da; color: black;">CT</th>
+                            <th style="background-color: #f8d7da; color: black;">TOT</th>
+                        </tr>
+                        <tr>
+                            <th style="background-color: #f0f8ff;">10</th>
+                            <th style="background-color: #f0f8ff;">40</th>
+                            <th style="background-color: #f0f8ff; font-weight:bold;">50</th>
+                            <th style="background-color: #f8fff9;">10</th>
+                            <th style="background-color: #f8fff9;">40</th>
+                            <th style="background-color: #f8fff9; font-weight:bold;">50</th>
+                            <th style="background-color: #fff5f6;">20</th>
+                            <th style="background-color: #fff5f6;">70</th>
+                            <th style="background-color: #fff5f6;">10</th>
+                            <th style="background-color: #fff5f6; font-weight:bold;">100</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in subjects %}
+                        <tr>
+                            <td style="text-align: left; font-weight: bold;">{{ s.name }}</td>
+                            <td style="background-color: #f0f8ff;">{{ s.u1_o }}</td>
+                            <td style="background-color: #f0f8ff;">{{ s.u1_w }}</td>
+                            <td style="background-color: #f0f8ff; font-weight: bold;">{{ s.u1_tot }}</td>
+                            <td style="background-color: #f8fff9;">{{ s.u2_o }}</td>
+                            <td style="background-color: #f8fff9;">{{ s.u2_w }}</td>
+                            <td style="background-color: #f8fff9; font-weight: bold;">{{ s.u2_tot }}</td>
+                            <td style="background-color: #fff5f6;">{{ s.f_o }}</td>
+                            <td style="background-color: #fff5f6;">{{ s.f_w }}</td>
+                            <td style="background-color: #fff5f6;">{{ s.f_ct }}</td>
+                            <td style="background-color: #fff5f6; font-weight: bold;">{{ s.f_tot }}</td>
+                            <td style="background-color: #fff9db; font-weight: bold;">{{ s.grand }}</td>
+                            <td>{{ s.grade }}</td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <tr>
+                            <td style="text-align: left; font-weight: bold;">ART</td>
+                            <td colspan="3" style="background-color: #f0f8ff;">{{ art.u1 }}</td>
+                            <td colspan="3" style="background-color: #f8fff9;">{{ art.u2 }}</td>
+                            <td colspan="4" style="background-color: #fff5f6;">{{ art.f }}</td>
+                            <td style="background-color: #fff9db; font-weight: bold;">{{ art.grand }}</td>
+                            <td>{{ art.grade }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 10px; border: none;">
+                    <tr>
+                        <td width="55%" valign="top" style="padding-right: 15px; border: none;">
+                            
+                            <table width="100%" cellspacing="0" cellpadding="3" style="border: 2px solid black; margin-bottom: 10px; font-size: 9pt;">
+                                <tr style="background-color: #444; color: white;">
+                                    <th colspan="3" style="border: 1px solid black;">ADDITIONAL SUBJECTS</th>
+                                </tr>
+                                <tr style="background-color: #eee;">
+                                    <th style="text-align: left; border: 1px solid black;">SUBJECT</th>
+                                    <th style="border: 1px solid black;">F.M</th>
+                                    <th style="border: 1px solid black;">OBT</th>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black;">PHYSICAL EDUCATION</td>
+                                    <td style="border: 1px solid black; text-align: center;">20</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ ped }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black;">WORK EDUCATION</td>
+                                    <td style="border: 1px solid black; text-align: center;">30</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ wed }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black;">HAND WRITING</td>
+                                    <td style="border: 1px solid black; text-align: center;">20</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ hw }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black;">BEHAVIOUR</td>
+                                    <td style="border: 1px solid black; text-align: center;">20</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ behav }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black;">ATTENDANCE</td>
+                                    <td style="border: 1px solid black; text-align: center;">10</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ attend }}</td>
+                                </tr>
+                                <tr style="background-color: #fff9db; font-weight: bold;">
+                                    <td style="border: 1px solid black;">TOTAL</td>
+                                    <td style="border: 1px solid black; text-align: center;">100</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ add_tot }}</td>
+                                </tr>
+                            </table>
+
+                            <table width="100%" cellspacing="0" cellpadding="3" style="border: 2px solid black; font-size: 9pt;">
+                                <tr style="background-color: black; color: white;">
+                                    <th colspan="2" style="border: 1px solid black;">RESULT ABSTRACT</th>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; font-weight: bold;">GRAND TOTAL</td>
+                                    <td style="border: 1px solid black; text-align: center;">1100</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; font-weight: bold;">TOTAL OBTAINED</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ total_obtained }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; font-weight: bold;">PERCENTAGE</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ percentage }}%</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; font-weight: bold;">CLASS RANK</td>
+                                    <td style="border: 1px solid black; text-align: center;">{{ rank }}</td>
+                                </tr>
+                                <tr style="background-color: #ffffcc;">
+                                    <td style="border: 1px solid black; font-weight: bold;">OVERALL GRADE</td>
+                                    <td style="border: 1px solid black; text-align: center; color: red; font-size: 12pt; font-weight: 900;">{{ overall_grade }}</td>
+                                </tr>
+                            </table>
+                        </td>
+
+                        <td width="45%" valign="top" style="border: none;">
+                            
+                            <table width="100%" cellspacing="0" cellpadding="3" style="border: 2px solid black; font-size: 9pt;">
+                                <tr style="background-color: #444; color: white;">
+                                    <th style="border: 1px solid black;">MARKS RANGE</th>
+                                    <th style="border: 1px solid black;">GRADE</th>
+                                </tr>
+                                <tr><td align="center">180 - 200</td><td align="center">AA</td></tr>
+                                <tr><td align="center">160 - 179</td><td align="center">A+</td></tr>
+                                <tr><td align="center">120 - 159</td><td align="center">A</td></tr>
+                                <tr><td align="center">90 - 119</td><td align="center">B+</td></tr>
+                                <tr><td align="center">70 - 89</td><td align="center">B</td></tr>
+                                <tr><td align="center">50 - 69</td><td align="center">C</td></tr>
+                                <tr><td align="center">BELOW 50</td><td align="center">D</td></tr>
+                            </table>
+
+                            <br>
+
+                            <table width="100%" style="border: 2px dashed #ccc; background-color: #fcfcfc;">
+                                <tr>
+                                    <td align="center" style="border: none; padding: 10px;">
+                                        <img src="https://i.ibb.co/LhYbFJR0/20250604-163002-removebg-preview.png" width="110"><br>
+                                        <span style="color: #2e7d32; font-size: 28pt; font-weight: 900; border: 4px solid #2e7d32; padding: 2px 10px;">PASSED</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+
+                <table width="100%" border="0" style="margin-top: 20px; border: none;">
+                    <tr>
+                        <td width="33%" align="center" valign="bottom" style="border: none;">
+                            <div style="border-top: 1px solid black; width: 90%; margin: 0 auto; padding-top: 5px; font-weight: bold;">
+                                Signature of Guardian
+                            </div>
+                        </td>
+                        <td width="33%" align="center" valign="bottom" style="border: none;">
+                            <div style="border-top: 1px solid black; width: 90%; margin: 0 auto; padding-top: 5px; font-weight: bold;">
+                                Signature of Class Teacher
+                            </div>
+                        </td>
+                        <td width="33%" align="center" valign="bottom" style="border: none; position: relative;">
+                            <img src="https://i.ibb.co/Dg4JY8Y4/20250604-163654-removebg-preview.png" width="80" style="margin-bottom: -10px;">
+                            <div style="border-top: 1px solid black; width: 90%; margin: 0 auto; padding-top: 5px; font-weight: bold;">
+                                Signature of T.I.C
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

@@ -16,54 +16,377 @@ document.addEventListener('DOMContentLoaded', () => {
     const nav = document.querySelector('.main-nav');
     const sidebar = document.querySelector('.sidebar');
 
+    const hamburgerMarkup = '<span class="hamburger-box"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></span>';
+
+    if (nav) {
+        if (!nav.id) nav.id = 'mainNav';
+        if (!nav.getAttribute('aria-label')) nav.setAttribute('aria-label', 'Primary Navigation');
+    }
+
     if (!menuBtn && nav && headerContainer) {
         menuBtn = document.createElement('button');
         menuBtn.type = 'button';
         menuBtn.className = 'mobile-menu-btn';
         menuBtn.setAttribute('aria-label', 'Open navigation menu');
         menuBtn.setAttribute('aria-expanded', 'false');
-        menuBtn.innerHTML = '<i data-lucide="menu"></i>';
+        menuBtn.setAttribute('aria-controls', nav.id);
+        menuBtn.innerHTML = hamburgerMarkup;
         headerContainer.appendChild(menuBtn);
+    } else if (menuBtn) {
+        if (!menuBtn.querySelector('.hamburger-box')) {
+            menuBtn.innerHTML = hamburgerMarkup;
+        }
+        if (nav) {
+            menuBtn.setAttribute('aria-controls', nav.id);
+            if (!menuBtn.getAttribute('aria-label')) menuBtn.setAttribute('aria-label', 'Open navigation menu');
+            if (!menuBtn.getAttribute('aria-expanded')) menuBtn.setAttribute('aria-expanded', 'false');
+        }
     }
 
     if (menuBtn && nav) {
-        const closeTopNav = () => {
-            nav.classList.remove('active');
-            menuBtn.setAttribute('aria-expanded', 'false');
+        let navOverlay = document.querySelector('.main-nav-overlay');
+        if (!navOverlay) {
+            navOverlay = document.createElement('div');
+            navOverlay.className = 'main-nav-overlay';
+            navOverlay.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(navOverlay);
+        }
+
+        let isNavTransitioning = false;
+        let lastNavToggleTime = 0;
+        let lastFocusedElement = null;
+
+        const openTopNav = () => {
+            lastFocusedElement = document.activeElement;
+            lastNavToggleTime = Date.now();
+            isNavTransitioning = true;
+            nav.classList.add('active');
+            menuBtn.classList.add('active');
+            menuBtn.setAttribute('aria-expanded', 'true');
+            menuBtn.setAttribute('aria-label', 'Close navigation menu');
+            navOverlay.classList.add('active');
+            navOverlay.removeAttribute('aria-hidden');
+            document.body.classList.add('mobile-nav-open');
+            setTimeout(() => {
+                isNavTransitioning = false;
+                const closeBtn = nav.querySelector('.nav-drawer-close');
+                const firstLink = nav.querySelector('.nav-link, a');
+                if (closeBtn) {
+                    closeBtn.focus();
+                } else if (firstLink) {
+                    firstLink.focus();
+                }
+            }, 60);
         };
 
-        menuBtn.addEventListener('click', () => {
-            nav.classList.toggle('active');
-            menuBtn.setAttribute('aria-expanded', nav.classList.contains('active') ? 'true' : 'false');
+        const closeTopNav = () => {
+            if (Date.now() - lastNavToggleTime < 200) return;
+            isNavTransitioning = true;
+            nav.classList.remove('active');
+            menuBtn.classList.remove('active');
+            menuBtn.setAttribute('aria-expanded', 'false');
+            menuBtn.setAttribute('aria-label', 'Open navigation menu');
+            navOverlay.classList.remove('active');
+            navOverlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('mobile-nav-open');
+            setTimeout(() => {
+                isNavTransitioning = false;
+                if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+                    lastFocusedElement.focus();
+                } else if (menuBtn) {
+                    menuBtn.focus();
+                }
+            }, 60);
+        };
+
+        const toggleTopNav = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (Date.now() - lastNavToggleTime < 200) return;
+            if (nav.classList.contains('active')) {
+                closeTopNav();
+            } else {
+                openTopNav();
+            }
+        };
+
+        // Trap focus inside open mobile drawer for keyboard accessibility
+        nav.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && nav.classList.contains('active')) {
+                const focusables = Array.from(nav.querySelectorAll('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+                    .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+                if (focusables.length === 0) return;
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    }
+                } else {
+                    if (document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
         });
 
-        nav.querySelectorAll('a').forEach((link) => {
-            link.addEventListener('click', closeTopNav);
+        // Setup Sleek Minimalist Luxury Side Drawer Elements
+        const setupSideDrawer = () => {
+            // 1. Ensure Drawer Top Header exists with refined luxury styling
+            if (!nav.querySelector('.nav-drawer-header')) {
+                const headerLogo = document.querySelector('.main-header .logo img, .main-header .logo-img');
+                const logoSrc = (headerLogo && headerLogo.getAttribute('src')) ? headerLogo.getAttribute('src') : '/static/images/logo.png';
+                
+                const drawerHeader = document.createElement('div');
+                drawerHeader.className = 'nav-drawer-header';
+                drawerHeader.innerHTML = `
+                    <a href="/" class="nav-drawer-brand">
+                        <img src="${logoSrc}" alt="AHM Crest" class="nav-drawer-logo">
+                        <div class="nav-drawer-brand-text">
+                            <span class="nav-drawer-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="nav-drawer-tagline">Academic Excellence</span>
+                        </div>
+                    </a>
+                    <button class="nav-drawer-close" aria-label="Close navigation menu" type="button">
+                        <i data-lucide="x"></i>
+                    </button>
+                `;
+                nav.insertBefore(drawerHeader, nav.firstChild);
+
+                const drawerCloseBtn = drawerHeader.querySelector('.nav-drawer-close');
+                if (drawerCloseBtn) {
+                    drawerCloseBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeTopNav();
+                    });
+                }
+            }
+
+            // Detect if logged in from existing logout links
+            const isLoggedIn = Boolean(nav.querySelector('a[href*="logout"]') || document.querySelector('.header-cta a[href*="logout"]'));
+
+            // Remove legacy top quick actions and duplicate mobile-only nav links
+            nav.querySelectorAll('.nav-drawer-quick-actions').forEach(el => el.remove());
+            nav.querySelectorAll('.nav-link-mobile-only').forEach(el => el.remove());
+            nav.querySelectorAll('.mobile-nav-cta').forEach(el => el.remove());
+
+            // 2. Ensure Drawer Body exists for the smooth single-column list
+            let drawerBody = nav.querySelector('.nav-drawer-body');
+            if (!drawerBody) {
+                drawerBody = document.createElement('div');
+                drawerBody.className = 'nav-drawer-body';
+
+                // Move all actual navigation links into drawerBody
+                const allNavLinks = Array.from(nav.querySelectorAll(':scope > .nav-link'));
+                allNavLinks.forEach(link => {
+                    const href = (link.getAttribute('href') || '').toLowerCase();
+                    if (href === '/dashboard' || href.includes('logout') || href.includes('login')) {
+                        link.remove();
+                    } else {
+                        drawerBody.appendChild(link);
+                    }
+                });
+
+                nav.appendChild(drawerBody);
+            } else {
+                // If drawerBody already existed, clean up any legacy grids, section titles, or quick actions
+                drawerBody.querySelectorAll('.nav-drawer-quick-actions, .nav-drawer-section-title').forEach(el => el.remove());
+                const grid = drawerBody.querySelector('.nav-drawer-grid');
+                if (grid) {
+                    Array.from(grid.querySelectorAll('.nav-link')).forEach(link => drawerBody.appendChild(link));
+                    grid.remove();
+                }
+            }
+
+            // 3. Map intuitive icons to each navigation item (Clean Inline Lucide Icon, NO square boxes)
+            const getIconForLink = (text, href) => {
+                const t = (text || '').toLowerCase().trim();
+                const h = (href || '').toLowerCase().trim();
+                if (t.includes('home') || h === '/' || h === '#home') return 'home';
+                if (t.includes('about')) return 'sparkles';
+                if (t.includes('service')) return 'layers';
+                if (t.includes('gallery')) return 'image';
+                if (t.includes('notice')) return 'bell';
+                if (t.includes('fee')) return 'receipt';
+                if (t.includes('review')) return 'star';
+                if (t.includes('faq')) return 'help-circle';
+                if (t.includes('contact')) return 'phone';
+                if (t.includes('routine')) return 'calendar';
+                if (t.includes('academic')) return 'book-open';
+                if (t.includes('admission') || t.includes('apply')) return 'file-text';
+                return 'compass';
+            };
+
+            // Format every link with sleek minimalist markup (no clunky square boxes)
+            drawerBody.querySelectorAll('.nav-link').forEach(link => {
+                const labelEl = link.querySelector('.nav-link-label');
+                const rawText = (labelEl ? labelEl.textContent : link.textContent).trim();
+                const href = link.getAttribute('href') || '';
+                
+                // Exclude any duplicate dashboard/logout that might still be present
+                if (href === '/dashboard' || href.includes('logout') || href.includes('login')) {
+                    link.remove();
+                    return;
+                }
+
+                const iconName = getIconForLink(rawText, href);
+                link.innerHTML = `
+                    <span class="nav-link-left">
+                        <i data-lucide="${iconName}" class="nav-link-icon"></i>
+                        <span class="nav-link-label">${rawText}</span>
+                    </span>
+                    <i data-lucide="chevron-right" class="nav-link-arrow"></i>
+                `;
+            });
+
+            // 4. Build or update the Sleek Account Card directly inside drawerBody (after Contact)
+            let accountSection = nav.querySelector('.nav-drawer-account-section');
+            if (!accountSection) {
+                accountSection = document.createElement('div');
+                accountSection.className = 'nav-drawer-account-section';
+                accountSection.innerHTML = `
+                    <div class="drawer-account-card">
+                        <div class="account-card-header">
+                            <div class="account-avatar">
+                                <i data-lucide="${isLoggedIn ? 'user-check' : 'shield-check'}"></i>
+                            </div>
+                            <div class="account-meta">
+                                <span class="account-badge">
+                                    <span class="badge-dot"></span>
+                                    ${isLoggedIn ? 'Active Session' : 'Official Portal'}
+                                </span>
+                                <span class="account-title">${isLoggedIn ? 'Signed In Account' : 'Student &amp; Parent Access'}</span>
+                            </div>
+                        </div>
+                        <div class="account-card-actions">
+                            <a href="/dashboard" class="account-btn account-btn-primary">
+                                <i data-lucide="layout-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                            ${isLoggedIn ? `
+                            <a href="/logout" class="account-btn account-btn-outline">
+                                <i data-lucide="log-out"></i>
+                                <span>Logout</span>
+                            </a>` : `
+                            <a href="/login/student" class="account-btn account-btn-outline">
+                                <i data-lucide="log-in"></i>
+                                <span>Portal Login</span>
+                            </a>`}
+                        </div>
+                    </div>
+                `;
+            }
+            // Always append accountSection at the end of drawerBody so it sits right after Contact
+            drawerBody.appendChild(accountSection);
+
+            // Clean up any separate nav-drawer-footer if present
+            nav.querySelectorAll('.nav-drawer-footer').forEach(el => el.remove());
+
+            // 5. Attach link click handlers to smoothly close drawer
+            nav.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', closeTopNav);
+            });
+
+            // 6. Refresh Lucide icons
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        };
+
+        setupSideDrawer();
+
+        // Handle both standard click and touchend for zero-delay iPad execution
+        menuBtn.addEventListener('click', toggleTopNav);
+        menuBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleTopNav(e);
+        }, { passive: false });
+
+        menuBtn.addEventListener('pointerdown', () => menuBtn.classList.add('is-pressed'));
+        menuBtn.addEventListener('pointerup', () => menuBtn.classList.remove('is-pressed'));
+        menuBtn.addEventListener('pointercancel', () => menuBtn.classList.remove('is-pressed'));
+
+        navOverlay.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeTopNav();
         });
+        navOverlay.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            closeTopNav();
+        }, { passive: false });
+        navOverlay.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
 
         document.addEventListener('click', (event) => {
+            if (isNavTransitioning || Date.now() - lastNavToggleTime < 350) return;
             if (!nav.classList.contains('active')) return;
-            if (nav.contains(event.target) || menuBtn.contains(event.target)) return;
+            if (nav.contains(event.target) || menuBtn.contains(event.target) || event.target.closest('.mobile-menu-btn') || event.target.closest('.main-nav')) return;
             closeTopNav();
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1200 && nav.classList.contains('active')) {
+                closeTopNav();
+            }
         });
     }
 
     if (sidebar) {
         if (!sidebar.id) sidebar.id = 'sidebar';
 
-        // Restore scroll position
-        const savedScroll = localStorage.getItem('sidebar-scroll');
-        if (savedScroll) {
-            sidebar.scrollTop = parseInt(savedScroll, 10);
+        // Restore scroll position only on desktop
+        if (!window.matchMedia('(max-width: 992px)').matches) {
+            const savedScroll = localStorage.getItem('sidebar-scroll');
+            if (savedScroll) {
+                sidebar.scrollTop = parseInt(savedScroll, 10);
+            }
+        } else {
+            localStorage.removeItem('sidebar-scroll');
+            sidebar.scrollTop = 0;
+            if (typeof sidebar.scrollTo === 'function') {
+                sidebar.scrollTo({ top: 0, behavior: 'instant' });
+            }
         }
 
-        // Save scroll position on scroll
+        // Save scroll position on scroll only on desktop
         sidebar.addEventListener('scroll', () => {
-            localStorage.setItem('sidebar-scroll', sidebar.scrollTop);
+            if (!window.matchMedia('(max-width: 992px)').matches) {
+                localStorage.setItem('sidebar-scroll', sidebar.scrollTop);
+            }
         });
 
+        // Ensure sidebar header has a mobile close button
+        let sidebarCloseBtn = sidebar.querySelector('.sidebar-close-btn');
+        if (!sidebarCloseBtn) {
+            const header = sidebar.querySelector('.sidebar-header');
+            if (header) {
+                sidebarCloseBtn = document.createElement('button');
+                sidebarCloseBtn.type = 'button';
+                sidebarCloseBtn.className = 'sidebar-close-btn';
+                sidebarCloseBtn.setAttribute('aria-label', 'Close dashboard menu');
+                sidebarCloseBtn.innerHTML = '<i data-lucide="x"></i>';
+                header.appendChild(sidebarCloseBtn);
+            }
+        }
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                setSidebarOpen(false);
+            });
+            sidebarCloseBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                setSidebarOpen(false);
+            }, { passive: false });
+        }
+
         const topBar = document.querySelector('.top-bar');
-        const topBarLeft = document.querySelector('.top-bar-left') || topBar;
+        let topBarLeft = document.querySelector('.top-bar-left');
         let sidebarToggle = document.querySelector('.sidebar-toggle-btn');
         let sidebarOverlay = document.querySelector('.sidebar-overlay');
 
@@ -73,25 +396,184 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(sidebarOverlay);
         }
 
-        if (!sidebarToggle && topBarLeft) {
+        if (topBar && !topBarLeft) {
+            topBarLeft = document.createElement('div');
+            topBarLeft.className = 'top-bar-left';
+            const title = topBar.querySelector('.top-bar-title');
+            if (title) {
+                topBar.insertBefore(topBarLeft, title);
+                topBarLeft.appendChild(title);
+            } else {
+                topBar.prepend(topBarLeft);
+            }
+        }
+
+        if (!sidebarToggle && (topBarLeft || topBar)) {
+            const container = topBarLeft || topBar;
             sidebarToggle = document.createElement('button');
             sidebarToggle.type = 'button';
-            sidebarToggle.className = 'sidebar-toggle-btn';
+            sidebarToggle.className = 'mobile-menu-btn sidebar-toggle-btn';
             sidebarToggle.setAttribute('aria-label', 'Open dashboard menu');
             sidebarToggle.setAttribute('aria-controls', sidebar.id);
             sidebarToggle.setAttribute('aria-expanded', 'false');
-            sidebarToggle.innerHTML = '<i data-lucide="menu"></i>';
-            topBarLeft.prepend(sidebarToggle);
+            sidebarToggle.innerHTML = `
+                <span class="hamburger-box">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
+            `;
+            container.prepend(sidebarToggle);
+        } else if (sidebarToggle) {
+            sidebarToggle.setAttribute('type', 'button');
+            sidebarToggle.setAttribute('aria-controls', sidebar.id);
+            if (!sidebarToggle.getAttribute('aria-expanded')) sidebarToggle.setAttribute('aria-expanded', 'false');
+            if (!sidebarToggle.getAttribute('aria-label') || sidebarToggle.getAttribute('aria-label') === 'Toggle Navigation') {
+                sidebarToggle.setAttribute('aria-label', 'Open dashboard menu');
+            }
+            if (!sidebarToggle.querySelector('.hamburger-box')) {
+                sidebarToggle.innerHTML = `
+                    <span class="hamburger-box">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </span>
+                `;
+            }
+        }
+
+        // Harmonize Top Bar across all subpages with Homepage/Dashboard styling
+        if (topBar && topBarLeft) {
+            let topBarBrand = topBar.querySelector('.top-bar-brand');
+            if (!topBarBrand) {
+                const titleEl = topBar.querySelector('.top-bar-title');
+                const rawTitle = titleEl ? titleEl.textContent.trim() : (document.title.split('-')[0].trim() || 'Portal');
+                
+                topBarBrand = document.createElement('a');
+                topBarBrand.href = '/';
+                topBarBrand.className = 'top-bar-brand';
+                topBarBrand.setAttribute('aria-label', 'Al-Hidayet Mission Home');
+                topBarBrand.innerHTML = `
+                    <img src="/static/images/logo.png" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                    <div class="top-bar-brand-text">
+                        <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                        <span class="top-bar-sub">${rawTitle}</span>
+                    </div>
+                `;
+
+                if (titleEl) {
+                    titleEl.replaceWith(topBarBrand);
+                } else {
+                    topBarLeft.appendChild(topBarBrand);
+                }
+            }
+
+            // Harmonize Top Bar Right actions across all subpages
+            let topBarRight = topBar.querySelector('.top-bar-right');
+            if (!topBarRight) {
+                topBarRight = document.createElement('div');
+                topBarRight.className = 'top-bar-right';
+                topBar.appendChild(topBarRight);
+            }
+
+            const currentPath = window.location.pathname.toLowerCase();
+            if (!topBarRight.querySelector('a[href="/dashboard"]') && currentPath !== '/dashboard') {
+                const dashBtn = document.createElement('a');
+                dashBtn.href = '/dashboard';
+                dashBtn.className = 'top-bar-action-btn';
+                dashBtn.title = 'Dashboard';
+                dashBtn.setAttribute('aria-label', 'Dashboard');
+                dashBtn.innerHTML = '<i data-lucide="layout-dashboard"></i>';
+                topBarRight.prepend(dashBtn);
+            }
+
+            if (!topBarRight.querySelector('a[href*="logout"]')) {
+                const logoutBtn = document.createElement('a');
+                logoutBtn.href = '/logout';
+                logoutBtn.className = 'top-bar-logout-btn';
+                logoutBtn.title = 'Logout';
+                logoutBtn.setAttribute('aria-label', 'Logout');
+                logoutBtn.innerHTML = '<i data-lucide="log-out"></i>';
+                topBarRight.appendChild(logoutBtn);
+            }
+        }
+
+        // Setup universal mobile table responsiveness & touch swipe cue
+        const initUniversalMobileTables = () => {
+            // Automatically wrap any stray table across all pages (excluding printable paper marksheets)
+            document.querySelectorAll('table').forEach(tbl => {
+                if (tbl.closest('.printable-marksheet, #printable-area, .info-tbl, .annual-tbl')) return;
+                if (!tbl.closest('.table-scroll-container, .dash-table-container, .table-container, .table-responsive, .dash-table-responsive, .academics-table-scroll')) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'table-scroll-container';
+                    tbl.parentNode.insertBefore(wrap, tbl);
+                    wrap.appendChild(tbl);
+                    tbl.classList.add('dash-table');
+                }
+            });
+
+            const tableWrappers = document.querySelectorAll('.dash-table-container, .table-scroll-container, .table-container, .table-responsive, .dash-table-responsive, .academics-table-scroll');
+            tableWrappers.forEach(container => {
+                const table = container.querySelector('table');
+                if (!table) return;
+
+                const evaluateScrollability = () => {
+                    if (window.innerWidth <= 992 && table.scrollWidth > container.clientWidth + 10) {
+                        let hint = container.previousElementSibling;
+                        if (!hint || !hint.classList.contains('mobile-table-hint')) {
+                            hint = document.createElement('div');
+                            hint.className = 'mobile-table-hint';
+                            hint.innerHTML = '<i data-lucide="chevrons-left-right" style="width:13px;height:13px;"></i> <span>Swipe horizontally to view all columns &rarr;</span>';
+                            container.parentNode.insertBefore(hint, container);
+                            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                                window.lucide.createIcons();
+                            }
+                        }
+                    } else {
+                        const hint = container.previousElementSibling;
+                        if (hint && hint.classList.contains('mobile-table-hint')) {
+                            hint.remove();
+                        }
+                    }
+                };
+
+                evaluateScrollability();
+                window.addEventListener('resize', evaluateScrollability);
+            });
+        };
+        initUniversalMobileTables();
+        window.initUniversalMobileTables = initUniversalMobileTables;
+
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
         }
 
         const setSidebarOpen = (isOpen) => {
             sidebar.classList.toggle('active', isOpen);
             sidebarOverlay.classList.toggle('active', isOpen);
             document.body.classList.toggle('sidebar-open', isOpen);
-            if (sidebarToggle) {
-                sidebarToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-                sidebarToggle.setAttribute('aria-label', isOpen ? 'Close dashboard menu' : 'Open dashboard menu');
+            if (isOpen && window.matchMedia('(max-width: 992px)').matches) {
+                // Ensure full menu from Dashboard down is displayed from top
+                sidebar.scrollTop = 0;
+                if (typeof sidebar.scrollTo === 'function') {
+                    sidebar.scrollTo({ top: 0, behavior: 'instant' });
+                }
+                requestAnimationFrame(() => {
+                    sidebar.scrollTop = 0;
+                });
+                [30, 80, 180, 320].forEach(delay => {
+                    setTimeout(() => {
+                        sidebar.scrollTop = 0;
+                        if (typeof sidebar.scrollTo === 'function') {
+                            sidebar.scrollTo({ top: 0, behavior: 'instant' });
+                        }
+                    }, delay);
+                });
             }
+            document.querySelectorAll('.sidebar-toggle-btn, #sidebarToggle').forEach(btn => {
+                btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                btn.setAttribute('aria-label', isOpen ? 'Close dashboard menu' : 'Open dashboard menu');
+            });
         };
 
         const closeSidebarOnMobile = () => {
@@ -100,13 +582,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                setSidebarOpen(!sidebar.classList.contains('active'));
-            });
-        }
+        let lastSidebarToggleTime = 0;
+        const toggleSidebar = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (Date.now() - lastSidebarToggleTime < 250) return;
+            lastSidebarToggleTime = Date.now();
+            setSidebarOpen(!sidebar.classList.contains('active'));
+        };
 
-        sidebarOverlay.addEventListener('click', () => setSidebarOpen(false));
+        document.querySelectorAll('.sidebar-toggle-btn, #sidebarToggle').forEach(btn => {
+            btn.addEventListener('click', toggleSidebar);
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                toggleSidebar(e);
+            }, { passive: false });
+        });
+
+        sidebarOverlay.addEventListener('click', (e) => {
+            e.preventDefault();
+            setSidebarOpen(false);
+        });
+        sidebarOverlay.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            setSidebarOpen(false);
+        }, { passive: false });
+        sidebarOverlay.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
         sidebar.querySelectorAll('a').forEach((link) => {
             link.addEventListener('click', closeSidebarOnMobile);
         });
@@ -130,26 +635,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Set Accessible Landmark Labels on Sidebar & TopBar
+    document.querySelectorAll('.sidebar-nav').forEach((sbNav) => {
+        if (!sbNav.getAttribute('aria-label')) {
+            sbNav.setAttribute('aria-label', 'Sidebar Navigation');
+        }
+    });
+
+    document.querySelectorAll('.top-bar').forEach((tb) => {
+        if (!tb.getAttribute('role')) {
+            tb.setAttribute('role', 'banner');
+        }
+    });
+
     const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
-    document.querySelectorAll('.main-nav .nav-link[href]').forEach((link) => {
+    document.querySelectorAll('.main-nav .nav-link[href], .sidebar-nav .sidebar-item[href], .navbar .nav-links a[href]').forEach((link) => {
         const href = link.getAttribute('href');
         if (!href || href.startsWith('#')) return;
         const linkPath = new URL(href, window.location.origin).pathname.replace(/\/$/, '') || '/';
         if (linkPath === currentPath) {
-            document.querySelectorAll('.main-nav .nav-link.active').forEach((activeLink) => activeLink.classList.remove('active'));
             link.classList.add('active');
+            link.setAttribute('aria-current', 'page');
         }
     });
 
+    // Ensure all currently active links have aria-current="page"
+    document.querySelectorAll('.main-nav .nav-link.active, .sidebar-nav .sidebar-item.active, .navbar a.active').forEach((activeEl) => {
+        activeEl.setAttribute('aria-current', 'page');
+    });
+
+    // Universal Escape Key Handler
     document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
-        if (nav) nav.classList.remove('active');
-        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
-        if (sidebar) {
-            sidebar.classList.remove('active');
-            document.querySelector('.sidebar-overlay')?.classList.remove('active');
-            document.body.classList.remove('sidebar-open');
-            document.querySelector('.sidebar-toggle-btn')?.setAttribute('aria-expanded', 'false');
+        if (event.key !== 'Escape' && event.key !== 'Esc') return;
+        if (typeof closeTopNav === 'function' && nav && nav.classList.contains('active')) {
+            closeTopNav();
+        } else if (nav && nav.classList.contains('active')) {
+            nav.classList.remove('active');
+            document.querySelector('.main-nav-overlay')?.classList.remove('active');
+            document.body.classList.remove('mobile-nav-open');
+            if (menuBtn) {
+                menuBtn.classList.remove('active');
+                menuBtn.setAttribute('aria-expanded', 'false');
+                menuBtn.focus();
+            }
+        }
+        if (sidebar && sidebar.classList.contains('active')) {
+            if (typeof setSidebarOpen === 'function') {
+                setSidebarOpen(false);
+            } else {
+                sidebar.classList.remove('active');
+                document.querySelector('.sidebar-overlay')?.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
+                document.querySelector('.sidebar-toggle-btn')?.setAttribute('aria-expanded', 'false');
+            }
         }
     });
 
@@ -227,26 +765,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ].join(',')));
 
     const textTargets = Array.from(document.querySelectorAll([
-        '.hero-tag',
         '.hero-title',
         '.hero-description',
-        '.section-subtitle',
         '.section-title',
-        '.section-text',
-        '.feature-list h3',
-        '.feature-list p',
-        '.facility-card h3',
-        '.facility-card p',
-        '.teacher-info h3',
-        '.teacher-info span',
-        '.service-content h3',
-        '.service-content p',
-        '.cta-section h2',
-        '.cta-section p',
         '.branch-title',
-        '.main-footer h3',
-        '.footer-col p',
-        '.contact-list li'
+        '.cta-section h2'
     ].join(',')));
 
     const splitAnimatedText = (el) => {
@@ -685,5 +1208,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
+    }
+
+    // Pause testimonial marquee on touch interaction so users can easily read cards on mobile
+    const marqueeWrapper = document.querySelector('.testimonial-marquee-wrapper');
+    const marqueeTrack = document.querySelector('.testimonial-track');
+    if (marqueeWrapper && marqueeTrack) {
+        let touchTimeout;
+        marqueeWrapper.addEventListener('touchstart', () => {
+            clearTimeout(touchTimeout);
+            marqueeWrapper.classList.add('is-paused');
+        }, { passive: true });
+        
+        marqueeWrapper.addEventListener('touchend', () => {
+            touchTimeout = setTimeout(() => {
+                marqueeWrapper.classList.remove('is-paused');
+            }, 1200);
+        }, { passive: true });
     }
 });

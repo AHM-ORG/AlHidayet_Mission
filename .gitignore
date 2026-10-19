@@ -77,3 +77,7 @@ templates/dashboard_restored.html
 templates/dashboard_restored_clean.html
 templates/dashboard_stitched.html
 templates/dashboard_utf8.html
+
+.vscode/
+*.pdf
+

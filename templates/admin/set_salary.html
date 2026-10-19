@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Set Salary - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 </head>
@@ -29,6 +29,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -90,38 +91,74 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Set Salary</div>
-            </header>
-            <div class="content-wrapper">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Salary Management</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-amber" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="banknote" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Teachers: {{ teachers|length if teachers else 0 }}
+                    </span>
                 
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
+            </header>
+
+            <div class="content-wrapper" style="padding: 24px;">
                 <!-- ALERTS -->
                 {% with messages = get_flashed_messages() %}
                 {% if messages %}
-                <div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-                    {{ messages[0] }}
+                <div class="alert alert-success" style="margin-bottom: 20px; padding: 14px 18px; border-radius: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-weight: 500; display:flex; align-items:center; gap:10px;">
+                    <i data-lucide="check-circle" style="width:18px; height:18px; color:#059669;"></i>
+                    <span>{{ messages[0] }}</span>
                 </div>
                 {% endif %}
                 {% endwith %}
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
-                    <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                        <h3 style="color: #6c5ce7;"><i data-lucide="users"></i> Configure Teacher Salary</h3>
-                        <p style="color: #666; font-size: 14px;">Set the monthly salary for a teacher.</p>
-                        <form action="/admin/set-salary" method="post" style="margin-top: 20px;">
-                            <div class="input-group">
-                                <label>Teacher:</label>
-                                <select name="teacher_id" required style="width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px;" class="search-select">
+                <div style="max-width: 680px; margin: 0 auto;">
+                    <div class="dash-section-card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.06); padding:28px;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:18px; color:var(--primary-color); font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="banknote" style="width:22px; height:22px; color:var(--accent-gold);"></i> Configure Teacher Compensation
+                        </h3>
+                        <p style="margin:4px 0 24px; color:#64748b; font-size:13.5px;">Specify monthly remuneration packages for teaching staff.</p>
+                        
+                        <form action="/admin/set-salary" method="post" style="display:flex; flex-direction:column; gap:18px;">
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Select Staff Member / Teacher:</label>
+                                <select name="teacher_id" required style="width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;" class="search-select">
                                     {% for t in teachers %}
                                     <option value="{{ t.id }}">{{ t.full_name or (t.username | clean_name) }} (Current: ₹{{ t.salary }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="input-group">
-                                <label>Salary Amount (INR):</label>
-                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 15000">
+                            
+                            <div>
+                                <label style="font-weight:600; margin-bottom:6px; display:block; font-size:13px; color:#334155;">Monthly Salary Amount (₹ INR):</label>
+                                <input type="number" name="amount" required step="1" min="0" placeholder="e.g. 15000" style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-gold)'" onblur="this.style.borderColor='#e2e8f0'">
                             </div>
                             
-                            <button type="submit" class="auth-btn" style="background: #6c5ce7;">Set Salary</button>
+                            <button type="submit" style="margin-top:8px; padding:12px 20px; border-radius:10px; border:none; background:var(--primary-color); color:#fff; font-weight:600; font-size:14px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='var(--primary-color)'">
+                                Update Salary
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -146,6 +183,6 @@
             });
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 </html>

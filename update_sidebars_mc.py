@@ -33,15 +33,21 @@ def run_update():
                     print(f"Skipped {f} due to error: {e}")
                     continue
                     
-                # Check for managing-committee
+                # Check for existing items
                 has_mc = '/admin/managing-committee' in content
+                has_rq = '/admin/review-queue' in content
                 
                 lines = content.splitlines()
                 new_lines = []
                 need_update = False
                 for i, line in enumerate(lines):
                     new_lines.append(line)
-                    if '/admin/applications' in line and 'class="sidebar-item' in line and not has_mc:
+                    if '/admin/managing-committee' in line and 'class="sidebar-item' in line and not has_rq:
+                        indent = len(line) - len(line.lstrip())
+                        spacing = ' ' * indent
+                        new_lines.append(f'{spacing}<a href="/admin/review-queue" class="sidebar-item {{% if request.path == \'/admin/review-queue\' %}}active{{% endif %}}"><i data-lucide="shield-alert"></i> Review Queue</a>')
+                        need_update = True
+                    elif '/admin/applications' in line and 'class="sidebar-item' in line and not has_mc:
                         indent = len(line) - len(line.lstrip())
                         spacing = ' ' * indent
                         new_lines.append(f'{spacing}<a href="/admin/managing-committee" class="sidebar-item {{% if request.path == \'/admin/managing-committee\' %}}active{{% endif %}}"><i data-lucide="contact"></i> Managing Committee</a>')

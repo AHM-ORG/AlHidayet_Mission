@@ -9,10 +9,10 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,500&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,500;1,600;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -83,16 +83,22 @@
 </head>
 
 <body class="bg-pattern">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#dashboard-main" class="skip-link">Skip to main content</a>
+
     <div class="dashboard-container">
                                         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" aria-label="Dashboard Sidebar">
             <div class="sidebar-header">
-                <a href="/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
-                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
-                    <span style="font-weight:700; font-size:14px;">Bhogram Al-Hidayet Mission</span>
+                <a href="/" class="sidebar-brand">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission" class="sidebar-logo">
+                    <span class="sidebar-brand-title">Al-Hidayet <span class="highlight">Mission</span></span>
                 </a>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close dashboard menu">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" aria-label="Dashboard Navigation">
                 <a href="/dashboard" class="sidebar-item {% if request.path == '/dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
 
                 {% if role == 'admin' %}
@@ -103,6 +109,8 @@
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/profile-edits" class="sidebar-item {% if request.path == '/admin/profile-edits' %}active{% endif %}"><i data-lucide="user-check"></i> Profile Edit Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
+                <a href="/admin/reviews" class="sidebar-item {% if request.path == '/admin/reviews' %}active{% endif %}"><i data-lucide="message-square"></i> Manage Reviews</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -163,28 +171,48 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
-            <header class="top-bar">
-                <div class="top-bar-left" style="display: flex; align-items: center; gap: 10px;">
-                    <div class="top-bar-title">
-                        {% if role == 'admin' %}
-                            Admin Dashboard
-                        {% else %}
-                            {{ role|title }} Dashboard
-                        {% endif %}
-                    </div>
+        <main class="main-content" id="dashboard-main">
+            <header class="top-bar" role="banner" aria-label="Dashboard Top Bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">
+                                {% if role == 'admin' %}
+                                    Admin Command Center
+                                {% else %}
+                                    {{ role|title }} Desk
+                                {% endif %}
+                            </span>
+                        </div>
+                    </a>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span style="font-weight: 500; font-size: 15px; color: var(--text-dark);">Welcome, <strong>{{ display_name }}</strong></span>
+                <div class="top-bar-right">
+                    <div class="top-bar-user-badge">
+                        <span class="user-status-dot"></span>
+                        <strong class="user-name">{{ display_name }}</strong>
+                    </div>
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
                 </div>
             </header>
 
-            <div class="content-wrapper" style="padding: 30px;">
+            <div class="content-wrapper">
                 <!-- Flash messages -->
                 {% with messages = get_flashed_messages() %}
                 {% if messages %}
-                <div style="background: #E8F8F5; color: #00B894; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: 500; box-shadow: var(--shadow-xs);">
-                    {{ messages[0] }}
+                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 14px 18px; border-radius: 14px; margin-bottom: 24px; font-weight: 600; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.12);">
+                    <i data-lucide="check-circle-2" style="color: #10b981; width: 20px; height: 20px; flex-shrink: 0;"></i>
+                    <span>{{ messages[0] }}</span>
                 </div>
                 {% endif %}
                 {% endwith %}
@@ -192,279 +220,498 @@
                 <!-- ================= ADMIN DASHBOARD PANEL ================= -->
                 {% if role == 'admin' %}
                 <!-- Quick Stats Grid -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--primary-color);">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Total Users</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ all_users|length if all_users else 0 }}</div>
+                <div class="dash-stat-grid">
+                    <div class="dash-stat-card" style="--stat-color: #1e3a8a; --stat-bg: rgba(30, 58, 138, 0.08); --stat-glow: rgba(30, 58, 138, 0.16);">
+                        <div class="dash-stat-left">
+                            <span class="dash-stat-label">Total Users</span>
+                            <div class="dash-stat-value">{{ all_users|length if all_users else 0 }}</div>
+                            <span class="dash-stat-badge">
+                                <i data-lucide="users" style="width: 12px; height: 12px;"></i> Registered
+                            </span>
+                        </div>
+                        <div class="dash-stat-icon-wrapper">
+                            <i data-lucide="user-check"></i>
+                        </div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #00b894;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Active Notices</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ all_notices|length if all_notices else 0 }}</div>
+
+                    <div class="dash-stat-card" style="--stat-color: #0d9488; --stat-bg: rgba(13, 148, 136, 0.08); --stat-glow: rgba(13, 148, 136, 0.16);">
+                        <div class="dash-stat-left">
+                            <span class="dash-stat-label">Active Notices</span>
+                            <div class="dash-stat-value">{{ all_notices|length if all_notices else 0 }}</div>
+                            <span class="dash-stat-badge">
+                                <i data-lucide="broadcast" style="width: 12px; height: 12px;"></i> Broadcast
+                            </span>
+                        </div>
+                        <div class="dash-stat-icon-wrapper">
+                            <i data-lucide="bell"></i>
+                        </div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #fdcb6e;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Admission Requests</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ pending_forms|length if pending_forms else 0 }}</div>
+
+                    <div class="dash-stat-card" style="--stat-color: #d97706; --stat-bg: rgba(217, 119, 6, 0.08); --stat-glow: rgba(217, 119, 6, 0.16);">
+                        <div class="dash-stat-left">
+                            <span class="dash-stat-label">Admission Requests</span>
+                            <div class="dash-stat-value">{{ pending_forms|length if pending_forms else 0 }}</div>
+                            <span class="dash-stat-badge">
+                                <i data-lucide="clock" style="width: 12px; height: 12px;"></i> In Review
+                            </span>
+                        </div>
+                        <div class="dash-stat-icon-wrapper">
+                            <i data-lucide="file-check"></i>
+                        </div>
                     </div>
-                    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 4px solid #ff7675;">
-                        <div style="font-size: 14px; color: #7f8c8d; font-weight: 600;">Pending Gallery Media</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #2d3436; margin-top: 5px;">{{ pending_gallery|length if pending_gallery else 0 }}</div>
+
+                    <div class="dash-stat-card" style="--stat-color: #e11d48; --stat-bg: rgba(225, 29, 72, 0.08); --stat-glow: rgba(225, 29, 72, 0.16);">
+                        <div class="dash-stat-left">
+                            <span class="dash-stat-label">Campus Media</span>
+                            <div class="dash-stat-value">{{ pending_gallery|length if pending_gallery else 0 }}</div>
+                            <span class="dash-stat-badge">
+                                <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i> Submissions
+                            </span>
+                        </div>
+                        <div class="dash-stat-icon-wrapper">
+                            <i data-lucide="image"></i>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Administrative Control Center -->
-                <div class="auth-container" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
-                        <i data-lucide="layout-grid"></i> Administrative Control Center
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(12, 35, 64, 0.08); color: var(--primary-color);">
+                                <i data-lucide="layout-grid"></i>
+                            </span>
+                            Administrative Control Center
+                        </h3>
+                        <span class="dash-badge dash-badge-info">
+                            <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> 18 Quick Actions
+                        </span>
+                    </div>
+                    <div class="dash-action-grid">
                         <!-- Card 1: Register User -->
-                        <a href="/register" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid var(--primary-color); padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="user-plus" style="width: 32px; height: 32px; color: var(--primary-color); margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Register User</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Add new account credentials</p>
+                        <a href="/register" class="dash-action-tile" style="--tile-color: #0d9488; --tile-bg: rgba(13, 148, 136, 0.10); --tile-glow: rgba(13, 148, 136, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="user-plus"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Register User</h4>
+                                <p class="dash-tile-desc">Add new account credentials</p>
                             </div>
                         </a>
+
                         <!-- Card 2: Student Directory -->
-                        <a href="/admin/student-list" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #00b894; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="users" style="width: 32px; height: 32px; color: #00b894; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Student Directory</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">View & manage registered students</p>
+                        <a href="/admin/student-list" class="dash-action-tile" style="--tile-color: #059669; --tile-bg: rgba(5, 150, 105, 0.10); --tile-glow: rgba(5, 150, 105, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="users"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Student Directory</h4>
+                                <p class="dash-tile-desc">View & manage registered students</p>
                             </div>
                         </a>
-                        <!-- Card 2b: Teacher Directory -->
-                        <a href="/admin/teachers" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #0984e3; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="graduation-cap" style="width: 32px; height: 32px; color: #0984e3; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Teacher Directory</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">View & manage academic faculty</p>
+
+                        <!-- Card 3: Teacher Directory -->
+                        <a href="/admin/teachers" class="dash-action-tile" style="--tile-color: #2563eb; --tile-bg: rgba(37, 99, 235, 0.10); --tile-glow: rgba(37, 99, 235, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="graduation-cap"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Teacher Directory</h4>
+                                <p class="dash-tile-desc">View & manage academic faculty</p>
                             </div>
                         </a>
-                        <!-- Card 3: Admission Requests -->
-                        <a href="/admin/applications" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #fdcb6e; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="file-check" style="width: 32px; height: 32px; color: #fdcb6e; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Admission Requests</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Review pending forms & requests</p>
+
+                        <!-- Card 4: Admission Requests -->
+                        <a href="/admin/applications" class="dash-action-tile" style="--tile-color: #d97706; --tile-bg: rgba(217, 119, 6, 0.10); --tile-glow: rgba(217, 119, 6, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="file-check"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Admission Requests</h4>
+                                <p class="dash-tile-desc">Review pending forms & requests</p>
                             </div>
                         </a>
-                        <!-- Card 3b: Profile Edit Requests -->
-                        <a href="/admin/profile-edits" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #00cec9; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="user-cog" style="width: 32px; height: 32px; color: #00cec9; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Profile Edit Requests</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Approve student & teacher edits</p>
+
+                        <!-- Card 5: Profile Edit Requests -->
+                        <a href="/admin/profile-edits" class="dash-action-tile" style="--tile-color: #0284c7; --tile-bg: rgba(2, 132, 199, 0.10); --tile-glow: rgba(2, 132, 199, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="user-cog"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Profile Edit Requests</h4>
+                                <p class="dash-tile-desc">Approve student & teacher edits</p>
                             </div>
                         </a>
-                        <!-- Card 4: Set Fees -->
-                        <a href="/admin/set-fees" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #e84393; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="indian-rupee" style="width: 32px; height: 32px; color: #e84393; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Set Fees</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Configure class fee structures</p>
+
+                        <!-- Card 6: Set Fees -->
+                        <a href="/admin/set-fees" class="dash-action-tile" style="--tile-color: #db2777; --tile-bg: rgba(219, 39, 119, 0.10); --tile-glow: rgba(219, 39, 119, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="indian-rupee"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Set Fees</h4>
+                                <p class="dash-tile-desc">Configure class fee structures</p>
                             </div>
                         </a>
-                        <!-- Card 5: Set Salary -->
-                        <a href="/admin/set-salary" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #6c5ce7; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="banknote" style="width: 32px; height: 32px; color: #6c5ce7; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Set Salary</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Manage faculty compensation</p>
+
+                        <!-- Card 7: Set Salary -->
+                        <a href="/admin/set-salary" class="dash-action-tile" style="--tile-color: #7c3aed; --tile-bg: rgba(124, 58, 237, 0.10); --tile-glow: rgba(124, 58, 237, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="banknote"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Set Salary</h4>
+                                <p class="dash-tile-desc">Manage faculty compensation</p>
                             </div>
                         </a>
-                        <!-- Card 6: Get Fees -->
-                        <a href="/admin/get-fees" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #0984e3; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="wallet" style="width: 32px; height: 32px; color: #0984e3; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Collect Fees</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Process school dues & collections</p>
+
+                        <!-- Card 8: Collect Fees -->
+                        <a href="/admin/get-fees" class="dash-action-tile" style="--tile-color: #0891b2; --tile-bg: rgba(8, 145, 178, 0.10); --tile-glow: rgba(8, 145, 178, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="wallet"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Collect Fees</h4>
+                                <p class="dash-tile-desc">Process school dues & collections</p>
                             </div>
                         </a>
-                        <!-- Card 7: Spend / Expenses -->
-                        <a href="/admin/spend" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #d63031; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="receipt" style="width: 32px; height: 32px; color: #d63031; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Record Expense</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Log campus expenditures & spend</p>
+
+                        <!-- Card 9: Record Expense -->
+                        <a href="/admin/spend" class="dash-action-tile" style="--tile-color: #e11d48; --tile-bg: rgba(225, 29, 72, 0.10); --tile-glow: rgba(225, 29, 72, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="receipt"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Record Expense</h4>
+                                <p class="dash-tile-desc">Log campus expenditures & spend</p>
                             </div>
                         </a>
-                        <!-- Card 8: Audit Report -->
-                        <a href="/admin/audit-report" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #2ecc71; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="clipboard-check" style="width: 32px; height: 32px; color: #2ecc71; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Audit Report</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Overview of balance & cash sheets</p>
+
+                        <!-- Card 10: Audit Report -->
+                        <a href="/admin/audit-report" class="dash-action-tile" style="--tile-color: #16a34a; --tile-bg: rgba(22, 163, 74, 0.10); --tile-glow: rgba(22, 163, 74, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="clipboard-check"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Audit Report</h4>
+                                <p class="dash-tile-desc">Overview of balance & cash sheets</p>
                             </div>
                         </a>
-                        <!-- Card 9: Admit & Seat Token -->
-                        <a href="/admin/admit-card" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #a29bfe; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="ticket" style="width: 32px; height: 32px; color: #a29bfe; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Admit Cards</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Generate exam passes & seat tokens</p>
+
+                        <!-- Card 11: Admit Cards -->
+                        <a href="/admin/admit-card" class="dash-action-tile" style="--tile-color: #6366f1; --tile-bg: rgba(99, 102, 241, 0.10); --tile-glow: rgba(99, 102, 241, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="ticket"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Admit Cards</h4>
+                                <p class="dash-tile-desc">Generate exam passes & seat tokens</p>
                             </div>
                         </a>
-                        <!-- Card 10: Marksheets -->
-                        <a href="/admin/marksheet" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #e17055; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="file-spreadsheet" style="width: 32px; height: 32px; color: #e17055; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Marksheets</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">View & compile student term reports</p>
+
+                        <!-- Card 12: Marksheets -->
+                        <a href="/admin/marksheet" class="dash-action-tile" style="--tile-color: #ea580c; --tile-bg: rgba(234, 88, 12, 0.10); --tile-glow: rgba(234, 88, 12, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="file-spreadsheet"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Marksheets</h4>
+                                <p class="dash-tile-desc">View & compile student term reports</p>
                             </div>
                         </a>
-                        <!-- Card 11: Id Cards -->
-                        <a href="/admin/id-card" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #00cec9; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="contact" style="width: 32px; height: 32px; color: #00cec9; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">ID Cards</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Generate student identification passes</p>
+
+                        <!-- Card 13: ID Cards -->
+                        <a href="/admin/id-card" class="dash-action-tile" style="--tile-color: #06b6d4; --tile-bg: rgba(6, 182, 212, 0.10); --tile-glow: rgba(6, 182, 212, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="contact"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">ID Cards</h4>
+                                <p class="dash-tile-desc">Generate student identification passes</p>
                             </div>
                         </a>
-                        <!-- Card 12: Bulk Mark Entry -->
-                        <a href="/admin/bulk-marks" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #ffeaa7; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="edit-3" style="width: 32px; height: 32px; color: #ffeaa7; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Bulk Marks</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Enter subject grades for classrooms</p>
+
+                        <!-- Card 14: Bulk Marks -->
+                        <a href="/admin/bulk-marks" class="dash-action-tile" style="--tile-color: #ca8a04; --tile-bg: rgba(202, 138, 4, 0.10); --tile-glow: rgba(202, 138, 4, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="edit-3"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Bulk Marks</h4>
+                                <p class="dash-tile-desc">Enter subject grades for classrooms</p>
                             </div>
                         </a>
-                        <!-- Card 13: Academic Settings -->
-                        <a href="/admin/academics-setting" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #e15f41; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="settings" style="width: 32px; height: 32px; color: #e15f41; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Academic Settings</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Configure subjects & teacher assignments</p>
+
+                        <!-- Card 15: Academic Settings -->
+                        <a href="/admin/academics-setting" class="dash-action-tile" style="--tile-color: #f97316; --tile-bg: rgba(249, 115, 22, 0.10); --tile-glow: rgba(249, 115, 22, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="settings"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Academic Settings</h4>
+                                <p class="dash-tile-desc">Configure subjects & teacher assignments</p>
                             </div>
                         </a>
-                        <!-- Card 14: Student Promotion -->
-                        <a href="/admin/student-promotion" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #b2bec3; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="user-check" style="width: 32px; height: 32px; color: #b2bec3; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Student Promotion</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Advance classrooms to subsequent terms</p>
+
+                        <!-- Card 16: Student Promotion -->
+                        <a href="/admin/student-promotion" class="dash-action-tile" style="--tile-color: #475569; --tile-bg: rgba(71, 85, 105, 0.10); --tile-glow: rgba(71, 85, 105, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="user-check"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Student Promotion</h4>
+                                <p class="dash-tile-desc">Advance classrooms to subsequent terms</p>
                             </div>
                         </a>
-                        <!-- Card 15: Bulk Data Upload -->
-                        <a href="/admin/bulk-upload" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #8b5cf6; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="upload" style="width: 32px; height: 32px; color: #8b5cf6; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Bulk Data Upload</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">Smart CSV imports for students, teachers, marks</p>
+
+                        <!-- Card 17: Bulk Data Upload -->
+                        <a href="/admin/bulk-upload" class="dash-action-tile" style="--tile-color: #9333ea; --tile-bg: rgba(147, 51, 234, 0.10); --tile-glow: rgba(147, 51, 234, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="upload"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Bulk Data Upload</h4>
+                                <p class="dash-tile-desc">Smart CSV imports for students & teachers</p>
                             </div>
                         </a>
-                        <!-- Card 16: Class Routine -->
-                        <a href="/routine" style="text-decoration: none; color: inherit;">
-                            <div class="dash-card" style="border-bottom: 4px solid #f1c40f; padding: 20px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px;">
-                                <i data-lucide="calendar" style="width: 32px; height: 32px; color: #f1c40f; margin-bottom: 10px;"></i>
-                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600;">Class Routine</h4>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; text-align: center;">View and manage daily school class schedules</p>
+
+                        <!-- Card 18: Class Routine -->
+                        <a href="/routine" class="dash-action-tile" style="--tile-color: #b45309; --tile-bg: rgba(180, 83, 9, 0.10); --tile-glow: rgba(180, 83, 9, 0.22);">
+                            <div class="dash-tile-header">
+                                <div class="dash-tile-icon">
+                                    <i data-lucide="calendar"></i>
+                                </div>
+                                <div class="dash-tile-arrow">
+                                    <i data-lucide="arrow-up-right"></i>
+                                </div>
+                            </div>
+                            <div class="dash-tile-body">
+                                <h4 class="dash-tile-title">Class Routine</h4>
+                                <p class="dash-tile-desc">View and manage daily school class schedules</p>
                             </div>
                         </a>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 30px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-bottom: 28px;">
                     <!-- Notice Poster -->
-                    <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                        <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
-                            <i data-lucide="megaphone"></i> Post New Instruction / Notice
-                        </h3>
-                        <form action="/admin/post-notice" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-                            <div class="input-group" style="margin-bottom: 0;">
-                                <textarea name="content" placeholder="Write a notice or instruction for students and teachers..." required style="width: 100%; min-height: 100px; padding: 12px; border: 2px solid #eee; border-radius: 8px; resize: vertical; font-family: inherit; font-size: 14px;"></textarea>
+                    <div class="dash-section-card" style="margin-bottom: 0;">
+                        <div class="dash-section-header">
+                            <h3 class="dash-section-title">
+                                <span class="dash-section-icon" style="background: rgba(13, 148, 136, 0.10); color: #0d9488;">
+                                    <i data-lucide="megaphone"></i>
+                                </span>
+                                Post Notice & Instruction
+                            </h3>
+                            <span class="dash-badge dash-badge-success">All Campus</span>
+                        </div>
+                        <form action="/admin/post-notice" method="POST" style="display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <textarea name="content" class="dash-form-textarea" placeholder="Write an official school notice or instruction for students and teachers..." required></textarea>
                             </div>
                             <input type="hidden" name="branch" value="bhogram">
-                            <button type="submit" class="auth-btn" style="width: auto; padding: 10px 25px; align-self: flex-start; background-color: var(--primary-color);">Post Notice</button>
+                            <button type="submit" class="dash-btn-action dash-btn-action-primary" style="align-self: flex-start; padding: 10px 22px; font-size: 14px;">
+                                <i data-lucide="send" style="width: 15px; height: 15px;"></i> Post Notice
+                            </button>
                         </form>
                     </div>
 
                     <!-- Media Upload -->
-                    <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                        <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
-                            <i data-lucide="upload-cloud"></i> Upload Campus Media
-                        </h3>
-                        <form action="/upload" method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="dash-section-card" style="margin-bottom: 0;">
+                        <div class="dash-section-header">
+                            <h3 class="dash-section-title">
+                                <span class="dash-section-icon" style="background: rgba(229, 152, 25, 0.12); color: var(--accent-gold);">
+                                    <i data-lucide="upload-cloud"></i>
+                                </span>
+                                Upload Campus Media
+                            </h3>
+                            <span class="dash-badge dash-badge-warning">Gallery</span>
+                        </div>
+                        <form action="/upload" method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 16px;">
                             <input type="hidden" name="branch" value="bhogram">
-                            <div class="input-group" style="margin-bottom: 0;">
-                                <label style="font-weight: 500; margin-bottom: 5px; display: block;">File Category Type:</label>
-                                <select name="category" required style="width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px;">
-                                    <option value="photos">Photo</option>
-                                    <option value="videos">Video</option>
+                            <div>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 6px; display: block;">File Category Type:</label>
+                                <select name="category" required class="dash-form-control">
+                                    <option value="photos">Photo Collection</option>
+                                    <option value="videos">Video Highlight</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="font-weight: 500; margin-bottom: 5px; display: block;">Select File:</label>
-                                <input type="file" name="file" required style="width: 100%; padding: 8px; border: 2px solid #eee; border-radius: 8px;">
+                            <div>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 6px; display: block;">Select File:</label>
+                                <input type="file" name="file" required class="dash-form-control" style="padding: 9px 12px;">
                             </div>
-                            <button type="submit" class="auth-btn" style="width: auto; padding: 10px 25px; align-self: flex-start; background-color: var(--primary-color);">Upload Now</button>
+                            <button type="submit" class="dash-btn-action dash-btn-action-primary" style="align-self: flex-start; padding: 10px 22px; font-size: 14px;">
+                                <i data-lucide="upload" style="width: 15px; height: 15px;"></i> Upload Now
+                            </button>
                         </form>
                     </div>
                 </div>
 
                 <!-- Notice Manager -->
-                <div class="auth-container" style="margin: 0 0 30px 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
-                        <i data-lucide="bell"></i> Manage Active Notices
-                    </h3>
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(225, 29, 72, 0.10); color: #e11d48;">
+                                <i data-lucide="bell"></i>
+                            </span>
+                            Manage Active Notices
+                        </h3>
+                        <span class="dash-badge dash-badge-info">{{ all_notices|length if all_notices else 0 }} Total</span>
+                    </div>
                     {% if all_notices %}
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                        <div class="dash-notice-grid">
                             {% for notice in all_notices %}
-                            <div style="background: #fdf2f8; border-left: 4px solid #e84393; padding: 15px; border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-                                <div>
-                                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3436; line-height: 1.5; font-weight: 500;">{{ notice['content'] }}</p>
-                                    <div style="font-size: 11px; color: #7f8c8d; display: flex; align-items: center; gap: 5px; margin-bottom: 15px;">
-                                        <i data-lucide="calendar" style="width: 12px; height: 12px;"></i> {{ notice['created_at'] }}
+                            <div class="dash-notice-card">
+                                <p class="dash-notice-content">{{ notice['content'] }}</p>
+                                <div class="dash-notice-footer">
+                                    <span class="dash-notice-time">
+                                        <i data-lucide="calendar" style="width: 13px; height: 13px;"></i> {{ notice['created_at'] }}
                                         {% if notice['branch'] %}
-                                            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">{{ notice['branch']|upper }}</span>
+                                            <span class="dash-badge dash-badge-info" style="padding: 2px 8px; font-size: 10px;">{{ notice['branch']|upper }}</span>
                                         {% endif %}
-                                    </div>
+                                    </span>
+                                    <form action="/admin/delete-notice/{{ notice['id'] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this notice?');" style="margin: 0;">
+                                        <button type="submit" class="dash-btn-action dash-btn-action-danger" style="padding: 6px 12px; font-size: 11.5px;">
+                                            <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Delete
+                                        </button>
+                                    </form>
                                 </div>
-                                <form action="/admin/delete-notice/{{ notice['id'] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this notice?');" style="margin: 0;">
-                                    <button type="submit" style="background: #ff7675; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 600; font-family: inherit;">
-                                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Delete Notice
-                                    </button>
-                                </form>
                             </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p style="color: #7f8c8d; text-align: center; padding: 30px; font-size: 14px;">No active notices posted yet.</p>
+                        <div style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+                            <i data-lucide="bell-off" style="width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.6;"></i>
+                            <p style="margin: 0; font-size: 14px;">No active notices posted yet.</p>
+                        </div>
                     {% endif %}
                 </div>
 
                 <!-- Review Section for Applications -->
                 {% if pending_forms %}
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm); margin-bottom: 30px;">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="file-check" style="color: #fdcb6e;"></i> Pending Admission & Exam Applications
-                    </h3>
-                    <div class="table-container" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(217, 119, 6, 0.10); color: #d97706;">
+                                <i data-lucide="file-check"></i>
+                            </span>
+                            Pending Admission & Exam Applications
+                        </h3>
+                        <span class="dash-badge dash-badge-warning">{{ pending_forms|length }} Pending</span>
+                    </div>
+                    <div class="dash-table-container">
+                        <table class="dash-table">
                             <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #eee; text-align: left;">
-                                    <th style="padding: 12px;">ID</th>
-                                    <th style="padding: 12px;">Type</th>
-                                    <th style="padding: 12px;">User</th>
-                                    <th style="padding: 12px;">Date</th>
-                                    <th style="padding: 12px;">Status</th>
-                                    <th style="padding: 12px;">Action</th>
+                                <tr>
+                                    <th>App ID</th>
+                                    <th>Type</th>
+                                    <th>Applicant</th>
+                                    <th>Date Submitted</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for form in pending_forms[:5] %}
-                                <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 12px;">#{{ form['id'] }}</td>
-                                    <td style="padding: 12px;">{{ form['type'] }}</td>
-                                    <td style="padding: 12px;">{{ form['username'] or 'Guest' }}</td>
-                                    <td style="padding: 12px;">{{ form['submitted_at'] }}</td>
-                                    <td style="padding: 12px;">
-                                        <span style="background: #ffeaa7; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #d35400; font-size: 13px;">
-                                            {{ form['status'] }}
+                                <tr>
+                                    <td style="font-weight: 700; color: var(--primary-color);">#{{ form['id'] }}</td>
+                                    <td style="font-weight: 600;">{{ form['type'] }}</td>
+                                    <td>{{ form['username'] or 'Guest' }}</td>
+                                    <td style="color: #64748b; font-size: 13px;">{{ form['submitted_at'] }}</td>
+                                    <td>
+                                        <span class="dash-badge dash-badge-warning">
+                                            <i data-lucide="clock" style="width: 12px; height: 12px;"></i> {{ form['status'] }}
                                         </span>
                                     </td>
-                                    <td style="padding: 12px;">
-                                        <a href="/admin/view-form/{{ form['id'] }}" class="badge badge-success" style="text-decoration: none;">Review</a>
+                                    <td style="text-align: right;">
+                                        <a href="/admin/view-form/{{ form['id'] }}" class="dash-btn-action dash-btn-action-primary">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i> Review
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -476,46 +723,54 @@
 
                 <!-- Review Section for Profile Edits -->
                 {% if pending_profile_edits %}
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm); margin-bottom: 30px;">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="user-cog" style="color: #00cec9;"></i> Pending Profile & Password Edit Requests
-                    </h3>
-                    <div class="table-container" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(13, 148, 136, 0.10); color: #0d9488;">
+                                <i data-lucide="user-cog"></i>
+                            </span>
+                            Pending Profile & Password Requests
+                        </h3>
+                        <span class="dash-badge dash-badge-purple">{{ pending_profile_edits|length }} Requests</span>
+                    </div>
+                    <div class="dash-table-container">
+                        <table class="dash-table">
                             <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #eee; text-align: left;">
-                                    <th style="padding: 12px;">ID</th>
-                                    <th style="padding: 12px;">Type</th>
-                                    <th style="padding: 12px;">User</th>
-                                    <th style="padding: 12px;">Date</th>
-                                    <th style="padding: 12px;">Status</th>
-                                    <th style="padding: 12px;">Action</th>
+                                <tr>
+                                    <th>Request ID</th>
+                                    <th>Type</th>
+                                    <th>User</th>
+                                    <th>Submitted At</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for form in pending_profile_edits[:5] %}
-                                <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 12px;">#{{ form['id'] }}</td>
-                                    <td style="padding: 12px;">
+                                <tr>
+                                    <td style="font-weight: 700; color: var(--primary-color);">#{{ form['id'] }}</td>
+                                    <td>
                                         {% if form['type'] == 'student_password_change' %}
-                                            Password Change
+                                            <span class="dash-badge dash-badge-purple">Password Change</span>
                                         {% elif form['type'] == 'student_info_edit' %}
-                                            Student Profile Edit
+                                            <span class="dash-badge dash-badge-info">Student Profile</span>
                                         {% elif form['type'] == 'teacher_info_edit' %}
-                                            Teacher Profile Edit
+                                            <span class="dash-badge dash-badge-success">Teacher Profile</span>
                                         {% else %}
-                                            {{ form['type'] }}
+                                            <span class="dash-badge">{{ form['type'] }}</span>
                                         {% endif %}
                                     </td>
-                                    <td style="padding: 12px;">{{ form['username'] or 'Guest' }}</td>
-                                    <td style="padding: 12px;">{{ form['submitted_at'] }}</td>
-                                    <td style="padding: 12px;">
-                                        <span style="background: #ffeaa7; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #d35400; font-size: 13px;">
-                                            {{ form['status'] }}
+                                    <td style="font-weight: 600;">{{ form['username'] or 'Guest' }}</td>
+                                    <td style="color: #64748b; font-size: 13px;">{{ form['submitted_at'] }}</td>
+                                    <td>
+                                        <span class="dash-badge dash-badge-warning">
+                                            <i data-lucide="clock" style="width: 12px; height: 12px;"></i> {{ form['status'] }}
                                         </span>
                                     </td>
-                                    <td style="padding: 12px;">
-                                        <a href="/admin/view-form/{{ form['id'] }}" class="badge badge-success" style="text-decoration: none;">Review</a>
+                                    <td style="text-align: right;">
+                                        <a href="/admin/view-form/{{ form['id'] }}" class="dash-btn-action dash-btn-action-primary">
+                                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i> Review
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -527,23 +782,39 @@
 
                 <!-- Review Section for Media -->
                 {% if pending_gallery %}
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm); margin-bottom: 30px;">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="image" style="color: #ff7675;"></i> Pending Campus Media Submissions
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(225, 29, 72, 0.10); color: #e11d48;">
+                                <i data-lucide="image"></i>
+                            </span>
+                            Pending Campus Media Submissions
+                        </h3>
+                        <span class="dash-badge dash-badge-warning">{{ pending_gallery|length }} Pending</span>
+                    </div>
+                    <div class="dash-media-grid">
                         {% for upload in pending_gallery %}
-                        <div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 8px; box-shadow: var(--shadow-sm);">
-                            <img src="{{ url_for('static', filename='uploads/temp/' + upload['filename']) }}" alt="Review" style="width: 100%; height: 130px; object-fit: cover; border-radius: 6px; margin-bottom: 10px;">
-                            <div style="font-size: 13px; font-weight: 600; color: #2d3436; margin-bottom: 3px;">By: {{ upload['username'] }}</div>
-                            <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 10px;">Category: {{ upload['category']|title }}</div>
-                            <div style="display: flex; gap: 10px;">
-                                <form action="/admin/gallery-action/{{ upload['id'] }}/approve" method="POST" style="flex: 1;">
-                                    <button type="submit" class="badge badge-success" style="width: 100%; border: none; cursor: pointer; padding: 6px;">Approve</button>
-                                </form>
-                                <form action="/admin/gallery-action/{{ upload['id'] }}/reject" method="POST" style="flex: 1;">
-                                    <button type="submit" class="badge" style="width: 100%; border: none; cursor: pointer; background-color: #ff7675; color: white; padding: 6px;">Reject</button>
-                                </form>
+                        <div class="dash-media-card">
+                            <img src="{{ url_for('static', filename='uploads/temp/' + upload['filename']) }}" alt="Review" class="dash-media-thumb">
+                            <div class="dash-media-body">
+                                <div>
+                                    <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">By: {{ upload['username'] }}</div>
+                                    <span class="dash-badge dash-badge-info" style="font-size: 11px; padding: 2px 8px;">
+                                        {{ upload['category']|title }}
+                                    </span>
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                    <form action="/admin/gallery-action/{{ upload['id'] }}/approve" method="POST" style="flex: 1; margin: 0;">
+                                        <button type="submit" class="dash-btn-action dash-btn-action-success" style="width: 100%; justify-content: center; padding: 6px 8px;">
+                                            <i data-lucide="check" style="width: 13px; height: 13px;"></i> Approve
+                                        </button>
+                                    </form>
+                                    <form action="/admin/gallery-action/{{ upload['id'] }}/reject" method="POST" style="flex: 1; margin: 0;">
+                                        <button type="submit" class="dash-btn-action dash-btn-action-danger" style="width: 100%; justify-content: center; padding: 6px 8px;">
+                                            <i data-lucide="x" style="width: 13px; height: 13px;"></i> Reject
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                         {% endfor %}
@@ -552,42 +823,50 @@
                 {% endif %}
 
                 <!-- User Management Section -->
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="users" style="color: var(--primary-color);"></i> User Accounts Directory
-                    </h3>
-                    <div class="table-container" style="overflow-x: auto; max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
-                                <tr style="border-bottom: 2px solid #eee; text-align: left;">
-                                    <th style="padding: 12px; background: #f8f9fa;">Username</th>
-                                    <th style="padding: 12px; background: #f8f9fa;">Email Address</th>
-                                    <th style="padding: 12px; background: #f8f9fa;">System Role</th>
-                                    <th style="padding: 12px; text-align: center; background: #f8f9fa;">Actions</th>
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(12, 35, 64, 0.08); color: var(--primary-color);">
+                                <i data-lucide="users"></i>
+                            </span>
+                            User Accounts Directory
+                        </h3>
+                        <span class="dash-badge dash-badge-info">{{ all_users|length if all_users else 0 }} Registered</span>
+                    </div>
+                    <div class="dash-table-container" style="max-height: 440px; overflow-y: auto;">
+                        <table class="dash-table">
+                            <thead style="position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email Address</th>
+                                    <th>System Role</th>
+                                    <th style="text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% if all_users %}
                                 {% for u in all_users %}
-                                <tr style="border-bottom: 1px solid #eee;" id="user-row-{{ u.id }}">
-                                    <td style="padding: 12px; font-weight: 600;">{{ u.username }}</td>
-                                    <td style="padding: 12px; color: #636e72;">{{ u.email }}</td>
-                                    <td style="padding: 12px;">
-                                        <span style="padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
-                                            background: {% if u.role == 'admin' %}#dff9fb{% elif u.role == 'teacher' %}#e8f8f5{% else %}#fff4e5{% endif %};
-                                            color: {% if u.role == 'admin' %}#0984e3{% elif u.role == 'teacher' %}#00b894{% else %}#e67e22{% endif %};">
-                                            {{ u.role|title }}
-                                        </span>
+                                <tr id="user-row-{{ u.id }}">
+                                    <td style="font-weight: 700; color: #0f172a;">{{ u.username }}</td>
+                                    <td style="color: #64748b;">{{ u.email }}</td>
+                                    <td>
+                                        {% if u.role == 'admin' %}
+                                            <span class="dash-badge dash-badge-info">Admin</span>
+                                        {% elif u.role == 'teacher' %}
+                                            <span class="dash-badge dash-badge-success">Teacher</span>
+                                        {% else %}
+                                            <span class="dash-badge dash-badge-warning">{{ u.role|title }}</span>
+                                        {% endif %}
                                     </td>
-                                    <td style="padding: 12px; text-align: center;">
-                                        <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
-                                            <form action="/admin/reset-password/{{ u.id }}" method="POST" onsubmit="return confirm('Reset password for {{ u.username }}?');" style="display: inline;">
-                                                <button type="submit" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Reset Password">
-                                                    <i data-lucide="key" style="color: #fdcb6e; width: 18px; height: 18px;"></i>
+                                    <td style="text-align: center;">
+                                        <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                                            <form action="/admin/reset-password/{{ u.id }}" method="POST" onsubmit="return confirm('Reset password for {{ u.username }}?');" style="display: inline; margin: 0;">
+                                                <button type="submit" class="dash-btn-action dash-btn-action-ghost" style="padding: 6px 10px;" title="Reset Password">
+                                                    <i data-lucide="key" style="color: #d97706; width: 15px; height: 15px;"></i>
                                                 </button>
                                             </form>
-                                            <button onclick="deleteUserAJAX({{ u.id }})" type="button" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Delete User">
-                                                <i data-lucide="trash-2" style="color: #ff7675; width: 18px; height: 18px;"></i>
+                                            <button onclick="deleteUserAJAX({{ u.id }})" type="button" class="dash-btn-action dash-btn-action-ghost" style="padding: 6px 10px;" title="Delete User">
+                                                <i data-lucide="trash-2" style="color: #ef4444; width: 15px; height: 15px;"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -595,7 +874,7 @@
                                 {% endfor %}
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" style="padding: 20px; text-align: center; color: #999;">No users registered in system.</td>
+                                    <td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">No users registered in system.</td>
                                 </tr>
                                 {% endif %}
                             </tbody>
@@ -608,23 +887,28 @@
                 <!-- ================= TEACHER DASHBOARD PANEL ================= -->
                 {% if role == 'teacher' %}
                 <!-- Dynamic Greetings Banner -->
-                <div style="background: linear-gradient(135deg, var(--primary-color) 0%, #a29bfe 100%); color: white; padding: 35px; border-radius: 12px; box-shadow: var(--shadow-md); margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
-                    <div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
-                        <i data-lucide="graduation-cap" style="width: 40px; height: 40px; color: var(--primary-color);"></i>
-                    </div>
-                    <div>
-                        <h2 style="margin: 0; font-size: 26px; font-weight: 600;">Welcome Back, {{ display_name }}!</h2>
-                        <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 15px;">Manage your assigned classrooms, student marks, and view report cards easily.</p>
+                <div class="dash-welcome-banner">
+                    <div class="dash-welcome-left">
+                        <div class="dash-welcome-avatar-icon">
+                            <i data-lucide="graduation-cap"></i>
+                        </div>
+                        <div class="dash-welcome-text">
+                            <h2>Welcome Back, {{ display_name }}!</h2>
+                            <p>Manage your assigned classrooms, student marks, and view report cards easily.</p>
+                            <span class="dash-welcome-pill">
+                                <i data-lucide="shield-check" style="width: 13px; height: 13px; color: var(--accent-gold);"></i> Faculty Desk &bull; Academic Portal
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Alert for Pending Profile Edit Request -->
                 {% if pending_edit %}
-                <div style="background: #fff9db; border-left: 5px solid #f59f00; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; box-shadow: var(--shadow-sm);">
-                    <i data-lucide="alert-circle" style="color: #f59f00; width: 28px; height: 28px; flex-shrink: 0;"></i>
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 5px solid #d97706; padding: 18px 20px; border-radius: 14px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.08);">
+                    <i data-lucide="alert-circle" style="color: #d97706; width: 26px; height: 26px; flex-shrink: 0;"></i>
                     <div>
-                        <h4 style="margin: 0; color: #f59f00; font-size: 16px; font-weight: 600;">Profile Update Request Pending</h4>
-                        <p style="margin: 3px 0 0 0; color: #666; font-size: 14px;">
+                        <h4 style="margin: 0; color: #b45309; font-size: 15px; font-weight: 700; font-family: var(--font-heading);">Profile Update Request Pending</h4>
+                        <p style="margin: 3px 0 0 0; color: #78350f; font-size: 13.5px; line-height: 1.45;">
                             You have submitted a request to edit your profile info on <strong>{{ pending_edit.submitted_at or pending_edit.created_at }}</strong>. It will take effect as soon as the Admin approves the changes.
                         </p>
                     </div>
@@ -632,43 +916,77 @@
                 {% endif %}
 
                 <!-- Teacher Card Tools -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 30px;">
-                    <a href="/admin/student-list" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid var(--primary-color); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px;">
-                            <i data-lucide="users" style="width: 48px; height: 48px; color: var(--primary-color); margin-bottom: 15px;"></i>
-                            <h3 style="margin: 0; font-size: 18px; color: #2d3436;">My Students</h3>
-                            <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin-top: 5px;">View and search through your student rosters</p>
+                <div class="dash-action-grid" style="margin-bottom: 28px;">
+                    <a href="/admin/student-list" class="dash-action-tile" style="--tile-color: #059669; --tile-bg: rgba(5, 150, 105, 0.10); --tile-glow: rgba(5, 150, 105, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="users"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My Students</h4>
+                            <p class="dash-tile-desc">View and search through your student rosters</p>
                         </div>
                     </a>
-                    <a href="/admin/bulk-marks" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #00b894; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px;">
-                            <i data-lucide="edit-3" style="width: 48px; height: 48px; color: #00b894; margin-bottom: 15px;"></i>
-                            <h3 style="margin: 0; font-size: 18px; color: #2d3436;">Give Marks</h3>
-                            <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin-top: 5px;">Input or update student results dynamically</p>
+                    <a href="/admin/bulk-marks" class="dash-action-tile" style="--tile-color: #ca8a04; --tile-bg: rgba(202, 138, 4, 0.10); --tile-glow: rgba(202, 138, 4, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="edit-3"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">Give Marks</h4>
+                            <p class="dash-tile-desc">Input or update student results dynamically</p>
                         </div>
                     </a>
-                    <a href="/admin/marksheet" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #fdcb6e; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px;">
-                            <i data-lucide="file-spreadsheet" style="width: 48px; height: 48px; color: #fdcb6e; margin-bottom: 15px;"></i>
-                            <h3 style="margin: 0; font-size: 18px; color: #2d3436;">Marksheets</h3>
-                            <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin-top: 5px;">Generate reports and check class averages</p>
+                    <a href="/admin/marksheet" class="dash-action-tile" style="--tile-color: #ea580c; --tile-bg: rgba(234, 88, 12, 0.10); --tile-glow: rgba(234, 88, 12, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="file-spreadsheet"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">Marksheets</h4>
+                            <p class="dash-tile-desc">Generate reports and check class averages</p>
                         </div>
                     </a>
-                    <a href="/teacher/edit-info" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #6c5ce7; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px;">
-                            <i data-lucide="user-cog" style="width: 48px; height: 48px; color: #6c5ce7; margin-bottom: 15px;"></i>
-                            <h3 style="margin: 0; font-size: 18px; color: #2d3436;">Edit Profile</h3>
-                            <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin-top: 5px;">Update my teacher profile details</p>
+                    <a href="/teacher/edit-info" class="dash-action-tile" style="--tile-color: #7c3aed; --tile-bg: rgba(124, 58, 237, 0.10); --tile-glow: rgba(124, 58, 237, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="user-cog"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">Edit Profile</h4>
+                            <p class="dash-tile-desc">Update my teacher profile details</p>
                         </div>
                     </a>
                 </div>
 
-                <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                    <h3 style="margin-bottom: 10px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="clock"></i> Quick Overview
-                    </h3>
-                    <p style="color: #636e72; font-size: 15px; line-height: 1.6;">
-                        Use the premium collapsable sidebar to configure routines, generate student ID cards, prepare seat tokens or view student rosters. If a specific class or subject is not showing, please confirm your class assignments with the school Administrator.
+                <div class="dash-section-card">
+                    <div class="dash-section-header">
+                        <h3 class="dash-section-title">
+                            <span class="dash-section-icon" style="background: rgba(12, 35, 64, 0.08); color: var(--primary-color);">
+                                <i data-lucide="compass"></i>
+                            </span>
+                            Faculty Overview & Instructions
+                        </h3>
+                        <span class="dash-badge dash-badge-info">Faculty Help</span>
+                    </div>
+                    <p style="color: #64748b; font-size: 14.5px; line-height: 1.6; margin: 0;">
+                        Use the collapsible sidebar to configure routines, generate student ID cards, prepare seat tokens or view student rosters. If a specific class or subject is not showing, please confirm your class assignments with the school Administrator.
                     </p>
                 </div>
                 {% endif %}
@@ -676,32 +994,35 @@
 
                 <!-- ================= STUDENT DASHBOARD PANEL ================= -->
                 {% if role == 'student' %}
-                                <!-- Dynamic Student Header -->
-                <div style="background: linear-gradient(135deg, #0984e3 0%, #74b9ff 100%); color: white; padding: 35px; border-radius: 12px; box-shadow: var(--shadow-md); margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
-                    <div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); overflow: hidden;">
-                        <img src="{{ logo_url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
-                    </div>
-                    <div>
-                        <h2 style="margin: 0; font-size: 26px; font-weight: 600;">
-                            Assalamu Alaikum, {{ display_name }}!
-                        </h2>
-                        <p style="margin: 5px 0 0 0; opacity: 0.95; font-size: 15px;">
-                            {% if student_info %}
-                                Class: <strong>{{ student_info.class }}</strong> | Roll: <strong>{{ student_info.roll_number }}</strong>
-                            {% else %}
-                                Welcome to your school desk! (Profile info pending upload)
-                            {% endif %}
-                        </p>
+                <!-- Dynamic Student Header -->
+                <div class="dash-welcome-banner">
+                    <div class="dash-welcome-left">
+                        <div class="dash-welcome-avatar">
+                            <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Profile">
+                        </div>
+                        <div class="dash-welcome-text">
+                            <h2>Assalamu Alaikum, {{ display_name }}!</h2>
+                            <p>
+                                {% if student_info %}
+                                    Class: <strong>{{ student_info.class }}</strong> &bull; Roll Number: <strong>{{ student_info.roll_number }}</strong>
+                                {% else %}
+                                    Welcome to your school desk! (Profile info pending upload)
+                                {% endif %}
+                            </p>
+                            <span class="dash-welcome-pill">
+                                <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: var(--accent-gold);"></i> Student Desk &bull; Bhogram Campus
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Alert for Pending Profile Edit Request -->
                 {% if pending_edit %}
-                <div style="background: #fff9db; border-left: 5px solid #f59f00; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; box-shadow: var(--shadow-sm);">
-                    <i data-lucide="alert-circle" style="color: #f59f00; width: 28px; height: 28px; flex-shrink: 0;"></i>
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 5px solid #d97706; padding: 18px 20px; border-radius: 14px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.08);">
+                    <i data-lucide="alert-circle" style="color: #d97706; width: 26px; height: 26px; flex-shrink: 0;"></i>
                     <div>
-                        <h4 style="margin: 0; color: #f59f00; font-size: 16px; font-weight: 600;">Profile Update Request Pending</h4>
-                        <p style="margin: 3px 0 0 0; color: #666; font-size: 14px;">
+                        <h4 style="margin: 0; color: #b45309; font-size: 15px; font-weight: 700; font-family: var(--font-heading);">Profile Update Request Pending</h4>
+                        <p style="margin: 3px 0 0 0; color: #78350f; font-size: 13.5px; line-height: 1.45;">
                             You have submitted a request to edit your profile info on <strong>{{ pending_edit.submitted_at or pending_edit.created_at }}</strong>. It will take effect as soon as the Admin approves the changes.
                         </p>
                     </div>
@@ -709,104 +1030,164 @@
                 {% endif %}
 
                 <!-- Student Desk Shortcuts -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    <a href="/admin/marksheet" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #0984e3; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="file-spreadsheet" style="width: 36px; height: 36px; color: #0984e3; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">My Marksheet</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">View exam reports</p>
+                <div class="dash-action-grid" style="margin-bottom: 28px;">
+                    <a href="/admin/marksheet" class="dash-action-tile" style="--tile-color: #2563eb; --tile-bg: rgba(37, 99, 235, 0.10); --tile-glow: rgba(37, 99, 235, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="file-spreadsheet"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My Marksheet</h4>
+                            <p class="dash-tile-desc">View exam reports & score sheets</p>
                         </div>
                     </a>
-                    <a href="/admin/get-fees" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #2ecc71; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="wallet" style="width: 36px; height: 36px; color: #2ecc71; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">My Fee Status</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">Check dues & receipts</p>
+                    <a href="/admin/get-fees" class="dash-action-tile" style="--tile-color: #059669; --tile-bg: rgba(5, 150, 105, 0.10); --tile-glow: rgba(5, 150, 105, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="wallet"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My Fee Status</h4>
+                            <p class="dash-tile-desc">Check dues & download receipts</p>
                         </div>
                     </a>
-                    <a href="/admin/id-card" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #fdcb6e; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="contact" style="width: 36px; height: 36px; color: #fdcb6e; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">My ID Card</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">View student ID</p>
+                    <a href="/admin/id-card" class="dash-action-tile" style="--tile-color: #d97706; --tile-bg: rgba(217, 119, 6, 0.10); --tile-glow: rgba(217, 119, 6, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="contact"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My ID Card</h4>
+                            <p class="dash-tile-desc">View student digital ID pass</p>
                         </div>
                     </a>
-                    <a href="/admin/admit-card" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #e84393; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="ticket" style="width: 36px; height: 36px; color: #e84393; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">My Admit Card</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">Download admit pass</p>
+                    <a href="/admin/admit-card" class="dash-action-tile" style="--tile-color: #db2777; --tile-bg: rgba(219, 39, 119, 0.10); --tile-glow: rgba(219, 39, 119, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="ticket"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My Admit Card</h4>
+                            <p class="dash-tile-desc">Download exam hall passes</p>
                         </div>
                     </a>
-                    <a href="/student/edit-info" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #6c5ce7; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="user-cog" style="width: 36px; height: 36px; color: #6c5ce7; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">Edit Profile</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">Update my details</p>
+                    <a href="/student/edit-info" class="dash-action-tile" style="--tile-color: #7c3aed; --tile-bg: rgba(124, 58, 237, 0.10); --tile-glow: rgba(124, 58, 237, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="user-cog"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">Edit Profile</h4>
+                            <p class="dash-tile-desc">Update personal information</p>
                         </div>
                     </a>
-                    <a href="/student/attendance-leaves" style="text-decoration: none; color: inherit;">
-                        <div class="dash-card" style="border-bottom: 4px solid #d63031; padding: 25px; background: white; border-radius: 10px; box-shadow: var(--shadow-sm); transition: 0.3s; text-align: center;">
-                            <i data-lucide="calendar-check" style="width: 36px; height: 36px; color: #d63031; margin-bottom: 10px;"></i>
-                            <h4 style="margin: 0; font-size: 16px; color: #2d3436;">My Attendance & Leaves</h4>
-                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">View logs & leaves</p>
+                    <a href="/student/attendance-leaves" class="dash-action-tile" style="--tile-color: #e11d48; --tile-bg: rgba(225, 29, 72, 0.10); --tile-glow: rgba(225, 29, 72, 0.22);">
+                        <div class="dash-tile-header">
+                            <div class="dash-tile-icon">
+                                <i data-lucide="calendar-check"></i>
+                            </div>
+                            <div class="dash-tile-arrow">
+                                <i data-lucide="arrow-up-right"></i>
+                            </div>
+                        </div>
+                        <div class="dash-tile-body">
+                            <h4 class="dash-tile-title">My Attendance & Leaves</h4>
+                            <p class="dash-tile-desc">View logs & submit leave requests</p>
                         </div>
                     </a>
                 </div>
 
                 <!-- Notices & Grades Column Widgets -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px;">
                     <!-- Notice Board Widget -->
-                    <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                        <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="bell-ring" style="color: #e84393;"></i> Announcements & Notices
-                        </h3>
+                    <div class="dash-section-card" style="margin-bottom: 0;">
+                        <div class="dash-section-header">
+                            <h3 class="dash-section-title">
+                                <span class="dash-section-icon" style="background: rgba(225, 29, 72, 0.10); color: #e11d48;">
+                                    <i data-lucide="bell-ring"></i>
+                                </span>
+                                Announcements & Notices
+                            </h3>
+                            <span class="dash-badge dash-badge-info">{{ all_notices|length if all_notices else 0 }} Total</span>
+                        </div>
                         {% if all_notices %}
-                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 14px;">
                                 {% for notice in all_notices %}
-                                <div style="background: #fdf2f8; border-left: 4px solid #e84393; padding: 15px; border-radius: 6px; box-shadow: var(--shadow-xs);">
-                                    <p style="margin: 0; font-size: 14px; color: #2d3436; line-height: 1.5; font-weight: 500;">{{ notice['content'] }}</p>
-                                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 8px; display: flex; align-items: center; gap: 5px;">
+                                <div class="dash-notice-card" style="border-left-color: #e11d48; padding: 14px 16px;">
+                                    <p class="dash-notice-content" style="font-size: 13.5px;">{{ notice['content'] }}</p>
+                                    <div class="dash-notice-time">
                                         <i data-lucide="calendar" style="width: 12px; height: 12px;"></i> {{ notice['created_at'] }}
                                     </div>
                                 </div>
                                 {% endfor %}
                             </div>
                         {% else %}
-                            <p style="color: #7f8c8d; text-align: center; padding: 30px; font-size: 14px;">No school notices posted yet.</p>
+                            <div style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+                                <i data-lucide="bell-off" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.6;"></i>
+                                <p style="margin: 0; font-size: 14px;">No school notices posted yet.</p>
+                            </div>
                         {% endif %}
                     </div>
 
                     <!-- Recent Grades Widget -->
-                    <div class="auth-container" style="margin: 0; max-width: 100%; padding: 25px; box-shadow: var(--shadow-sm);">
-                        <h3 style="margin-bottom: 15px; color: #2d3436; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="award" style="color: #2ecc71;"></i> Recent Academic Performance (Grades)
-                        </h3>
+                    <div class="dash-section-card" style="margin-bottom: 0;">
+                        <div class="dash-section-header">
+                            <h3 class="dash-section-title">
+                                <span class="dash-section-icon" style="background: rgba(16, 185, 129, 0.10); color: #10b981;">
+                                    <i data-lucide="award"></i>
+                                </span>
+                                Academic Performance (Grades)
+                            </h3>
+                            <span class="dash-badge dash-badge-success">Term Record</span>
+                        </div>
                         {% if student_marks %}
-                            <div class="table-container" style="overflow-x: auto;">
-                                <table style="width: 100%; border-collapse: collapse;">
+                            <div class="dash-table-container">
+                                <table class="dash-table">
                                     <thead>
-                                        <tr style="background: #f8f9fa; border-bottom: 2px solid #eee; text-align: left;">
-                                            <th style="padding: 10px;">Subject</th>
-                                            <th style="padding: 10px;">Obtained</th>
-                                            <th style="padding: 10px;">Full</th>
-                                            <th style="padding: 10px;">Evaluated By</th>
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th>Obtained</th>
+                                            <th>Full Marks</th>
+                                            <th>Evaluated By</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for mark in student_marks %}
-                                        <tr style="border-bottom: 1px solid #eee;">
-                                            <td style="padding: 10px; font-weight: 600;">{{ mark['subject_name'] }}</td>
-                                            <td style="padding: 10px; color: #2ecc71; font-weight: bold;">{{ mark['obtained_marks'] }}</td>
-                                            <td style="padding: 10px; color: #636e72;">{{ mark['full_marks'] }}</td>
-                                            <td style="padding: 10px; font-size: 12px; color: #636e72;">Teacher: {{ mark['teacher_name'] }}</td>
+                                        <tr>
+                                            <td style="font-weight: 700; color: #0f172a;">{{ mark['subject_name'] }}</td>
+                                            <td style="color: #15803d; font-weight: 800; font-size: 15px;">{{ mark['obtained_marks'] }}</td>
+                                            <td style="color: #64748b;">{{ mark['full_marks'] }}</td>
+                                            <td style="font-size: 12.5px; color: #64748b;">Teacher: {{ mark['teacher_name'] }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
                         {% else %}
-                            <p style="color: #7f8c8d; text-align: center; padding: 30px; font-size: 14px;">No recent grades or exam marks recorded yet.</p>
+                            <div style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+                                <i data-lucide="file-question" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.6;"></i>
+                                <p style="margin: 0; font-size: 14px;">No recent grades or exam marks recorded yet.</p>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -841,7 +1222,7 @@
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

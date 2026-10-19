@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application Portal - Bhogram Al-Hidayet Mission</title>
+    <title>Application Portal - Al-Hidayet Mission (Main Branch)</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
@@ -192,30 +192,73 @@
 </head>
 
 <body class="bg-pattern">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#register-content" class="skip-link">Skip to main content</a>
 
     <!-- Header -->
-    <header class="main-header" style="background: #fff;">
+    <header class="main-header" role="banner">
         <div class="container header-container">
             <div class="logo">
-                <a href="/" style="display:flex; align-items:center; gap:10px;">
-                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
-                    <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                <a href="/" aria-label="Al-Hidayet Mission Home" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                    <span class="logo-text">Al-Hidayet <span class="highlight">Mission</span></span>
                 </a>
             </div>
-            <nav class="main-nav">
+            <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
                 <a href="/" class="nav-link">Home</a>
                 <a href="/#about" class="nav-link">About</a>
                 <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
                 <a href="/#faq" class="nav-link">FAQ</a>
                 <a href="/#contact" class="nav-link">Contact</a>
+                <div class="nav-drawer-account-section">
+                    <div class="drawer-account-card">
+                        <div class="account-card-header">
+                            <div class="account-avatar">
+                                <i data-lucide="{{ 'user-check' if session.get('user') else 'shield-check' }}"></i>
+                            </div>
+                            <div class="account-meta">
+                                <span class="account-badge">
+                                    <span class="badge-dot"></span>
+                                    {{ 'Active Session' if session.get('user') else 'Official Portal' }}
+                                </span>
+                                <span class="account-title">{{ 'Signed In Account' if session.get('user') else 'Student & Parent Access' }}</span>
+                            </div>
+                        </div>
+                        <div class="account-card-actions">
+                            <a href="/dashboard" class="account-btn account-btn-primary">
+                                <i data-lucide="layout-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                            {% if session.get('user') %}
+                            <a href="/logout" class="account-btn account-btn-outline">
+                                <i data-lucide="log-out"></i>
+                                <span>Logout</span>
+                            </a>
+                            {% else %}
+                            <a href="/login/student" class="account-btn account-btn-outline">
+                                <i data-lucide="log-in"></i>
+                                <span>Portal Login</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </nav>
             <div class="header-cta">
-                <a href="/login/student" class="btn btn-outline">Login</a>
+                <a href="/login/student" class="btn btn-outline" style="border-color: #0c2340; color: #0c2340;">Login</a>
             </div>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNav">
+                <span class="hamburger-box">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
+            </button>
         </div>
     </header>
 
-    <div class="portal-container">
+    <div class="portal-container" id="register-content">
         <div class="portal-header">
             <h1 class="hero-title" style="font-size: 34px; color: var(--primary-color);">Application Portal</h1>
             <p style="color: var(--text-light); margin-top: 5px;">Apply online for student admissions or teacher recruitment.</p>
@@ -301,13 +344,7 @@
                                 <i class="fas fa-exclamation-circle"></i> Aadhaar Number must be exactly 12 digits.
                             </div>
                         </div>
-                        <div class="input-group">
-                            <label>Whatsapp Number</label>
-                            <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="student_whatsapp_no">
-                            <div class="error-msg" id="err-student-whatsapp">
-                                <i class="fas fa-exclamation-circle"></i> Whatsapp number must be exactly 10 digits.
-                            </div>
-                        </div>
+
                         <div class="input-group">
                             <label>Identification Mark</label>
                             <input type="text" name="identification_mark" placeholder="e.g. mole on right cheek">
@@ -320,8 +357,8 @@
                     <h3><i class="fas fa-school"></i> Admission Details</h3>
                     <div class="form-grid">
                         <div class="input-group">
-                            <label>Form Serial No / SL No</label>
-                            <input type="text" name="sl_no" placeholder="e.g. 166">
+                            <label>Unique Code</label>
+                            <input type="text" readonly value="Auto-generated on registration" style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif; color: #94a3b8;">
                         </div>
                         <div class="input-group">
                             <label>Academic Session*</label>
@@ -329,8 +366,8 @@
                         </div>
                         <div class="input-group">
                             <label>Branch*</label>
-                            <input type="text" value="Bhogram Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
-                            <input type="hidden" name="branch" value="Bhogram">
+                            <input type="text" value="Main Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
+                            <input type="hidden" name="branch" value="main">
                         </div>
                         <div class="input-group">
                             <label>Class Applying For*</label>
@@ -353,19 +390,12 @@
                         <div class="input-group">
                             <label>Mode of Admission*</label>
                             <select name="mode_of_admission" required>
-                                <option value="School">School (Only School)</option>
+                                <option value="School">School</option>
+                                <option value="School with Coaching">School with Coaching</option>
                                 <option value="Day Hostel">Day Hostel</option>
-                                <option value="School+Car">School + Car</option>
-                                <option value="Hostel">Hostel</option>
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label>Coaching Opted?*</label>
-                            <select name="coaching_opted" required>
-                                <option value="No">No</option>
-                                <option value="Yes">Yes</option>
-                            </select>
-                        </div>
+
                         <div class="input-group">
                             <label>Car Service Opted?*</label>
                             <select name="car_opted" required>
@@ -391,7 +421,7 @@
                         </div>
                         <div class="input-group">
                             <label>Branch Name</label>
-                            <input type="text" name="branch_name" placeholder="e.g. Bhogram Branch">
+                            <input type="text" name="branch_name" placeholder="e.g. Main Branch">
                         </div>
                         <div class="input-group">
                             <label>Account Number</label>
@@ -452,6 +482,13 @@
                             <input type="tel" name="alt_phone" placeholder="10-digit Mobile No" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="student_alt_phone">
                             <div class="error-msg" id="err-student-alt">
                                 <i class="fas fa-exclamation-circle"></i> Mobile number must be exactly 10 digits.
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Guardian's Whatsapp No</label>
+                            <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}" minlength="10" maxlength="10" title="Must be exactly 10 digits" id="guardian_whatsapp_no">
+                            <div class="error-msg" id="err-guardian-whatsapp">
+                                <i class="fas fa-exclamation-circle"></i> Whatsapp number must be exactly 10 digits.
                             </div>
                         </div>
                     </div>
@@ -652,8 +689,18 @@
                     <div class="form-grid">
                         <div class="input-group">
                             <label>Preferred Campus Branch*</label>
-                            <input type="text" value="Bhogram Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
-                            <input type="hidden" name="branch" value="Bhogram">
+                            <input type="text" value="Main Branch" readonly style="background: #f1f5f9; cursor: not-allowed; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif;">
+                            <input type="hidden" name="branch" value="main">
+                        </div>
+                        <div class="input-group">
+                            <label>Teaching Preference*</label>
+                            <select name="teacher_type" required>
+                                <option value="">Select Option</option>
+                                <option value="Coaching Class">Coaching</option>
+                                <option value="Regular Class">School</option>
+                                <option value="Both">Both</option>
+                                <option value="Guest Teacher">As Guest</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <label>Expected Salary (per month in INR)*</label>
@@ -712,7 +759,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
     <script>
@@ -760,7 +807,7 @@
         setupValidation('student_aadhar', 'err-student-aadhar', 12);
         setupValidation('student_guardian_phone', 'err-student-phone', 10);
         setupValidation('student_alt_phone', 'err-student-alt', 10);
-        setupValidation('student_whatsapp_no', 'err-student-whatsapp', 10);
+        setupValidation('guardian_whatsapp_no', 'err-guardian-whatsapp', 10);
         setupValidation('student_pin', 'err-student-pin', 6);
 
         setupValidation('teacher_aadhar', 'err-teacher-aadhar', 12);

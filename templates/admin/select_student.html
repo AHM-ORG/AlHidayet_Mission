@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Student - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
@@ -29,6 +29,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -90,41 +91,83 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Select Student</div>
-            </header>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Select Student</span>
+                        </div>
+                    </a>
+                </div>
+            
+                <div class="top-bar-right">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+                </div>
+</header>
             <div class="content-wrapper">
-                <div class="auth-container" style="max-width: 100%; text-align: left; margin: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                        <h3 style="margin: 0;">Choose a Student</h3>
-                        <div style="display: flex; gap: 10px; width: 100%; max-width: 500px; flex-wrap: wrap;">
-                            <input type="text" id="tableSearch" onkeyup="filterSelectStudentTable()" placeholder="Search by name..." style="flex: 1; min-width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
-                            <select id="sortBySelect" onchange="handleSelectStudentSort()" style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; background: white; cursor: pointer; font-weight: 500;">
+                <div class="dash-section-card" style="margin-top: 0;">
+                    <div class="dash-section-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <h2 class="dash-section-title" style="margin: 0; font-size: 20px;">Choose a Student</h2>
+                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13.5px;">Select a student from the list to continue with {{ action|replace('_', ' ')|title }}.</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; width: 100%; max-width: 580px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div style="flex: 1; min-width: 220px;">
+                            <input type="text" id="tableSearch" class="dash-form-control" onkeyup="filterSelectStudentTable()" placeholder="Search by student name..." style="width: 100%; margin-bottom: 0;">
+                        </div>
+                        <div style="min-width: 160px;">
+                            <select id="sortBySelect" class="dash-form-control" onchange="handleSelectStudentSort()" style="width: 100%; cursor: pointer;">
                                 <option value="roll">Sort: Roll No</option>
                                 <option value="name">Sort: Name</option>
                             </select>
                         </div>
                     </div>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="border-bottom: 2px solid #eee;">
-                                <th style="padding: 12px;">SL</th>
-                                <th style="padding: 12px;">Student Name</th>
-                                <th style="padding: 12px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for s in students %}
-                            <tr style="border-bottom: 1px solid #eee;" class="student-row" data-roll="{{ s.roll_number or '' }}" data-name="{{ (s.full_name or s.username or '')|lower }}">
-                                <td style="padding: 12px;">{{ loop.index }}</td>
-                                <td style="padding: 12px;">{{ s.full_name or s.username }}</td>
-                                <td style="padding: 12px;">
-                                    <a href="/admin/{{ action }}?student_id={{ s.id }}"
-                                        class="badge badge-success">Select</a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+
+                    <div class="dash-table-container">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">SL</th>
+                                    <th>Student Name</th>
+                                    <th style="width: 130px; text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in students %}
+                                <tr class="student-row" data-roll="{{ s.roll_number or '' }}" data-name="{{ (s.full_name or s.username or '')|lower }}">
+                                    <td style="font-weight: 600; color: #64748b;">{{ loop.index }}</td>
+                                    <td>
+                                        <div style="font-weight: 600; color: #0f172a;">{{ s.full_name or s.username }}</div>
+                                        {% if s.roll_number %}
+                                        <div style="font-size: 11.5px; color: #94a3b8;">Roll: {{ s.roll_number }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <a href="/admin/{{ action }}?student_id={{ s.id }}"
+                                            class="dash-btn-action dash-btn-action-primary" style="white-space: nowrap;">
+                                            <i data-lucide="check" style="width: 14px; height: 14px;"></i> Select
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
@@ -174,7 +217,7 @@
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academics Settings - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
@@ -23,6 +23,145 @@
         }
         .docs-details summary i[data-lucide="chevron-down"] {
             transition: transform 0.2s ease;
+        }
+        .academics-card {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 20px -2px rgba(12, 35, 64, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .academics-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1.5px solid #f1f5f9;
+            padding-bottom: 14px;
+        }
+        .academics-split-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 380px) 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 1080px) {
+            .academics-split-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        .academics-form-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px;
+        }
+        .academics-form-title {
+            margin: 0 0 16px 0;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .academics-field {
+            margin-bottom: 14px;
+        }
+        .academics-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+        .academics-input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13.5px;
+            color: #1e293b;
+            background: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .academics-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(12, 35, 64, 0.08);
+        }
+        .academics-btn-primary {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--primary-color);
+            color: #ffffff;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .academics-btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+        .academics-search {
+            padding: 7px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            width: 180px;
+            box-sizing: border-box;
+            background: #ffffff;
+        }
+        .academics-search:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+        .academics-table-scroll {
+            overflow-x: auto;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #ffffff;
+            -webkit-overflow-scrolling: touch;
+        }
+        .academics-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .academics-table th {
+            background: #f8fafc;
+            padding: 12px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1.5px solid #e2e8f0;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .academics-table td {
+            padding: 10px 14px;
+            font-size: 13.5px;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .academics-table tr:last-child td {
+            border-bottom: none;
+        }
+        .academics-table tr:hover td {
+            background: #fafcff;
         }
     </style>
 </head>
@@ -46,6 +185,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -107,507 +247,697 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Academic Settings</div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Academic Settings</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <span class="dash-badge badge-navy" style="font-size:12px; padding:6px 14px;">
+                        <i data-lucide="settings" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Curriculum & Fee Structure
+                    </span>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
-            <div class="content-wrapper" style="padding: 20px;">
-                <div class="auth-section" style="padding: 0;">
-                    <div class="auth-container" style="max-width: 100%; margin: 0; box-shadow: var(--shadow-sm);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h2 style="margin: 0; color: var(--primary-color);">
-                                <i data-lucide="settings" style="vertical-align: middle;"></i> Academics Settings
-                            </h2>
-                        </div>
-
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                <div class="flash-messages" style="margin-bottom: 20px;">
-                  {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'error' else 'danger' }}" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: {% if category == 'error' %}#fdf2f2{% else %}#f0fdf4{% endif %}; color: {% if category == 'error' %}var(--danger-color){% else %}var(--success-color){% endif %}; border: 1px solid {% if category == 'error' %}#fca5a5{% else %}#bbf7d0{% endif %}; font-family: 'Outfit', sans-serif;">
-                      <i data-lucide="{% if category == 'error' %}alert-circle{% else %}check-circle{% endif %}" style="width: 20px; height: 20px;"></i>
-                      <span>{{ message }}</span>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            {% endwith %}
-
-            {% if role == 'admin' %}
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                
-                <!-- LEFT COLUMN: CREATE SUBJECTS -->
-                <div>
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee;">
-                        <h3 style="color: #0984e3; margin-bottom: 15px;">Add New Subject</h3>
-                        <form method="POST">
-                            <input type="hidden" name="create_subject" value="1">
-                            <div class="input-group">
-                                <label>Subject Name(s)</label>
-                                <input type="text" name="name" placeholder="e.g. Mathematics (or split by commas: English, Bengali, Mathematics)" required>
-                                <small style="color: #7f8c8d; font-size: 11.5px; margin-top: 4px; display: block; line-height: 1.4;">Enter a single subject, or enter multiple subjects separated by commas to register them simultaneously.</small>
-                            </div>
-                            <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                <div>
-                                    <label>FM (1st Term)</label>
-                                    <input type="number" step="0.1" name="full_marks_1st" placeholder="50.0" value="50.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>FM (2nd Term)</label>
-                                    <input type="number" step="0.1" name="full_marks_2nd" placeholder="50.0" value="50.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>FM (Annual)</label>
-                                    <input type="number" step="0.1" name="full_marks_annual" placeholder="100.0" value="100.0" min="1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                            </div>
-                            <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                <div>
-                                    <label>Oral (1st Term)</label>
-                                    <input type="number" step="0.1" name="oral_marks_1st" placeholder="e.g. 10.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Oral (2nd Term)</label>
-                                    <input type="number" step="0.1" name="oral_marks_2nd" placeholder="e.g. 10.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                                <div>
-                                    <label>Oral (Annual)</label>
-                                    <input type="number" step="0.1" name="oral_marks_annual" placeholder="e.g. 20.0" min="0" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label>Classes (Tick all that apply)</label>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 5px;">
-                                    {% for c in distinct_classes %}
-                                    <label style="display: flex; align-items: center; font-weight: normal; font-size: 14px; cursor: pointer;">
-                                        <input type="checkbox" name="classes" value="{{ c.name }}" style="margin-right: 5px;"> {{ c.name }}
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <button type="submit" class="auth-btn">Add Subject to Classes</button>
-                        </form>
-                    </div>
-
-                    <div style="margin-top: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                            <h3 style="margin: 0; font-size: 16px; color: var(--text-dark);">Existing Subjects</h3>
-                            <input type="text" id="subjectsSearch" placeholder="Search subjects..." onkeyup="filterTable('subjectsSearch', 'subjectsTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
-                        </div>
-                        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-                            <table id="subjectsTable" style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                                    <tr>
-                                        <th style="padding: 10px; text-align: left;">Subject</th>
-                                        <th style="padding: 10px; text-align: left;">Class</th>
-                                        <th style="padding: 10px; text-align: left; width: 380px;">Marks Config (1st / 2nd / Ann)</th>
-                                        <th style="padding: 10px; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for subject in subjects %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 10px;">{{ subject.name }}</td>
-                                        <td style="padding: 10px;">{{ subject.class }}</td>
-                                        <td style="padding: 10px; width: 380px;">
-                                            <form action="/admin/update-subject-marks" method="POST" style="display: flex; flex-direction: column; gap: 8px; margin: 0;">
-                                                <input type="hidden" name="subject_id" value="{{ subject.id }}">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span style="font-size: 12px; color: #7f8c8d; width: 65px; font-weight: 500;">Full Marks:</span>
-                                                    <input type="number" step="0.1" name="full_marks_1st" value="{{ subject.full_marks_1st or 50.0 }}" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="1st Term F.M." required>
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="full_marks_2nd" value="{{ subject.full_marks_2nd or 50.0 }}" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="2nd Term F.M." required>
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="full_marks_annual" value="{{ subject.full_marks_annual or 100.0 }}" style="width: 55px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="Annual Exam F.M." required>
-                                                </div>
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span style="font-size: 12px; color: #7f8c8d; width: 65px; font-weight: 500;">Oral Marks:</span>
-                                                    <input type="number" step="0.1" name="oral_marks_1st" value="{{ subject.oral_marks_1st if subject.oral_marks_1st is not none else '' }}" placeholder="None" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="1st Term Oral">
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="oral_marks_2nd" value="{{ subject.oral_marks_2nd if subject.oral_marks_2nd is not none else '' }}" placeholder="None" style="width: 50px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="2nd Term Oral">
-                                                    <span style="color: #ccc;">/</span>
-                                                    <input type="number" step="0.1" name="oral_marks_annual" value="{{ subject.oral_marks_annual if subject.oral_marks_annual is not none else '' }}" placeholder="None" style="width: 55px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 13px; text-align: center;" title="Annual Oral">
-                                                    <button type="submit" class="badge" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;">Save</button>
-                                                </div>
-                                            </form>
-                                        </td>
-                                        <td style="padding: 10px; text-align: center;">
-                                            <form method="POST" onsubmit="return confirm('Delete subject {{ subject.name }} for Class {{ subject.class }}?')" style="display: inline;">
-                                                <input type="hidden" name="delete_subject" value="1">
-                                                <input type="hidden" name="subject_id" value="{{ subject.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT COLUMN: ASSIGN TEACHERS -->
-                <div>
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee;">
-                        <h3 style="color: #00b894; margin-bottom: 15px;">Assign Teacher to Subject</h3>
-                        <form method="POST">
-                            <input type="hidden" name="assign_teacher" value="1">
-                            <div class="input-group">
-                                <label>Teacher</label>
-                                <select name="teacher_id" required>
-                                    <option value="">Select Teacher</option>
-                                    {% for teacher in teachers %}
-                                    <option value="{{ teacher.id }}">{{ teacher.full_name or (teacher.username | clean_name) }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Subject Name</label>
-                                <select name="subject_name" required>
-                                    <option value="">Select Subject</option>
-                                    {% for subject in distinct_subjects %}
-                                    <option value="{{ subject.name }}">{{ subject.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Classes (Tick all that apply)</label>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 5px;">
-                                    {% for c in distinct_classes %}
-                                    <label style="display: flex; align-items: center; font-weight: normal; font-size: 14px; cursor: pointer;">
-                                        <input type="checkbox" name="classes" value="{{ c.name }}" style="margin-right: 5px;"> {{ c.name }}
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <button type="submit" class="auth-btn" style="background: #00b894;">Assign Teacher to Classes</button>
-                        </form>
-                    </div>
-
-                    <div style="margin-top: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                            <h3 style="margin: 0; font-size: 16px; color: var(--text-dark);">Teacher Assignments</h3>
-                            <input type="text" id="assignmentsSearch" placeholder="Search assignments..." onkeyup="filterTable('assignmentsSearch', 'assignmentsTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
-                        </div>
-                        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-                            <table id="assignmentsTable" style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                                    <tr>
-                                        <th style="padding: 10px; text-align: left;">Teacher</th>
-                                        <th style="padding: 10px; text-align: left;">Subject</th>
-                                        <th style="padding: 10px; text-align: left;">Class</th>
-                                        <th style="padding: 10px; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for assign in assignments %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 10px;"><strong>{{ assign.teacher_name | clean_name }}</strong></td>
-                                        <td style="padding: 10px;">{{ assign.subject_name }}</td>
-                                        <td style="padding: 10px;">{{ assign.class }}</td>
-                                        <td style="padding: 10px; text-align: center;">
-                                            <form method="POST" onsubmit="return confirm('Delete assignment for {{ assign.teacher_name | clean_name }} teaching {{ assign.subject_name }} to Class {{ assign.class }}?')" style="display: inline;">
-                                                <input type="hidden" name="delete_assignment" value="1">
-                                                <input type="hidden" name="assignment_id" value="{{ assign.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="4" style="padding:15px; text-align:center; color:#999;">No assignments made yet.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- CLASS TEST CONFIGURATIONS SECTION -->
-            <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
-                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="clipboard-list"></i> Class Test Configurations
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px;">
-                    <!-- Create Config Form -->
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa;">
-                        <h4 style="color: #0984e3; margin-bottom: 15px;">Configure Class Test</h4>
-                        <form method="POST">
-                            <input type="hidden" name="create_class_test_config" value="1">
-                            <div class="input-group">
-                                <label>Test Name</label>
-                                <input type="text" name="test_name" placeholder="e.g. Monthly Test 1" required style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <div class="input-group">
-                                <label>Class</label>
-                                <select name="class_name" required>
-                                    <option value="">Select Class</option>
-                                    {% for c in distinct_classes %}
-                                    <option value="{{ c.name }}">{{ c.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Subject</label>
-                                <select name="subject_name" required>
-                                    <option value="">Select Subject</option>
-                                    {% for subject in distinct_subjects %}
-                                    <option value="{{ subject.name }}">{{ subject.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Full Marks</label>
-                                <input type="number" name="full_marks" value="20" required min="1" max="100" style="padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <button type="submit" class="auth-btn">Save Configuration</button>
-                        </form>
-                    </div>
-                    
-                    <!-- Table View -->
+            <div class="content-wrapper" style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                            <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Configured Tests</h4>
-                            <input type="text" id="configsSearch" placeholder="Search configs..." onkeyup="filterTable('configsSearch', 'configsTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
+                        <h2 style="margin: 0 0 4px 0; color: var(--primary-color); font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="settings-2" style="width: 24px; height: 24px;"></i> Academic Management
+                        </h2>
+                        <span style="color: #64748b; font-size: 13.5px;">Manage subjects, marks distribution, faculty assignments, and class structures.</span>
+                    </div>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    <div class="flash-messages" style="margin-bottom: 20px;">
+                      {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }}" style="padding: 12px 20px; border-radius: var(--radius); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 10px; background: {% if category == 'error' %}#fdf2f2{% else %}#f0fdf4{% endif %}; color: {% if category == 'error' %}var(--danger-color){% else %}var(--success-color){% endif %}; border: 1px solid {% if category == 'error' %}#fca5a5{% else %}#bbf7d0{% endif %}; font-family: 'Outfit', sans-serif;">
+                          <i data-lucide="{% if category == 'error' %}alert-circle{% else %}check-circle{% endif %}" style="width: 20px; height: 20px;"></i>
+                          <span>{{ message }}</span>
                         </div>
-                        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
-                            <table id="configsTable" style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                                    <tr>
-                                        <th style="padding: 12px; text-align: left;">Test Name</th>
-                                        <th style="padding: 12px; text-align: left;">Class</th>
-                                        <th style="padding: 12px; text-align: left;">Subject</th>
-                                        <th style="padding: 12px; text-align: center;">Full Marks</th>
-                                        <th style="padding: 12px; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for config in class_test_configs %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 12px;"><strong>{{ config.test_name }}</strong></td>
-                                        <td style="padding: 12px;">Class {{ config.class_name }}</td>
-                                        <td style="padding: 12px;">{{ config.subject_name }}</td>
-                                        <td style="padding: 12px; text-align: center;"><span style="background: #e8f5e9; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 600;">{{ config.full_marks }}</span></td>
-                                        <td style="padding: 12px; text-align: center;">
-                                            <form method="POST" onsubmit="return confirm('Delete config for {{ config.test_name }}?')" style="display: inline;">
-                                                <input type="hidden" name="delete_class_test_config" value="1">
-                                                <input type="hidden" name="config_id" value="{{ config.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No class tests configured yet.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
+
+                {% if role == 'admin' %}
+                <!-- SECTION 1: SUBJECTS & MARKS CONFIGURATION -->
+                <div class="academics-card">
+                    <div class="academics-card-header">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; color: var(--primary-color); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="book-open" style="width: 20px; height: 20px; color: var(--primary-color);"></i> Subjects & Marks Structure
+                            </h3>
+                            <span style="font-size: 12.5px; color: #64748b;">Configure curriculum subjects and assessment marks for each class</span>
+                        </div>
+                    </div>
+
+                    <div class="academics-split-grid">
+                        <!-- Add New Subject Form Box -->
+                        <div class="academics-form-box">
+                            <h4 class="academics-form-title" style="color: #0284c7;">
+                                <i data-lucide="plus-circle" style="width: 17px; height: 17px;"></i> Add New Subject
+                            </h4>
+                            <form method="POST">
+                                <input type="hidden" name="create_subject" value="1">
+                                <div class="academics-field">
+                                    <label>Subject Name(s)</label>
+                                    <input type="text" name="name" class="academics-input" placeholder="e.g. Mathematics or English, Science" required>
+                                    <small style="color: #64748b; font-size: 11.5px; margin-top: 4px; display: block; line-height: 1.4;">Enter a single subject or comma-separated names to batch register.</small>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Full Marks (Written)</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">1st Term</span>
+                                            <input type="number" step="0.1" name="full_marks_1st" class="academics-input" placeholder="50.0" value="50.0" min="1" required style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">2nd Term</span>
+                                            <input type="number" step="0.1" name="full_marks_2nd" class="academics-input" placeholder="50.0" value="50.0" min="1" required style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Annual</span>
+                                            <input type="number" step="0.1" name="full_marks_annual" class="academics-input" placeholder="100.0" value="100.0" min="1" required style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Oral Marks (Optional)</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">1st Term</span>
+                                            <input type="number" step="0.1" name="oral_marks_1st" class="academics-input" placeholder="None" min="0" style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">2nd Term</span>
+                                            <input type="number" step="0.1" name="oral_marks_2nd" class="academics-input" placeholder="None" min="0" style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 11px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Annual</span>
+                                            <input type="number" step="0.1" name="oral_marks_annual" class="academics-input" placeholder="None" min="0" style="text-align: center; padding: 7px 4px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Applicable Classes</label>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; max-height: 110px; overflow-y: auto; background: #ffffff; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+                                        {% for c in distinct_classes %}
+                                        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" name="classes" value="{{ c.name }}" style="accent-color: var(--primary-color);"> {{ c.name }}
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button type="submit" class="academics-btn-primary">
+                                    <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Add Subject to Classes
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Existing Subjects Table Box -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="list" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Existing Subjects
+                                </h4>
+                                <input type="text" id="subjectsSearch" class="academics-search" placeholder="Search subjects..." onkeyup="filterTable('subjectsSearch', 'subjectsTable')">
+                            </div>
+                            <div class="academics-table-scroll table-scroll-container" style="max-height: 400px;">
+                                <table id="subjectsTable" class="academics-table">
+                                    <thead style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th style="text-align: left; min-width: 130px;">Subject</th>
+                                            <th style="text-align: left; min-width: 80px;">Class</th>
+                                            <th style="text-align: left; min-width: 320px;">Marks Config (1st / 2nd / Ann)</th>
+                                            <th style="text-align: center; width: 80px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for subject in subjects %}
+                                        <tr>
+                                            <td style="font-weight: 600; color: #1e293b; text-align: left;">{{ subject.name }}</td>
+                                            <td style="text-align: left;"><span style="background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">{{ subject.class }}</span></td>
+                                            <td style="text-align: left;">
+                                                <form action="/admin/update-subject-marks" method="POST" style="display: flex; flex-direction: column; gap: 6px; margin: 0;">
+                                                    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;">
+                                                        <span style="font-size: 11.5px; color: #64748b; width: 68px; font-weight: 500; flex-shrink: 0;">Full Marks:</span>
+                                                        <input type="number" step="0.1" name="full_marks_1st" value="{{ subject.full_marks_1st or 50.0 }}" style="width: 58px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="1st Term F.M." required>
+                                                        <span style="color: #94a3b8;">/</span>
+                                                        <input type="number" step="0.1" name="full_marks_2nd" value="{{ subject.full_marks_2nd or 50.0 }}" style="width: 58px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="2nd Term F.M." required>
+                                                        <span style="color: #94a3b8;">/</span>
+                                                        <input type="number" step="0.1" name="full_marks_annual" value="{{ subject.full_marks_annual or 100.0 }}" style="width: 62px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="Annual Exam F.M." required>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;">
+                                                        <span style="font-size: 11.5px; color: #64748b; width: 68px; font-weight: 500; flex-shrink: 0;">Oral Marks:</span>
+                                                        <input type="number" step="0.1" name="oral_marks_1st" value="{{ subject.oral_marks_1st if subject.oral_marks_1st is not none else '' }}" placeholder="None" style="width: 58px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="1st Term Oral">
+                                                        <span style="color: #94a3b8;">/</span>
+                                                        <input type="number" step="0.1" name="oral_marks_2nd" value="{{ subject.oral_marks_2nd if subject.oral_marks_2nd is not none else '' }}" placeholder="None" style="width: 58px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="2nd Term Oral">
+                                                        <span style="color: #94a3b8;">/</span>
+                                                        <input type="number" step="0.1" name="oral_marks_annual" value="{{ subject.oral_marks_annual if subject.oral_marks_annual is not none else '' }}" placeholder="None" style="width: 62px; padding: 4px 6px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 12.5px; text-align: center;" title="Annual Oral">
+                                                        <button type="submit" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-family: 'Outfit', sans-serif; white-space: nowrap;">
+                                                            <i data-lucide="save" style="width: 12px; height: 12px;"></i> Save
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <form method="POST" onsubmit="return confirm('Delete subject {{ subject.name }} for Class {{ subject.class }}?')" style="display: inline;">
+                                                    <input type="hidden" name="delete_subject" value="1">
+                                                    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                                    <button type="submit" style="background-color: #fee2e2; border: 1px solid #fca5a5; cursor: pointer; color: #dc2626; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-family: 'Outfit', sans-serif; transition: all 0.2s;">
+                                                        <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="4" style="padding: 24px; text-align: center; color: #94a3b8;">No subjects added yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- CLASS DIRECTORY MANAGER SECTION -->
-            <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%;">
-                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="graduation-cap"></i> Class Directory Manager
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px;">
-                    <!-- Add Class Form -->
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa;">
-                        <h4 style="color: #0984e3; margin-bottom: 15px;">Add New Class</h4>
-                        <form method="POST">
-                            <input type="hidden" name="create_class" value="1">
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Class Name</label>
-                                <input type="text" name="class_name" placeholder="e.g. Nursery, L/N, Eleven" required style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <input type="hidden" name="branch" id="class-branch-select" value="bhogram">
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Admission Fee (INR)</label>
-                                <input type="number" step="0.01" min="0" name="admission_fee" placeholder="0.00" value="0.00" style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Monthly Fee (INR)</label>
-                                <input type="number" step="0.01" min="0" name="monthly_fee" placeholder="0.00" value="0.00" style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <div class="input-group" id="hostel-fee-group" style="margin-bottom: 12px; display: none;">
-                                <label>Monthly Hostel Fee (INR)</label>
-                                <input type="number" step="0.01" min="0" name="hostel_fee" id="hostel_fee_input" placeholder="0.00" value="0.00" style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
-                            </div>
-                            <button type="submit" class="auth-btn">Save Class</button>
-                        </form>
+                <!-- SECTION 2: TEACHER ALLOCATIONS -->
+                <div class="academics-card">
+                    <div class="academics-card-header">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; color: #0d9488; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="user-check" style="width: 20px; height: 20px; color: #0d9488;"></i> Teacher Subject Allocations
+                            </h3>
+                            <span style="font-size: 12.5px; color: #64748b;">Assign teachers to their respective subjects and classes</span>
+                        </div>
                     </div>
+
+                    <div class="academics-split-grid">
+                        <!-- Assign Teacher Form Box -->
+                        <div class="academics-form-box">
+                            <h4 class="academics-form-title" style="color: #0d9488;">
+                                <i data-lucide="user-plus" style="width: 17px; height: 17px;"></i> Assign Teacher to Subject
+                            </h4>
+                            <form method="POST">
+                                <input type="hidden" name="assign_teacher" value="1">
+                                <div class="academics-field">
+                                    <label>Faculty Member</label>
+                                    <select name="teacher_id" class="academics-input" required>
+                                        <option value="">Select Teacher</option>
+                                        {% for teacher in teachers %}
+                                        <option value="{{ teacher.id }}">{{ teacher.full_name or (teacher.username | clean_name) }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Subject</label>
+                                    <select name="subject_name" class="academics-input" required>
+                                        <option value="">Select Subject</option>
+                                        {% for subject in distinct_subjects %}
+                                        <option value="{{ subject.name }}">{{ subject.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Applicable Classes</label>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; max-height: 110px; overflow-y: auto; background: #ffffff; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+                                        {% for c in distinct_classes %}
+                                        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" name="classes" value="{{ c.name }}" style="accent-color: #0d9488;"> {{ c.name }}
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button type="submit" class="academics-btn-primary" style="background: #0d9488;">
+                                    <i data-lucide="user-check" style="width: 16px; height: 16px;"></i> Assign Teacher to Classes
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Assignments Table Box -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="users" style="width: 16px; height: 16px; color: #0d9488;"></i> Teacher Assignments
+                                </h4>
+                                <input type="text" id="assignmentsSearch" class="academics-search" placeholder="Search assignments..." onkeyup="filterTable('assignmentsSearch', 'assignmentsTable')">
+                            </div>
+                            <div class="academics-table-scroll table-scroll-container" style="max-height: 400px;">
+                                <table id="assignmentsTable" class="academics-table">
+                                    <thead style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th style="text-align: left;">Teacher</th>
+                                            <th style="text-align: left;">Subject</th>
+                                            <th style="text-align: left;">Class</th>
+                                            <th style="text-align: center; width: 80px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for assign in assignments %}
+                                        <tr>
+                                            <td style="font-weight: 600; color: #1e293b; text-align: left;">{{ assign.teacher_name | clean_name }}</td>
+                                            <td style="text-align: left;">{{ assign.subject_name }}</td>
+                                            <td style="text-align: left;"><span style="background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">{{ assign.class }}</span></td>
+                                            <td style="text-align: center;">
+                                                <form method="POST" onsubmit="return confirm('Delete assignment for {{ assign.teacher_name | clean_name }} teaching {{ assign.subject_name }} to Class {{ assign.class }}?')" style="display: inline;">
+                                                    <input type="hidden" name="delete_assignment" value="1">
+                                                    <input type="hidden" name="assignment_id" value="{{ assign.id }}">
+                                                    <button type="submit" style="background-color: #fee2e2; border: 1px solid #fca5a5; cursor: pointer; color: #dc2626; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-family: 'Outfit', sans-serif; transition: all 0.2s;">
+                                                        <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="4" style="padding: 24px; text-align: center; color: #94a3b8;">No assignments made yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: CLASS TEST CONFIGURATIONS -->
+                <div class="academics-card">
+                    <div class="academics-card-header">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; color: var(--primary-color); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="clipboard-list" style="width: 20px; height: 20px; color: var(--primary-color);"></i> Class Test Configurations
+                            </h3>
+                            <span style="font-size: 12.5px; color: #64748b;">Configure periodic unit tests, class tests, and custom full marks</span>
+                        </div>
+                    </div>
+
+                    <div class="academics-split-grid">
+                        <!-- Create Config Form Box -->
+                        <div class="academics-form-box">
+                            <h4 class="academics-form-title" style="color: #0284c7;">
+                                <i data-lucide="settings-2" style="width: 17px; height: 17px;"></i> Configure Class Test
+                            </h4>
+                            <form method="POST">
+                                <input type="hidden" name="create_class_test_config" value="1">
+                                <div class="academics-field">
+                                    <label>Test Name</label>
+                                    <input type="text" name="test_name" class="academics-input" placeholder="e.g. Monthly Test 1" required>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Class</label>
+                                    <select name="class_name" class="academics-input" required>
+                                        <option value="">Select Class</option>
+                                        {% for c in distinct_classes %}
+                                        <option value="{{ c.name }}">{{ c.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Subject</label>
+                                    <select name="subject_name" class="academics-input" required>
+                                        <option value="">Select Subject</option>
+                                        {% for subject in distinct_subjects %}
+                                        <option value="{{ subject.name }}">{{ subject.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Full Marks</label>
+                                    <input type="number" name="full_marks" class="academics-input" value="20" required min="1" max="100">
+                                </div>
+                                <button type="submit" class="academics-btn-primary">
+                                    <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i> Save Configuration
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Table View -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="list-checks" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Configured Tests
+                                </h4>
+                                <input type="text" id="configsSearch" class="academics-search" placeholder="Search configs..." onkeyup="filterTable('configsSearch', 'configsTable')">
+                            </div>
+                            <div class="academics-table-scroll table-scroll-container" style="max-height: 400px;">
+                                <table id="configsTable" class="academics-table">
+                                    <thead style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th style="text-align: left;">Test Name</th>
+                                            <th style="text-align: left;">Class</th>
+                                            <th style="text-align: left;">Subject</th>
+                                            <th style="text-align: center; width: 100px;">Full Marks</th>
+                                            <th style="text-align: center; width: 80px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for config in class_test_configs %}
+                                        <tr>
+                                            <td style="font-weight: 600; color: #1e293b; text-align: left;">{{ config.test_name }}</td>
+                                            <td style="text-align: left;"><span style="background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Class {{ config.class_name }}</span></td>
+                                            <td style="text-align: left;">{{ config.subject_name }}</td>
+                                            <td style="text-align: center;"><span style="background: #dcfce7; color: #15803d; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 12px;">{{ config.full_marks }}</span></td>
+                                            <td style="text-align: center;">
+                                                <form method="POST" onsubmit="return confirm('Delete config for {{ config.test_name }}?')" style="display: inline;">
+                                                    <input type="hidden" name="delete_class_test_config" value="1">
+                                                    <input type="hidden" name="config_id" value="{{ config.id }}">
+                                                    <button type="submit" style="background-color: #fee2e2; border: 1px solid #fca5a5; cursor: pointer; color: #dc2626; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-family: 'Outfit', sans-serif; transition: all 0.2s;">
+                                                        <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="5" style="padding: 24px; text-align: center; color: #94a3b8;">No class tests configured yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: CLASS DIRECTORY & FEE MANAGER -->
+                <div class="academics-card">
+                    <div class="academics-card-header">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; color: var(--primary-color); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="graduation-cap" style="width: 20px; height: 20px; color: var(--primary-color);"></i> Class Directory & Fee Structure
+                            </h3>
+                            <span style="font-size: 12.5px; color: #64748b;">Manage academic classes, admission fees, and monthly fee structures</span>
+                        </div>
+                    </div>
+
+                    <div class="academics-split-grid">
+                        <!-- Add Class Form -->
+                        <div class="academics-form-box">
+                            <h4 class="academics-form-title" style="color: #0284c7;">
+                                <i data-lucide="folder-plus" style="width: 17px; height: 17px;"></i> Add New Class
+                            </h4>
+                            <form method="POST">
+                                <input type="hidden" name="create_class" value="1">
+                                <div class="academics-field">
+                                    <label>Class Name</label>
+                                    <input type="text" name="class_name" class="academics-input" placeholder="e.g. Nursery, One, Two" required>
+                                </div>
+                                <input type="hidden" name="branch" id="class-branch-select" value="bhogram">
+                                
+                                <!-- New Admission Fees -->
+                                <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                                    <span style="display: block; font-size: 12px; font-weight: 700; color: var(--primary-color); margin-bottom: 6px;">New Admission Fees</span>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">School</span>
+                                            <input type="number" step="0.01" min="0" name="admission_fee" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Coaching</span>
+                                            <input type="number" step="0.01" min="0" name="admission_fee_coaching" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Hostel</span>
+                                            <input type="number" step="0.01" min="0" name="admission_fee_hostel" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Re-Admission Fees -->
+                                <div style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                                    <span style="display: block; font-size: 12px; font-weight: 700; color: var(--primary-color); margin-bottom: 6px;">Re-Admission Fees</span>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">School</span>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_school" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Coaching</span>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_coaching" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Hostel</span>
+                                            <input type="number" step="0.01" min="0" name="readmission_fee_hostel" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Monthly Fees -->
+                                <div style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-bottom: 16px;">
+                                    <span style="display: block; font-size: 12px; font-weight: 700; color: var(--primary-color); margin-bottom: 6px;">Monthly Fees</span>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">School</span>
+                                            <input type="number" step="0.01" min="0" name="monthly_fee" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Coaching</span>
+                                            <input type="number" step="0.01" min="0" name="monthly_fee_coaching" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 10.5px; color: #64748b; font-weight: 500; display: block; margin-bottom: 2px;">Hostel</span>
+                                            <input type="number" step="0.01" min="0" name="hostel_fee" class="academics-input" placeholder="0.00" value="0.00" style="padding: 6px 4px; font-size: 12px; text-align: center;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="academics-btn-primary">
+                                    <i data-lucide="check" style="width: 16px; height: 16px;"></i> Save Class
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Classes Table View -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="layers" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Active Classes Directory
+                                </h4>
+                                <input type="text" id="classesSearch" class="academics-search" placeholder="Search classes..." onkeyup="filterTable('classesSearch', 'classesTable')">
+                            </div>
+                            <div class="academics-table-scroll table-scroll-container" style="max-height: 480px;">
+                                <table id="classesTable" class="academics-table" style="min-width: 880px; font-size: 13px;">
+                                    <thead style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th rowspan="2" style="padding: 8px 10px; text-align: left; width: 40px; vertical-align: middle;">ID</th>
+                                            <th rowspan="2" style="padding: 8px 10px; text-align: left; min-width: 80px; vertical-align: middle;">Class</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #f0fdf4; border-right: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0; color: #166534; font-weight: 600;">New Admission Fee</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #eff6ff; border-right: 1px solid #e2e8f0; color: #1e40af; font-weight: 600;">Re-Admission Fee</th>
+                                            <th colspan="3" style="padding: 8px; text-align: center; background: #faf5ff; border-right: 1px solid #e2e8f0; color: #6b21a8; font-weight: 600;">Monthly Fee</th>
+                                            <th rowspan="2" style="padding: 8px; text-align: center; width: 130px; vertical-align: middle;">Action</th>
+                                        </tr>
+                                        <tr style="background: #f8fafc; font-size: 11px;">
+                                            <!-- New Admission Columns -->
+                                            <th style="padding: 6px 4px; text-align: center; border-left: 1px solid #e2e8f0;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #e2e8f0;">Hostel</th>
+                                            <!-- Re-Admission Columns -->
+                                            <th style="padding: 6px 4px; text-align: center;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #e2e8f0;">Hostel</th>
+                                            <!-- Monthly Columns -->
+                                            <th style="padding: 6px 4px; text-align: center;">School</th>
+                                            <th style="padding: 6px 4px; text-align: center;">Coach</th>
+                                            <th style="padding: 6px 4px; text-align: center; border-right: 1px solid #e2e8f0;">Hostel</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for c in classes %}
+                                        <tr>
+                                            <td style="padding: 8px 10px; color: #64748b;">{{ c.id }}</td>
+                                            <td style="padding: 8px 10px; font-weight: 600; color: #1e293b;">{{ c.name }}</td>
+                                            
+                                            <!-- New Admission Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center; border-left: 1px solid #f1f5f9;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-{{ c.id }}" value="{{ c.admission_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-coaching-{{ c.id }}" value="{{ c.admission_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #f1f5f9;">
+                                                <input type="number" step="0.01" min="0" id="adm-fee-hostel-{{ c.id }}" value="{{ c.admission_fee_hostel or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Re-Admission Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-school-{{ c.id }}" value="{{ c.readmission_fee_school or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-coaching-{{ c.id }}" value="{{ c.readmission_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #f1f5f9;">
+                                                <input type="number" step="0.01" min="0" id="readm-fee-hostel-{{ c.id }}" value="{{ c.readmission_fee_hostel or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Monthly Inputs -->
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="mon-fee-{{ c.id }}" value="{{ c.monthly_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center;">
+                                                <input type="number" step="0.01" min="0" id="mon-fee-coaching-{{ c.id }}" value="{{ c.monthly_fee_coaching or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            <td style="padding: 6px 4px; text-align: center; border-right: 1px solid #f1f5f9;">
+                                                <input type="number" step="0.01" min="0" id="hostel-fee-{{ c.id }}" value="{{ c.hostel_fee or 0.0 }}" style="width: 58px; padding: 4px; border: 1.5px solid #cbd5e1; border-radius: 4px; font-family: 'Outfit', sans-serif; text-align: center; font-weight: 500;">
+                                            </td>
+                                            
+                                            <!-- Action Buttons -->
+                                            <td style="padding: 8px; text-align: center; white-space: nowrap;">
+                                                <button type="button" onclick="saveClassFees({{ c.id }})" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 4px 8px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
+                                                    <i data-lucide="save" style="width: 11px; height: 11px;"></i> Save
+                                                </button>
+                                                <form method="POST" onsubmit="return confirm('Delete class {{ c.name }}? This will also delete associated subjects and config slots.')" style="display: inline;">
+                                                    <input type="hidden" name="delete_class" value="1">
+                                                    <input type="hidden" name="class_id" value="{{ c.id }}">
+                                                    <button type="submit" style="background-color: #fee2e2; border: 1px solid #fca5a5; cursor: pointer; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; margin-left: 4px;">
+                                                        <i data-lucide="trash-2" style="width: 11px; height: 11px;"></i> Del
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="12" style="padding: 24px; text-align: center; color: #94a3b8;">No classes registered yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 5: SCHOOL REGISTRATION DOCUMENTS MANAGER -->
+                <details class="docs-details academics-card" style="outline: none;">
+                    <summary style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none;">
+                        <span style="display: inline-flex; align-items: center; gap: 8px; color: var(--primary-color); font-size: 17px; font-weight: 600;">
+                            <i data-lucide="file-text" style="width: 20px; height: 20px; color: var(--primary-color);"></i> School Registration Documents
+                        </span>
+                        <span style="font-size: 13px; font-weight: 500; color: #64748b; display: inline-flex; align-items: center; gap: 4px;">
+                            Click to Manage <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
+                        </span>
+                    </summary>
                     
-                    <!-- Classes Table View -->
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
-                            <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Active Classes</h4>
-                            <input type="text" id="classesSearch" placeholder="Search classes..." onkeyup="filterTable('classesSearch', 'classesTable')" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; width: 160px; box-sizing: border-box;">
+                    <div class="academics-split-grid" style="margin-top: 20px; border-top: 1.5px solid #f1f5f9; padding-top: 20px;">
+                        <!-- Upload Document Form -->
+                        <div class="academics-form-box">
+                            <h4 class="academics-form-title" style="color: #0284c7;">
+                                <i data-lucide="upload-cloud" style="width: 17px; height: 17px;"></i> Upload Document
+                            </h4>
+                            <form action="/admin/upload-document" method="POST" enctype="multipart/form-data">
+                                <div class="academics-field">
+                                    <label>Document Title</label>
+                                    <input type="text" name="title" class="academics-input" placeholder="e.g. Society Registration Certificate" required>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Description</label>
+                                    <textarea name="description" class="academics-input" placeholder="Brief description of the document..." rows="3" style="resize: vertical;"></textarea>
+                                </div>
+                                <div class="academics-field">
+                                    <label>Document File (Any type allowed)</label>
+                                    <input type="file" name="document_file" required style="width: 100%; font-size: 13px; color: #475569;">
+                                </div>
+                                <button type="submit" class="academics-btn-primary">
+                                    <i data-lucide="upload" style="width: 16px; height: 16px;"></i> Upload Document
+                                </button>
+                            </form>
                         </div>
-                        <div style="max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
-                            <table id="classesTable" style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 1;">
-                                    <tr>
-                                        <th style="padding: 12px; text-align: left; width: 60px;">ID</th>
-                                        <th style="padding: 12px; text-align: left; min-width: 100px;">Class Name</th>
-                                        <th style="padding: 12px; text-align: left; width: 110px;">Admission Fee</th>
-                                        <th style="padding: 12px; text-align: left; width: 110px;">Monthly Fee</th>
-                                        <th style="padding: 12px; text-align: center; width: 180px;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for c in classes %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 12px;">{{ c.id }}</td>
-                                        <td style="padding: 12px;"><strong>{{ c.name }}</strong></td>
-                                        <td style="padding: 12px;">
-                                            <input type="number" step="0.01" min="0" id="adm-fee-{{ c.id }}" value="{{ c.admission_fee or 0.0 }}" style="width: 80px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500;">
-                                        </td>
-                                        <td style="padding: 12px;">
-                                            <input type="number" step="0.01" min="0" id="mon-fee-{{ c.id }}" value="{{ c.monthly_fee or 0.0 }}" style="width: 80px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500;">
-                                            <input type="hidden" id="hostel-fee-{{ c.id }}" value="0.00">
-                                        </td>
-                                        <td style="padding: 12px; text-align: center;">
-                                            <button type="button" class="badge" onclick="saveClassFees({{ c.id }})" style="background-color: var(--primary-color); border: none; cursor: pointer; color: white; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-right: 5px;">
-                                                <i data-lucide="save" style="width: 12px; height: 12px; vertical-align: middle;"></i> Save
-                                            </button>
-                                            <form method="POST" onsubmit="return confirm('Delete class {{ c.name }}? This will also delete associated subjects and config slots.')" style="display: inline;">
-                                                <input type="hidden" name="delete_class" value="1">
-                                                <input type="hidden" name="class_id" value="{{ c.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="7" style="padding: 20px; text-align: center; color: #999;">No classes registered yet.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SCHOOL REGISTRATION DOCUMENTS MANAGER SECTION -->
-            <details style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 30px; width: 100%; outline: none;" class="docs-details">
-                <summary style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: 'Fredoka', sans-serif; font-size: 1.17em; font-weight: bold; cursor: pointer; user-select: none;">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
-                        <i data-lucide="file-text"></i> School Registration Documents
-                    </span>
-                    <span style="font-size: 13px; font-weight: normal; color: #7f8c8d; display: inline-flex; align-items: center; gap: 4px;">
-                        Click to Manage <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
-                    </span>
-                </summary>
-                
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-bottom: 30px; margin-top: 20px;">
-                    <!-- Upload Document Form -->
-                    <div class="auth-container" style="margin: 0; box-shadow: none; border: 1px solid #eee; background: #fafafa;">
-                        <h4 style="color: #0984e3; margin-bottom: 15px;">Upload Document</h4>
-                        <form action="/admin/upload-document" method="POST" enctype="multipart/form-data">
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Document Title</label>
-                                <input type="text" name="title" placeholder="e.g. Society Registration Certificate" required style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%;">
+                        
+                        <!-- Documents Table View -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="margin: 0; font-size: 15px; color: var(--text-dark); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="files" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Uploaded Documents
+                                </h4>
                             </div>
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Description</label>
-                                <textarea name="description" placeholder="Brief description of the document..." rows="3" style="padding: 8px 10px; border: 2px solid var(--border-color); border-radius: var(--radius); width: 100%; font-family: inherit; box-sizing: border-box;"></textarea>
+                            <div class="academics-table-scroll table-scroll-container" style="max-height: 350px;">
+                                <table class="academics-table">
+                                    <thead style="position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th style="text-align: left; width: 220px;">Title</th>
+                                            <th style="text-align: left;">Description</th>
+                                            <th style="text-align: center; width: 150px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for doc in registration_documents %}
+                                        <tr>
+                                            <td style="text-align: left;">
+                                                <strong style="color: #1e293b;">{{ doc.title }}</strong><br>
+                                                <small style="color: #94a3b8;">{{ doc.file_path.replace('\\', '/').split('/')[-1] }}</small>
+                                            </td>
+                                            <td style="text-align: left; color: #475569; font-size: 13px;">{{ doc.description or '-' }}</td>
+                                            <td style="text-align: center;">
+                                                <a href="/{{ doc.file_path.replace('\\', '/') }}" target="_blank" style="background-color: var(--primary-color); text-decoration: none; color: white; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-right: 5px;">
+                                                    <i data-lucide="eye" style="width: 12px; height: 12px;"></i> View
+                                                </a>
+                                                <form action="/admin/delete-document" method="POST" class="delete-doc-form" style="display: inline;">
+                                                    <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                                                    <button type="submit" style="background-color: #fee2e2; border: 1px solid #fca5a5; cursor: pointer; color: #dc2626; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="3" style="padding: 24px; text-align: center; color: #94a3b8;">No documents uploaded yet.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Document File (Any type allowed)</label>
-                                <input type="file" name="document_file" required style="width: 100%;">
-                            </div>
-                            <button type="submit" class="auth-btn">Upload Document</button>
-                        </form>
-                    </div>
-                    
-                    <!-- Documents Table View -->
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">Uploaded Documents</h4>
-                        </div>
-                        <div style="max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; background: white;">
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 1;">
-                                    <tr>
-                                        <th style="padding: 12px; text-align: left; width: 200px;">Title</th>
-                                        <th style="padding: 12px; text-align: left;">Description</th>
-                                        <th style="padding: 12px; text-align: center; width: 150px;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for doc in registration_documents %}
-                                    <tr style="border-bottom: 1px solid #eee;">
-                                        <td style="padding: 12px;">
-                                            <strong>{{ doc.title }}</strong><br>
-                                            <small style="color: #999;">{{ doc.file_path.replace('\\', '/').split('/')[-1] }}</small>
-                                        </td>
-                                        <td style="padding: 12px; color: #555; font-size: 13px;">{{ doc.description or '-' }}</td>
-                                        <td style="padding: 12px; text-align: center;">
-                                            <a href="/{{ doc.file_path.replace('\\', '/') }}" target="_blank" class="badge" style="background-color: var(--primary-color); text-decoration: none; color: white; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-right: 5px;">
-                                                <i data-lucide="eye" style="width: 12px; height: 12px; vertical-align: middle;"></i> View
-                                            </a>
-                                            <form action="/admin/delete-document" method="POST" class="delete-doc-form" style="display: inline;">
-                                                <input type="hidden" name="doc_id" value="{{ doc.id }}">
-                                                <button type="submit" class="badge" style="background-color: #ff7675; border: none; cursor: pointer; color: white; padding: 5px 10px; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                                    <i data-lucide="trash-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr><td colspan="3" style="padding: 20px; text-align: center; color: #999;">No documents uploaded yet.</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
                         </div>
                     </div>
-                </div>
-            </details>
-            {% else %}
-            <!-- Read-only View for Teachers -->
-            <div style="background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
-                <h3 style="color: var(--primary-color); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #eee; padding-bottom: 12px;">
-                    <i data-lucide="clipboard-list"></i> Configured Class Tests
-                </h3>
-                <div style="max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8f9fa; position: sticky; top: 0;">
-                            <tr>
-                                <th style="padding: 12px; text-align: left;">Test Name</th>
-                                <th style="padding: 12px; text-align: left;">Class</th>
-                                <th style="padding: 12px; text-align: left;">Subject</th>
-                                <th style="padding: 12px; text-align: center;">Full Marks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for config in class_test_configs %}
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 12px;"><strong>{{ config.test_name }}</strong></td>
-                                <td style="padding: 12px;">Class {{ config.class_name }}</td>
-                                <td style="padding: 12px;">{{ config.subject_name }}</td>
-                                <td style="padding: 12px; text-align: center;"><span style="background: #e8f5e9; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 600;">{{ config.full_marks }}</span></td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="4" style="padding: 20px; text-align: center; color: #999;">No class tests configured yet.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-
+                </details>
+                {% else %}
+                <!-- Read-only View for Teachers -->
+                <div class="academics-card">
+                    <div class="academics-card-header">
+                        <h3 style="margin: 0; color: var(--primary-color); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="clipboard-list" style="width: 20px; height: 20px;"></i> Configured Class Tests
+                        </h3>
+                    </div>
+                    <div class="academics-table-scroll table-scroll-container" style="max-height: 500px;">
+                        <table class="academics-table">
+                            <thead style="position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th style="text-align: left;">Test Name</th>
+                                    <th style="text-align: left;">Class</th>
+                                    <th style="text-align: left;">Subject</th>
+                                    <th style="text-align: center; width: 120px;">Full Marks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for config in class_test_configs %}
+                                <tr>
+                                    <td style="font-weight: 600; color: #1e293b; text-align: left;">{{ config.test_name }}</td>
+                                    <td style="text-align: left;"><span style="background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">Class {{ config.class_name }}</span></td>
+                                    <td style="text-align: left;">{{ config.subject_name }}</td>
+                                    <td style="text-align: center;"><span style="background: #dcfce7; color: #15803d; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 12px;">{{ config.full_marks }}</span></td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" style="padding: 24px; text-align: center; color: #94a3b8;">No class tests configured yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </main>
     </div>
@@ -745,14 +1075,27 @@
 
         function saveClassFees(classId) {
             const admFee = parseFloat(document.getElementById('adm-fee-' + classId).value) || 0.0;
+            const admFeeCoaching = parseFloat(document.getElementById('adm-fee-coaching-' + classId).value) || 0.0;
+            const admFeeHostel = parseFloat(document.getElementById('adm-fee-hostel-' + classId).value) || 0.0;
+            
+            const readmFeeSchool = parseFloat(document.getElementById('readm-fee-school-' + classId).value) || 0.0;
+            const readmFeeCoaching = parseFloat(document.getElementById('readm-fee-coaching-' + classId).value) || 0.0;
+            const readmFeeHostel = parseFloat(document.getElementById('readm-fee-hostel-' + classId).value) || 0.0;
+            
             const monFee = parseFloat(document.getElementById('mon-fee-' + classId).value) || 0.0;
-            const hostelFeeEl = document.getElementById('hostel-fee-' + classId);
-            const hostelFee = hostelFeeEl ? (parseFloat(hostelFeeEl.value) || 0.0) : 0.0;
+            const monFeeCoaching = parseFloat(document.getElementById('mon-fee-coaching-' + classId).value) || 0.0;
+            const hostelFee = parseFloat(document.getElementById('hostel-fee-' + classId).value) || 0.0;
             
             const formData = new FormData();
             formData.append('class_id', classId);
             formData.append('admission_fee', admFee);
+            formData.append('admission_fee_coaching', admFeeCoaching);
+            formData.append('admission_fee_hostel', admFeeHostel);
+            formData.append('readmission_fee_school', readmFeeSchool);
+            formData.append('readmission_fee_coaching', readmFeeCoaching);
+            formData.append('readmission_fee_hostel', readmFeeHostel);
             formData.append('monthly_fee', monFee);
+            formData.append('monthly_fee_coaching', monFeeCoaching);
             formData.append('hostel_fee', hostelFee);
             
             fetch('/admin/update-class-fees', {
@@ -774,6 +1117,6 @@
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 </html>

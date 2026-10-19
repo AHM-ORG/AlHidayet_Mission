@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Student - Al Hidayet Mission</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 </head>
@@ -30,6 +30,7 @@
                 <a href="/admin/teachers" class="sidebar-item {% if request.path == '/admin/teachers' %}active{% endif %}"><i data-lucide="graduation-cap"></i> Teacher Directory</a>
                 <a href="/admin/applications" class="sidebar-item {% if request.path == '/admin/applications' %}active{% endif %}"><i data-lucide="file-check"></i> Admission Requests</a>
                 <a href="/admin/managing-committee" class="sidebar-item {% if request.path == '/admin/managing-committee' %}active{% endif %}"><i data-lucide="contact"></i> Managing Committee</a>
+                <a href="/admin/review-queue" class="sidebar-item {% if request.path == '/admin/review-queue' %}active{% endif %}"><i data-lucide="shield-alert"></i> Review Queue</a>
                 <a href="/admin/manage-admins" class="sidebar-item {% if request.path == '/admin/manage-admins' %}active{% endif %}"><i data-lucide="key-round"></i> Manage Admins</a>
 
                 <div class="sidebar-label">Cash Manager</div>
@@ -91,7 +92,36 @@
 
         <main class="main-content">
             <header class="top-bar">
-                <div class="top-bar-title">Edit Student: {{ student.full_name or student.username }}</div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Open dashboard menu" aria-expanded="false" aria-controls="sidebar">
+                        <span class="hamburger-box">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </span>
+                    </button>
+                    <a href="/" class="top-bar-brand" aria-label="Al-Hidayet Mission Home">
+                        <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="top-bar-logo">
+                        <div class="top-bar-brand-text">
+                            <span class="top-bar-school">Al-Hidayet <span class="highlight">Mission</span></span>
+                            <span class="top-bar-sub">Edit Student: {{ student.full_name or student.username }}</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="top-bar-right" style="display:flex; align-items:center; gap:12px;">
+                    <a href="/dashboard" class="top-bar-action-btn" title="Dashboard" aria-label="Dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                    </a>
+
+                    <a href="/admin/student-list" class="btn btn-secondary" style="font-size:12px; padding:6px 14px; text-decoration:none;">
+                        <i data-lucide="arrow-left" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;"></i>
+                        Back to Directory
+                    </a>
+                
+                    <a href="/logout" class="top-bar-logout-btn" title="Logout" aria-label="Logout">
+                        <i data-lucide="log-out"></i>
+                    </a>
+</div>
             </header>
             
             <div class="content-wrapper">
@@ -145,8 +175,8 @@
                         <input type="hidden" name="branch" value="bhogram">
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                             <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Form Serial No / SL No</label>
-                                <input type="text" name="sl_no" value="{{ student.sl_no or '' }}" placeholder="e.g. 166">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Unique Code</label>
+                                <input type="text" readonly value="{{ student.unique_code or 'N/A' }}" style="background-color: #f5f6fa; cursor: not-allowed; border: 2px solid #eee; border-radius: 8px; padding: 12px; width: 100%;">
                             </div>
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Class</label>
@@ -162,22 +192,11 @@
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Mode of Admission</label>
                                 <select name="mode_of_admission" onchange="updateRecommendedFee()" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
-                                    <option value="School" {% if student.mode_of_admission == 'School' %}selected{% endif %}>School (Only School)</option>
+                                    <option value="School" {% if student.mode_of_admission == 'School' %}selected{% endif %}>School</option>
+                                    <option value="School with Coaching" {% if student.mode_of_admission == 'School with Coaching' %}selected{% endif %}>School with Coaching</option>
                                     <option value="Day Hostel" {% if student.mode_of_admission == 'Day Hostel' %}selected{% endif %}>Day Hostel</option>
-                                    <option value="School+Car" {% if student.mode_of_admission == 'School+Car' %}selected{% endif %}>School + Car</option>
-                                    <option value="Hostel" {% if student.mode_of_admission == 'Hostel' %}selected{% endif %}>Hostel</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Coaching Opted</label>
-                                <select name="coaching_opted" onchange="updateRecommendedFee()" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
-                                    <option value="No" {% if student.coaching_opted == 0 or student.coaching_opted == 'No' or not student.coaching_opted %}selected{% endif %}>No</option>
-                                    <option value="Yes" {% if student.coaching_opted == 1 or student.coaching_opted == 'Yes' %}selected{% endif %}>Yes</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                             <div class="input-group" style="margin-bottom:0;">
                                 <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Car Service Opted</label>
                                 <select name="car_opted" onchange="updateRecommendedFee()" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
@@ -241,15 +260,9 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                            <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Whatsapp Number</label>
-                                <input type="text" name="whatsapp_no" placeholder="10-digit Whatsapp Number" value="{{ student.whatsapp_no or '' }}">
-                            </div>
-                            <div class="input-group" style="margin-bottom:0;">
-                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Identification Mark</label>
-                                <input type="text" name="identification_mark" placeholder="e.g. scar on forehead" value="{{ student.identification_mark or '' }}">
-                            </div>
+                        <div class="input-group" style="margin-bottom: 20px;">
+                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Identification Mark</label>
+                            <input type="text" name="identification_mark" placeholder="e.g. scar on forehead" value="{{ student.identification_mark or '' }}">
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -352,9 +365,15 @@
                             </div>
                         </div>
 
-                        <div class="input-group" style="margin-bottom: 20px;">
-                            <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Phone Number</label>
-                            <input type="text" name="phone_number" value="{{ student.phone_number or '' }}">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Phone Number</label>
+                                <input type="text" name="phone_number" value="{{ student.phone_number or '' }}">
+                            </div>
+                            <div class="input-group" style="margin-bottom:0;">
+                                <label style="font-size: 14px; color: #666; margin-bottom: 5px; display: block;">Guardian's Whatsapp No</label>
+                                <input type="text" name="whatsapp_no" placeholder="10-digit Whatsapp Number" value="{{ student.whatsapp_no or '' }}">
+                            </div>
                         </div>
 
                         {% set bank = parse_bank_details(student.bank_details) %}
@@ -392,40 +411,59 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
     <script>
+        const dbClasses = {{ classes | tojson | safe if classes else '[]' }};
+        
         function updateRecommendedFee() {
             const classInput = document.querySelector('input[name="class"]');
             const modeSelect = document.querySelector('select[name="mode_of_admission"]');
-            const coachingSelect = document.querySelector('select[name="coaching_opted"]');
             const carSelect = document.querySelector('select[name="car_opted"]');
             const feeInput = document.querySelector('input[name="monthly_fee"]');
             
-            if (!classInput || !modeSelect || !coachingSelect || !carSelect || !feeInput) return;
+            if (!classInput || !modeSelect || !carSelect || !feeInput) return;
             
             const classVal = classInput.value.trim().toLowerCase();
             const modeVal = modeSelect.value.trim().toLowerCase();
-            const coachingVal = coachingSelect.value;
             const carVal = carSelect.value;
             
-            const isNusIi = ['nursery', 'u/n', 'u-n', 'un', 'one', '1', 'two', '2'].includes(classVal);
-            const isIiiIv = ['three', '3', 'four', '4'].includes(classVal);
-            const isVVi = ['five', '5', 'six', '6'].includes(classVal);
+            // Look up class in classes list from DB
+            let normalizedClass = "";
+            if (['nursery'].includes(classVal)) normalizedClass = "Nursery";
+            else if (['u/n', 'u-n', 'un', 'kg'].includes(classVal)) normalizedClass = "U/N";
+            else if (['one', '1', 'i'].includes(classVal)) normalizedClass = "One";
+            else if (['two', '2', 'ii'].includes(classVal)) normalizedClass = "Two";
+            else if (['three', '3', 'iii'].includes(classVal)) normalizedClass = "Three";
+            else if (['four', '4', 'iv'].includes(classVal)) normalizedClass = "Four";
+            else if (['five', '5', 'v'].includes(classVal)) normalizedClass = "Five";
+            else if (['six', '6', 'siz', 'vi'].includes(classVal)) normalizedClass = "Six";
+            
+            let classRow = null;
+            if (typeof dbClasses !== 'undefined' && Array.isArray(dbClasses)) {
+                classRow = dbClasses.find(c => c.name.toLowerCase() === (normalizedClass || classVal).toLowerCase());
+            }
             
             let baseFee = 0.0;
+            const isCoaching = modeVal.includes('coaching');
+            const isHostel = modeVal.includes('day hostel');
             
-            if (isNusIi) {
-                if (modeVal.includes('day hostel')) {
-                    baseFee = 1550.0;
+            if (classRow) {
+                if (isHostel) {
+                    baseFee = parseFloat(classRow.hostel_fee) || 0.0;
                 } else {
-                    baseFee = (coachingVal === 'Yes') ? 650.0 : 450.0;
-                }
-            } else if (isIiiIv || isVVi) {
-                if (modeVal.includes('day hostel')) {
-                    baseFee = 1600.0;
-                } else {
-                    baseFee = (coachingVal === 'Yes') ? 700.0 : 500.0;
+                    baseFee = isCoaching ? (parseFloat(classRow.monthly_fee_coaching) || 0.0) : (parseFloat(classRow.monthly_fee) || 0.0);
                 }
             } else {
-                baseFee = 500.0;
+                // Fallback to static logic if not found in dbClasses
+                const isNusIi = ['nursery', 'u/n', 'u-n', 'un', 'one', '1', 'two', '2', 'i', 'ii', 'kg'].includes(classVal);
+                const isIiiIv = ['three', '3', 'four', '4', 'iii', 'iv'].includes(classVal);
+                const isVVi = ['five', '5', 'six', '6', 'siz', 'vi'].includes(classVal);
+                
+                if (isNusIi) {
+                    baseFee = isHostel ? 1550.0 : (isCoaching ? 650.0 : 450.0);
+                } else if (isIiiIv || isVVi) {
+                    baseFee = isHostel ? 1600.0 : (isCoaching ? 700.0 : 500.0);
+                } else {
+                    baseFee = 500.0;
+                }
             }
             
             if (modeVal.includes('car') || carVal === 'Yes') {
@@ -450,6 +488,6 @@
             });
         });
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 </html>

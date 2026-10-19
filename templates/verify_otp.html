@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - Bhogram Al-Hidayet Mission</title>
+    <title>Verify OTP - Al-Hidayet Mission (Main Branch)</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,34 +14,45 @@
         rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#otp-content" class="skip-link">Skip to main content</a>
 
     <!-- Header -->
-    <header class="main-header">
+    <header class="main-header" role="banner">
         <div class="container header-container">
             <div class="logo">
-                <a href="/" style="display:flex; align-items:center; gap:10px;">
-                    <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                <a href="/" aria-label="Al-Hidayet Mission Home" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                    <span class="logo-text">Al-Hidayet <span class="highlight">Mission</span></span>
                 </a>
             </div>
-            <nav class="main-nav">
+            <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
                 <a href="/" class="nav-link">Home</a>
                 <a href="/#about" class="nav-link">About</a>
                 <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
                 <a href="/#faq" class="nav-link">FAQ</a>
                 <a href="/#contact" class="nav-link">Contact</a>
             </nav>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNav">
+                <span class="hamburger-box">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
+            </button>
         </div>
     </header>
 
     <!-- OTP Section -->
-    <div class="auth-section bg-pattern">
+    <div class="auth-section bg-pattern" id="otp-content">
         <div class="auth-container">
             {% if session.get('otp_method') == 'phone' %}
                 <h2>Verify Your Phone 📱</h2>
@@ -65,12 +76,7 @@
             {% endif %}
             {% endwith %}
 
-            <!-- Fake Success Alert as per previous implementation logic -->
-            <div
-                style="background: #E8F8F5; color: #00B894; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; border: 1px solid #00B894;">
-                <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle;"></i>
-                Check your server console/logs for the specific OTP.
-            </div>
+
 
             <form action="{{ url_for('verify_otp', context=context) }}" method="post">
                 <div class="input-group">
@@ -97,7 +103,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

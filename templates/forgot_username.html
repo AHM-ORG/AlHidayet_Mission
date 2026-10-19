@@ -6,24 +6,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 </head>
 
 <body>
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#forgot-user-content" class="skip-link">Skip to main content</a>
 
     <!-- Navigation Bar -->
-    <nav class="navbar">
-        <a href="/" class="logo">AHM</a>
-        <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="#">About</a>
-            <a href="#">Services</a>
-            <a href="#">Contact</a>
-            <a href="/login/student" class="nav-btn">Login</a>
+    <header class="main-header" role="banner">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/" aria-label="Al-Hidayet Mission Home" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                    <span class="logo-text">Al-Hidayet <span class="highlight">Mission</span></span>
+                </a>
+            </div>
+            <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/#about" class="nav-link">About</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/#contact" class="nav-link">Contact</a>
+            </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-outline">Login</a>
+            </div>
         </div>
-    </nav>
+    </header>
 
-    <div class="glass-container">
+    <div class="glass-container" id="forgot-user-content">
         <h2>Forgot Username</h2>
 
         {% if username %}

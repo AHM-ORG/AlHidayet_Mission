@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHM Typography Showcase - Drastically Different Font Styles</title>
+    <!-- Distinct Font Categories: Serif, Slab, Classical, Rounded, Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Fredoka:wght@500;600;700&family=Inter:wght@500;600;700&family=Outfit:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Roboto+Slab:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --sidebar-bg: #07172b;
+            --sidebar-text: #94a3b8;
+            --sidebar-active-bg: rgba(229, 152, 25, 0.12);
+            --sidebar-active-text: #ffffff;
+            --primary-color: #0c2340;
+            --accent-gold: #e59819;
+            --page-bg: #060d17;
+            --card-bg: #0f1c30;
+            --card-border: rgba(255, 255, 255, 0.1);
+            --radius-pill: 160px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--page-bg);
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 40px 24px 80px;
+            min-height: 100vh;
+        }
+
+        .header-section {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(229, 152, 25, 0.15);
+            border: 1px solid rgba(229, 152, 25, 0.4);
+            color: var(--accent-gold);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border-radius: 999px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 34px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        p.subtitle {
+            font-size: 16px;
+            color: #94a3b8;
+            max-width: 720px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 28px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .font-card {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-gold);
+            box-shadow: 0 20px 45px rgba(229, 152, 25, 0.2);
+        }
+
+        .card-header {
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .font-meta h2 {
+            font-size: 19px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .font-meta span {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .font-tag {
+            background: rgba(229, 152, 25, 0.2);
+            border: 1px solid rgba(229, 152, 25, 0.4);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            color: var(--accent-gold);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        /* Sidebar Mockup Preview */
+        .sidebar-mockup {
+            background: var(--sidebar-bg);
+            padding: 22px 18px 26px;
+            color: var(--sidebar-text);
+            flex: 1;
+        }
+
+        .sb-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 16px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sb-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .sb-title {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .sb-label {
+            padding: 16px 12px 6px;
+            color: #9fb3c8;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .sb-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 42px;
+            margin-bottom: 5px;
+            padding: 10px 14px;
+            border-radius: var(--radius-pill);
+            color: var(--sidebar-text);
+            font-size: 14.5px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .sb-item i {
+            width: 18px;
+            height: 18px;
+            stroke-width: 2.2;
+            flex-shrink: 0;
+        }
+
+        .sb-item.active {
+            background: var(--primary-color);
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(12, 35, 64, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* 1. TIMES NEW ROMAN / GEORGIA SERIF (Screenshot 2 Match) */
+        .card-times .sidebar-mockup,
+        .card-times .sb-title,
+        .card-times .sb-label,
+        .card-times .sb-item {
+            font-family: 'Times New Roman', Georgia, serif !important;
+        }
+        .card-times .sb-item {
+            font-size: 15.5px;
+        }
+
+        /* 2. PLAYFAIR DISPLAY LUXURY EDITORIAL SERIF */
+        .card-playfair .sidebar-mockup,
+        .card-playfair .sb-title,
+        .card-playfair .sb-label,
+        .card-playfair .sb-item {
+            font-family: 'Playfair Display', Georgia, serif !important;
+        }
+        .card-playfair .sb-item {
+            font-size: 15px;
+        }
+
+        /* 3. CINZEL CLASSICAL ROMAN */
+        .card-cinzel .sidebar-mockup,
+        .card-cinzel .sb-title,
+        .card-cinzel .sb-label,
+        .card-cinzel .sb-item {
+            font-family: 'Cinzel', serif !important;
+        }
+        .card-cinzel .sb-item {
+            font-size: 13.5px;
+            letter-spacing: 0.04em;
+        }
+
+        /* 4. ROBOTO SLAB - COLLEGIATE SLAB SERIF */
+        .card-slab .sidebar-mockup,
+        .card-slab .sb-title,
+        .card-slab .sb-label,
+        .card-slab .sb-item {
+            font-family: 'Roboto Slab', serif !important;
+        }
+        .card-slab .sb-item {
+            font-size: 14px;
+        }
+
+        /* 5. FREDOKA - SOFT ROUNDED DISPLAY */
+        .card-fredoka .sidebar-mockup,
+        .card-fredoka .sb-title,
+        .card-fredoka .sb-label,
+        .card-fredoka .sb-item {
+            font-family: 'Fredoka', cursive, sans-serif !important;
+        }
+        .card-fredoka .sb-item {
+            font-size: 15px;
+        }
+
+        /* 6. OUTFIT / INTER - MODERN CLEAN SANS-SERIF (Screenshot 1) */
+        .card-outfit .sidebar-mockup,
+        .card-outfit .sb-title,
+        .card-outfit .sb-label,
+        .card-outfit .sb-item {
+            font-family: 'Outfit', sans-serif !important;
+        }
+        .card-outfit .sb-item {
+            font-size: 14px;
+        }
+
+        .footer-action {
+            padding: 18px 20px;
+            border-top: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.02);
+            text-align: center;
+        }
+
+        .btn-apply {
+            display: inline-block;
+            width: 100%;
+            padding: 12px 18px;
+            background: linear-gradient(135deg, #e59819, #d98218);
+            border: none;
+            border-radius: 999px;
+            color: #07172b;
+            font-size: 14px;
+            font-weight: 800;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(229, 152, 25, 0.25);
+        }
+
+        .btn-apply:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(229, 152, 25, 0.4);
+            background: #ffffff;
+            color: #0c2340;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #059669;
+            color: #ffffff;
+            padding: 14px 28px;
+            border-radius: 999px;
+            font-weight: 700;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <div class="badge">Side-by-Side Comparison</div>
+        <h1>Choose Your Distinct Navigation Typography</h1>
+        <p class="subtitle">Each card below renders a totally different typography family. Click <strong>"Apply This Font"</strong> on your favorite option to immediately apply it across the entire website navigation!</p>
+    </div>
+
+    <div class="comparison-grid">
+
+        <!-- 1. TIMES NEW ROMAN (SCREENSHOT 2 MATCH) -->
+        <div class="font-card card-times">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>1. Times New Roman / Serif</h2>
+                    <span>Screenshot 2 Match • Scholarly academic serif</span>
+                </div>
+                <div class="font-tag">Screenshot 2 Font</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('times')">Apply Screenshot 2 Serif</button>
+            </div>
+        </div>
+
+        <!-- 2. PLAYFAIR DISPLAY -->
+        <div class="font-card card-playfair">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>2. Playfair Display</h2>
+                    <span>Luxury editorial serif • High contrast elegance</span>
+                </div>
+                <div class="font-tag">Luxury Serif</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('playfair')">Apply Playfair Display</button>
+            </div>
+        </div>
+
+        <!-- 3. CINZEL -->
+        <div class="font-card card-cinzel">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>3. Cinzel</h2>
+                    <span>Classical Roman • Prestigious imperial stone engraving</span>
+                </div>
+                <div class="font-tag">Roman Classical</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('cinzel')">Apply Cinzel</button>
+            </div>
+        </div>
+
+        <!-- 4. ROBOTO SLAB -->
+        <div class="font-card card-slab">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>4. Roboto Slab</h2>
+                    <span>Collegiate Slab Serif • Sturdy academic presence</span>
+                </div>
+                <div class="font-tag">Academic Slab</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('slab')">Apply Roboto Slab</button>
+            </div>
+        </div>
+
+        <!-- 5. FREDOKA -->
+        <div class="font-card card-fredoka">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>5. Fredoka</h2>
+                    <span>Soft Rounded Display • Friendly Montessori style</span>
+                </div>
+                <div class="font-tag">Rounded Soft</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('fredoka')">Apply Fredoka</button>
+            </div>
+        </div>
+
+        <!-- 6. OUTFIT (SCREENSHOT 1) -->
+        <div class="font-card card-outfit">
+            <div class="card-header">
+                <div class="font-meta">
+                    <h2>6. Outfit / Inter (Sans-Serif)</h2>
+                    <span>Screenshot 1 • Clean modern geometric sans-serif</span>
+                </div>
+                <div class="font-tag">Screenshot 1 Sans</div>
+            </div>
+            <div class="sidebar-mockup">
+                <div class="sb-header">
+                    <img src="/static/images/logo_clean.png" alt="Logo" class="sb-logo">
+                    <div class="sb-title">Bhogram Al-Hidayet<br>Mission</div>
+                </div>
+                <div class="sb-item active">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </div>
+                <div class="sb-label">USER DIRECTORY</div>
+                <div class="sb-item"><i data-lucide="user-plus"></i> Register</div>
+                <div class="sb-item"><i data-lucide="users"></i> Student Directory</div>
+                <div class="sb-item"><i data-lucide="contact"></i> Managing Committee</div>
+                <div class="sb-item"><i data-lucide="key-round"></i> Manage Admins</div>
+                <div class="sb-label">CASH MANAGER</div>
+                <div class="sb-item"><i data-lucide="indian-rupee"></i> Set Fees</div>
+                <div class="sb-label">DOCS & CARDS</div>
+                <div class="sb-item"><i data-lucide="file-spreadsheet"></i> Marksheet</div>
+            </div>
+            <div class="footer-action">
+                <button class="btn-apply" onclick="applyFont('outfit')">Apply Screenshot 1 Sans</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="toast" id="toast">Applied successfully! Updating website...</div>
+
+    <script>
+        lucide.createIcons();
+
+        function applyFont(fontKey) {
+            fetch('/api/set-font', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ font: fontKey })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const toast = document.getElementById('toast');
+                toast.textContent = 'Applied ' + (data.font_name || fontKey) + ' to entire website!';
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            })
+            .catch(err => {
+                alert('Selected font: ' + fontKey + '. Tell your AI assistant to lock this font in style.css!');
+            });
+        }
+    </script>
+</body>
+</html>

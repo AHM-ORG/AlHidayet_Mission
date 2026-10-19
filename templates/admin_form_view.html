@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -186,8 +186,22 @@
 </head>
 
 <body style="background-color: #f1f2f6; font-family: 'Outfit', sans-serif;">
+    <header class="main-header" role="banner">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="/admin/applications" style="display:flex; align-items:center; gap:10px; color: #ffffff; text-decoration: none;">
+                    <i data-lucide="arrow-left"></i>
+                    <span class="logo-text">Back to <span class="highlight">Applications</span></span>
+                </a>
+            </div>
+            <div class="header-cta" style="display:flex; align-items:center; gap:10px;">
+                <a href="/dashboard" class="btn btn-outline" style="padding: 6px 14px; font-size: 13px;">Dashboard</a>
+                <a href="/logout" class="btn btn-outline" style="border-color: #e17055; color: #e17055; padding: 6px 14px; font-size: 13px;">Logout</a>
+            </div>
+        </div>
+    </header>
 
-    <div class="details-container">
+    <div class="details-container" style="margin-top: calc(58px + 24px);">
         <div class="header-row">
             <div>
                 <h1 style="margin:0; font-size: 26px; color: var(--text-dark); font-family: 'Fredoka', sans-serif; font-weight: 600;">
@@ -228,7 +242,8 @@
                     Review the student's current information compared with their requested updates below. Changed fields are highlighted in green.
                 </p>
 
-                <table class="comparison-table">
+                <div class="table-scroll-container">
+                    <table class="comparison-table dash-table">
                     <thead>
                         <tr>
                             <th style="width: 30%;">Field Name</th>
@@ -254,8 +269,8 @@
                             ('mother_qualification', 'Mother\'s Qualification'),
                             ('mother_occupation', 'Mother\'s Occupation'),
                             ('mother_monthly_income', 'Mother\'s Monthly Income'),
-                            ('whatsapp_no', 'Whatsapp Number'),
-                            ('sl_no', 'Form Serial No / SL No'),
+                            ('whatsapp_no', 'Guardian\'s Whatsapp Number'),
+                            ('unique_code', 'Unique Code'),
                             ('session', 'Academic Session'),
                             ('mode_of_admission', 'Mode of Admission'),
                             ('coaching_opted', 'Coaching Opted'),
@@ -329,6 +344,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
 
         {% elif form.type == 'teacher_info_edit' %}
@@ -341,7 +357,8 @@
                     Review the teacher's current information compared with their requested updates below. Changed fields are highlighted in green.
                 </p>
 
-                <table class="comparison-table">
+                <div class="table-scroll-container">
+                    <table class="comparison-table dash-table">
                     <thead>
                         <tr>
                             <th style="width: 30%;">Field Name</th>
@@ -403,6 +420,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
 
         {% elif form.type == 'student_password_change' %}
@@ -533,6 +551,10 @@
                             <span>{{ data.get('branch', 'N/A') }}</span>
                         </div>
                         <div class="info-item">
+                            <label>Teaching Preference</label>
+                            <span>{{ data.get('teacher_type', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
                             <label>Expected Salary (per month)</label>
                             <span>₹{{ data.get('expected_salary', 'N/A') }}</span>
                         </div>
@@ -606,10 +628,7 @@
                             <label>Caste</label>
                             <span>{{ data.get('caste', 'N/A') }}</span>
                         </div>
-                        <div class="info-item">
-                            <label>Whatsapp Number</label>
-                            <span>{{ data.get('whatsapp_no', 'N/A') }}</span>
-                        </div>
+
                         <div class="info-item">
                             <label>Identification Mark</label>
                             <span>{{ data.get('identification_mark', 'N/A') }}</span>
@@ -654,8 +673,8 @@
                             <span>{{ data.get('prev_school', 'N/A') }}</span>
                         </div>
                         <div class="info-item">
-                            <label>Form Serial No / SL No</label>
-                            <span>{{ data.get('sl_no', 'N/A') }}</span>
+                            <label>Unique Code</label>
+                            <span>{{ data.get('unique_code') or 'Auto-generated on approval' }}</span>
                         </div>
                         <div class="info-item">
                             <label>Academic Session</label>
@@ -764,6 +783,10 @@
                             <label>Alternative Phone</label>
                             <span>{{ data.get('alt_phone', 'N/A') }}</span>
                         </div>
+                        <div class="info-item">
+                            <label>Guardian's Whatsapp No</label>
+                            <span>{{ data.get('whatsapp_no', 'N/A') }}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -829,7 +852,7 @@
 
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

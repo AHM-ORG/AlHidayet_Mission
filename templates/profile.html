@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile - Bhogram Al-Hidayet Mission</title>
+    <title>My Profile - Al-Hidayet Mission (Main Branch)</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
         rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .profile-header {
@@ -63,14 +63,16 @@
 </head>
 
 <body class="bg-pattern" style="background-color: #F7F9FC;">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#profile-content" class="skip-link">Skip to main content</a>
 
-    <header class="main-header" style="background: #fff;">
+    <header class="main-header " role="banner" >
         <div class="container header-container">
             <div class="logo">
                 <a href="/dashboard"
-                    style="display:flex; align-items:center; gap:10px; color: #333; text-decoration: none;">
+                    style="display:flex; align-items:center; gap:10px; color: #ffffff; text-decoration: none;">
                     <i data-lucide="arrow-left"></i>
-                    <span class="logo-text">Back to <span class="highlight">Dashboard</span></span>
+                    <span class="logo-text" >Back to <span class="highlight">Dashboard</span></span>
                 </a>
             </div>
             <div class="header-cta">
@@ -79,7 +81,7 @@
         </div>
     </header>
 
-    <div class="container section">
+    <div class="container section" id="profile-content">
 
         <div class="profile-header">
             <div class="profile-avatar-lg">
@@ -152,7 +154,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
     </script>

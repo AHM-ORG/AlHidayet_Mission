@@ -16,6 +16,7 @@ import io
 import google.generativeai as genai
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+import google.generativeai as genai
 
 try:
     import razorpay
@@ -32,9 +33,15 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true',
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-    TEMPLATES_AUTO_RELOAD=True
+    TEMPLATES_AUTO_RELOAD=True,
+    SEND_FILE_MAX_AGE_DEFAULT=0
 )
 app.jinja_env.auto_reload = True
+
+@app.context_processor
+def inject_cache_bust():
+    import time
+    return {'cache_bust': int(time.time())}
 
 @app.template_filter('clean_name')
 def clean_name_filter(s):
@@ -175,24 +182,37 @@ def update_bhogram_class_fees():
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         
-        # Exact values for bhogram classes from poster: (Class Name, New Admission Only School Fee, Monthly Only School Fee)
+        # Exact values for bhogram classes from poster:
+        # Format: (adm_school, adm_coaching, adm_hostel, readm_school, readm_coaching, readm_hostel, mon_school, mon_coaching, mon_hostel)
         bhogram_fees = {
-            'Nursery': (3500.0, 450.0),
-            'U/N': (3500.0, 450.0),
-            'One': (3500.0, 450.0),
-            'Two': (3500.0, 450.0),
-            'Three': (4000.0, 500.0),
-            'Four': (4000.0, 500.0),
-            'Five': (4000.0, 500.0),
-            'Six': (4000.0, 500.0)
+            'Nursery': (3500.0, 4000.0, 5000.0, 1500.0, 1700.0, 2000.0, 450.0, 650.0, 1550.0),
+            'U/N': (3500.0, 4000.0, 5000.0, 1600.0, 1800.0, 2100.0, 450.0, 650.0, 1550.0),
+            'One': (3500.0, 4000.0, 5000.0, 1700.0, 1900.0, 2200.0, 450.0, 650.0, 1550.0),
+            'Two': (3500.0, 4000.0, 5000.0, 1800.0, 2000.0, 2300.0, 450.0, 650.0, 1550.0),
+            'Three': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
+            'Four': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
+            'Five': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0),
+            'Six': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0)
         }
         
-        for cls_name, (adm_fee, mon_fee) in bhogram_fees.items():
+        for cls_name, vals in bhogram_fees.items():
             row = c.execute("SELECT id FROM classes WHERE name = ? AND branch = 'bhogram'", (cls_name,)).fetchone()
             if row:
-                c.execute("UPDATE classes SET admission_fee = ?, monthly_fee = ? WHERE id = ?", (adm_fee, mon_fee, row[0]))
+                c.execute("""
+                    UPDATE classes 
+                    SET admission_fee = ?, admission_fee_coaching = ?, admission_fee_hostel = ?,
+                        readmission_fee_school = ?, readmission_fee_coaching = ?, readmission_fee_hostel = ?,
+                        monthly_fee = ?, monthly_fee_coaching = ?, hostel_fee = ?
+                    WHERE id = ?
+                """, (*vals, row[0]))
             else:
-                c.execute("INSERT INTO classes (name, branch, admission_fee, monthly_fee, hostel_fee) VALUES (?, 'bhogram', ?, ?, 0.0)", (cls_name, adm_fee, mon_fee))
+                c.execute("""
+                    INSERT INTO classes (
+                        name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                        readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                        monthly_fee, monthly_fee_coaching, hostel_fee
+                    ) VALUES (?, 'bhogram', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (cls_name, *vals))
                 
         conn.commit()
         conn.close()
@@ -203,27 +223,88 @@ def update_bhogram_class_fees():
 update_bhogram_class_fees()
 
 
+def normalize_class_name(name):
+    if not name:
+        return ""
+    name = str(name).strip().lower()
+    mapping = {
+        'one': 'i', 'i': 'i', '1': 'i',
+        'two': 'ii', 'ii': 'ii', '2': 'ii',
+        'three': 'iii', 'iii': 'iii', '3': 'iii',
+        'four': 'iv', 'iv': 'iv', '4': 'iv',
+        'five': 'v', 'v': 'v', '5': 'v',
+        'six': 'vi', 'vi': 'vi', '6': 'vi', 'siz': 'vi',
+        'seven': 'vii', 'vii': 'vii', '7': 'vii',
+        'eight': 'viii', 'viii': 'viii', '8': 'viii',
+        'nine': 'ix', 'ix': 'ix', '9': 'ix',
+        'ten': 'x', 'x': 'x', '10': 'x',
+        'u/n': 'kg', 'un': 'kg', 'u-n': 'kg', 'kg': 'kg',
+        'nursery': 'nursery'
+    }
+    return mapping.get(name, name)
+
+
 def calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted=False, car_opted=False):
-    cls = str(class_name).strip().lower()
+    cls = normalize_class_name(class_name)
     mode = str(mode_of_admission).strip().lower()
     
-    # Identify class group
-    is_nus_ii = cls in ['nursery', 'u/n', 'u-n', 'un', 'one', '1', 'two', '2']
-    is_iii_iv = cls in ['three', '3', 'four', '4']
-    is_v_vi = cls in ['five', '5', 'six', '6']
+    # Map normalized class name back to DB class name
+    db_name = None
+    if cls == 'nursery':
+        db_name = 'Nursery'
+    elif cls == 'kg':
+        db_name = 'U/N'
+    elif cls == 'i':
+        db_name = 'One'
+    elif cls == 'ii':
+        db_name = 'Two'
+    elif cls == 'iii':
+        db_name = 'Three'
+    elif cls == 'iv':
+        db_name = 'Four'
+    elif cls == 'v':
+        db_name = 'Five'
+    elif cls == 'vi':
+        db_name = 'Six'
     
     base_fee = 0.0
+    is_coaching = coaching_opted or ('coaching' in mode)
+    is_hostel = 'day hostel' in mode or mode == 'day hostel'
     
-    if is_nus_ii:
-        if 'day hostel' in mode or mode == 'day hostel':
-            base_fee = 1550.0
-        else:
-            base_fee = 650.0 if coaching_opted else 450.0
-    elif is_iii_iv or is_v_vi:
-        if 'day hostel' in mode or mode == 'day hostel':
-            base_fee = 1600.0
-        else:
-            base_fee = 700.0 if coaching_opted else 500.0
+    if db_name:
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT * FROM classes WHERE name = ? AND branch = 'bhogram'", (db_name,)).fetchone()
+            conn.close()
+            if row:
+                if is_hostel:
+                    base_fee = float(row['hostel_fee']) if row['hostel_fee'] is not None else 0.0
+                else:
+                    base_fee = float(row['monthly_fee_coaching']) if is_coaching else float(row['monthly_fee'])
+            else:
+                # fallback values
+                is_nus_ii = cls in ['nursery', 'kg', 'i', 'ii']
+                is_iii_iv = cls in ['iii', 'iv']
+                is_v_vi = cls in ['v', 'vi']
+                if is_nus_ii:
+                    base_fee = 1550.0 if is_hostel else (650.0 if is_coaching else 450.0)
+                elif is_iii_iv or is_v_vi:
+                    base_fee = 1600.0 if is_hostel else (700.0 if is_coaching else 500.0)
+                else:
+                     base_fee = 500.0
+        except Exception as e:
+            print(f"Error calculating DB fee: {e}")
+            # fallback
+            is_nus_ii = cls in ['nursery', 'kg', 'i', 'ii']
+            is_iii_iv = cls in ['iii', 'iv']
+            is_v_vi = cls in ['v', 'vi']
+            if is_nus_ii:
+                base_fee = 1550.0 if is_hostel else (650.0 if is_coaching else 450.0)
+            elif is_iii_iv or is_v_vi:
+                base_fee = 1600.0 if is_hostel else (700.0 if is_coaching else 500.0)
+            else:
+                base_fee = 500.0
     else:
         # Default fallback
         base_fee = 500.0
@@ -232,6 +313,11 @@ def calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted=
         base_fee += 400.0
         
     return base_fee
+
+
+
+
+
 
 VALID_ROLES = {'admin', 'teacher', 'student'}
 PRIVATE_PATH_PREFIXES = ('/dashboard', '/admin', '/upload', '/profile')
@@ -323,6 +409,70 @@ def send_otp_email(to_email, otp):
     threading.Thread(target=_send_otp_email_sync, args=(to_email, otp), daemon=True).start()
     return True
 
+def _send_review_otp_email_sync(to_email, otp):
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        print(f" [EMAIL ERROR] Missing email credentials. Review OTP code is: {otp}")
+        return False
+        
+    subject = "AHM Review Submission Verification Code"
+    body = f"Your Review Verification Code is: {otp}\n\nVerify your email to complete submitting your review."
+    
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = to_email
+
+    server_host = MAIL_SERVER
+    port_env = MAIL_PORT
+    use_ssl = MAIL_USE_SSL
+    use_tls = MAIL_USE_TLS
+    
+    if port_env:
+        try:
+            port = int(port_env)
+        except ValueError:
+            port = 465 if use_ssl else (587 if use_tls else 25)
+    else:
+        port = 465 if use_ssl else (587 if use_tls else 25)
+
+    try:
+        if use_ssl:
+            with smtplib.SMTP_SSL(server_host, port, timeout=10) as server:
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(server_host, port, timeout=10) as server:
+                if use_tls:
+                    server.starttls()
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.send_message(msg)
+        print(f" [EMAIL SENT] Review OTP {otp} sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f" [EMAIL ERROR] Failed to send Review OTP {otp} to {to_email}: {e}")
+        # fallback
+        if server_host == 'smtp.gmail.com':
+            fallback_port = 587 if port == 465 else 465
+            fallback_ssl = (fallback_port == 465)
+            try:
+                if fallback_ssl:
+                    with smtplib.SMTP_SSL('smtp.gmail.com', fallback_port, timeout=10) as server:
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(msg)
+                else:
+                    with smtplib.SMTP('smtp.gmail.com', fallback_port, timeout=10) as server:
+                        server.starttls()
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(msg)
+                return True
+            except Exception as fb_e:
+                print(f"Fallback failed: {fb_e}")
+        return False
+
+def send_review_otp_email(to_email, otp):
+    threading.Thread(target=_send_review_otp_email_sync, args=(to_email, otp), daemon=True).start()
+    return True
+
 def send_otp_sms(phone_number, otp):
     """
     Draft SMS Sender for OTP.
@@ -362,7 +512,24 @@ def get_db_connection():
     conn = sqlite3.connect(DB_NAME, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout = 30000")
+    
+    from flask import g, has_request_context
+    if has_request_context():
+        if 'db_connections' not in g:
+            g.db_connections = []
+        g.db_connections.append(conn)
+        
     return conn
+
+@app.teardown_appcontext
+def teardown_db_connections(exception):
+    from flask import g, has_request_context
+    if has_request_context() and 'db_connections' in g:
+        for conn in g.db_connections:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 def add_teacher_assigned_classes_string(conn, teacher_id, class_name, subject_name):
     # Fetch current assigned_classes
@@ -902,9 +1069,15 @@ def add_security_headers(response):
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
     
-    if response.content_type and response.content_type.startswith('text/html'):
-        response.headers.setdefault('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        response.headers.setdefault('Pragma', 'no-cache')
+    # Always send no-cache headers for HTML, CSS, and JS to prevent stale mobile cache
+    if response.content_type and (
+        response.content_type.startswith('text/html') or
+        response.content_type.startswith('text/css') or
+        'javascript' in response.content_type
+    ):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
         
         if response.status_code == 200:
             try:
@@ -1238,10 +1411,12 @@ def init_db():
         CREATE TABLE IF NOT EXISTS visitor_reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             visitor_name TEXT NOT NULL,
+            visitor_email TEXT,
             review_text TEXT NOT NULL,
             rating INTEGER DEFAULT 5,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_approved INTEGER DEFAULT 1
+            is_approved INTEGER DEFAULT 1,
+            sort_order INTEGER DEFAULT 0
         )
     ''')
     c.execute('SELECT COUNT(*) FROM visitor_reviews')
@@ -1284,7 +1459,13 @@ def init_db():
             name TEXT NOT NULL,
             branch TEXT NOT NULL,
             admission_fee REAL DEFAULT 0.0,
+            admission_fee_coaching REAL DEFAULT 0.0,
+            admission_fee_hostel REAL DEFAULT 0.0,
+            readmission_fee_school REAL DEFAULT 0.0,
+            readmission_fee_coaching REAL DEFAULT 0.0,
+            readmission_fee_hostel REAL DEFAULT 0.0,
             monthly_fee REAL DEFAULT 0.0,
+            monthly_fee_coaching REAL DEFAULT 0.0,
             hostel_fee REAL DEFAULT 0.0,
             UNIQUE(name, branch)
         )
@@ -1302,7 +1483,13 @@ def init_db():
                     name TEXT NOT NULL,
                     branch TEXT NOT NULL,
                     admission_fee REAL DEFAULT 0.0,
+                    admission_fee_coaching REAL DEFAULT 0.0,
+                    admission_fee_hostel REAL DEFAULT 0.0,
+                    readmission_fee_school REAL DEFAULT 0.0,
+                    readmission_fee_coaching REAL DEFAULT 0.0,
+                    readmission_fee_hostel REAL DEFAULT 0.0,
                     monthly_fee REAL DEFAULT 0.0,
+                    monthly_fee_coaching REAL DEFAULT 0.0,
                     hostel_fee REAL DEFAULT 0.0,
                     UNIQUE(name, branch)
                 )
@@ -1320,21 +1507,23 @@ def init_db():
     c.execute('SELECT COUNT(*) FROM classes')
     if c.fetchone()[0] == 0:
         default_fees = {
-            'Nursery': (500.0, 100.0),
-            'U/N': (500.0, 100.0),
-            'One': (600.0, 120.0),
-            'Two': (600.0, 120.0),
-            'Three': (700.0, 150.0),
-            'Four': (700.0, 150.0),
-            'Five': (800.0, 180.0),
-            'Six': (800.0, 180.0),
-            'Seven': (900.0, 200.0),
-            'Eight': (900.0, 200.0),
-            'Nine': (1000.0, 250.0),
-            'Ten': (1000.0, 250.0)
+            'Nursery': (3500.0, 4000.0, 5000.0, 1500.0, 1700.0, 2000.0, 450.0, 650.0, 1550.0),
+            'U/N': (3500.0, 4000.0, 5000.0, 1600.0, 1800.0, 2100.0, 450.0, 650.0, 1550.0),
+            'One': (3500.0, 4000.0, 5000.0, 1700.0, 1900.0, 2200.0, 450.0, 650.0, 1550.0),
+            'Two': (3500.0, 4000.0, 5000.0, 1800.0, 2000.0, 2300.0, 450.0, 650.0, 1550.0),
+            'Three': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
+            'Four': (4000.0, 4500.0, 5300.0, 2000.0, 2200.0, 2500.0, 500.0, 700.0, 1600.0),
+            'Five': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0),
+            'Six': (4000.0, 4500.0, 5000.0, 1800.0, 2000.0, 2300.0, 500.0, 700.0, 1600.0)
         }
-        for cls_name, (adm_fee, mon_fee) in default_fees.items():
-            c.execute("INSERT INTO classes (name, branch, admission_fee, monthly_fee, hostel_fee) VALUES (?, 'bhogram', ?, ?, 0.0)", (cls_name, adm_fee, mon_fee))
+        for cls_name, vals in default_fees.items():
+            c.execute("""
+                INSERT INTO classes (
+                    name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                    readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                    monthly_fee, monthly_fee_coaching, hostel_fee
+                ) VALUES (?, 'bhogram', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (cls_name, *vals))
 
     # Registration Documents table
     c.execute('''
@@ -1427,6 +1616,26 @@ def init_db():
         print(" [DB MIGRATE] Added phone column to users table")
     except sqlite3.OperationalError:
         pass
+
+    # Migrate visitor_reviews columns
+    try:
+        c.execute("ALTER TABLE visitor_reviews ADD COLUMN visitor_email TEXT")
+        print(" [DB MIGRATE] Added visitor_email column to visitor_reviews")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE visitor_reviews ADD COLUMN sort_order INTEGER DEFAULT 0")
+        print(" [DB MIGRATE] Added sort_order column to visitor_reviews")
+    except sqlite3.OperationalError:
+        pass
+
+    # Migrate classes table for additional fee columns
+    for col in ['admission_fee_coaching', 'admission_fee_hostel', 'readmission_fee_school', 'readmission_fee_coaching', 'readmission_fee_hostel', 'monthly_fee_coaching']:
+        try:
+            c.execute(f"ALTER TABLE classes ADD COLUMN {col} REAL DEFAULT 0.0")
+            print(f" [DB MIGRATE] Added {col} column to classes")
+        except sqlite3.OperationalError:
+            pass
 
     # Migrate teacher_info for missing columns
     for col in ['full_name', 'phone_number', 'address', 'aadhaar_number', 'assigned_classes', 'bank_details']:
@@ -1545,7 +1754,7 @@ def migrate_pending_media_drive_id():
     except sqlite3.OperationalError:
         pass
         
-    # 2. Create drive_mappings table
+    # 2. Create drive_mappings & storage_mappings tables
     try:
         c.execute('''
             CREATE TABLE IF NOT EXISTS drive_mappings (
@@ -1553,289 +1762,370 @@ def migrate_pending_media_drive_id():
                 drive_file_id TEXT NOT NULL
             )
         ''')
-        print(" [DB MIGRATE] Created drive_mappings table")
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS storage_mappings (
+                filename TEXT PRIMARY KEY,
+                storage_path TEXT NOT NULL,
+                public_url TEXT NOT NULL,
+                mime_type TEXT,
+                file_size INTEGER,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS user_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                file_name TEXT NOT NULL,
+                file_url TEXT NOT NULL,
+                storage_path TEXT,
+                mime_type TEXT,
+                file_size INTEGER,
+                status TEXT NOT NULL DEFAULT 'pending_review',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print(" [DB MIGRATE] Initialized storage_mappings and user_posts tables")
     except Exception as e:
-        print(f" [DB MIGRATE ERROR] Failed to create drive_mappings: {e}")
+        print(f" [DB MIGRATE ERROR] Failed to create storage tables: {e}")
         
     conn.commit()
     conn.close()
 
-# Google Drive API Client Helpers
-def get_drive_access_token():
-    client_id = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
-    client_secret = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
-    refresh_token = os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')
-    
-    if not client_id or not client_secret or not refresh_token:
+# ============================================================================
+# SUPABASE STORAGE PIPELINE & AUTOMATED COMPRESSION FIREWALL
+# ============================================================================
+import storage_pipeline
+from storage_pipeline import (
+    is_supabase_configured,
+    optimize_image,
+    optimize_pdf,
+    get_content_type,
+    TARGET_FILE_LIMIT,
+    SUPABASE_STORAGE_BUCKET,
+    upload_file_to_supabase,
+    delete_file_from_supabase
+)
+
+def determine_relative_storage_path(local_path, filename):
+    """
+    Extracts the exact relative folder path under static/uploads/
+    e.g., 'avatars/pic.jpg', 'documents/doc.pdf', 'bhogram/photos/img.jpg'.
+    """
+    uploads_dir = os.path.join(app.root_path, 'static', 'uploads')
+    try:
+        if os.path.isabs(local_path) and os.path.commonpath([local_path, uploads_dir]) == uploads_dir:
+            rel = os.path.relpath(local_path, uploads_dir).replace('\\', '/')
+            if rel and not rel.startswith('..'):
+                return rel
+    except Exception:
+        pass
+    return filename
+
+def upload_file_to_supabase_and_map(local_path, filename, mime_type=None, folder_id=None, conn=None):
+    """
+    Supabase Storage Upload & Mapping Pipeline with Automated Compression Firewall:
+    1. Determines relative storage path preserving the identical directory structure.
+    2. Passes assets exceeding 2MB through the automated compression firewall:
+       - Images (.jpg, .jpeg, .png): Pillow RGBA/P to standard RGB, quality=80 optimized JPEG.
+       - PDFs (.pdf): pypdf lossless stream deflation using zlib filters.
+       - Office Docs (.docx, .xlsx): Passthrough directly.
+       - Files <= 2MB: Bypasses calculations entirely to conserve server CPU.
+    3. Pushes to Supabase Storage bucket 'documents'.
+    4. Records public URL and metadata into storage_mappings and drive_mappings.
+    5. Safely manages local cleanup when uploaded to cloud.
+    """
+    if not os.path.exists(local_path):
         return None
-        
-    url = "https://oauth2.googleapis.com/token"
-    payload = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "refresh_token": refresh_token,
-        "grant_type": "refresh_token"
-    }
-    try:
-        import requests
-        res = requests.post(url, data=payload, timeout=10)
-        if res.status_code == 200:
-            return res.json().get('access_token')
-        else:
-            print(f" [GOOGLE DRIVE AUTH ERROR] {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f" [GOOGLE DRIVE AUTH EXCEPTION] {e}")
-    return None
 
-def upload_to_google_drive(file_bytes, file_name, mime_type, folder_id=None):
-    access_token = get_drive_access_token()
-    if not access_token:
-        print(" [GOOGLE DRIVE] Credentials not configured or failed to refresh access token.")
+    try:
+        with open(local_path, 'rb') as f:
+            file_bytes = f.read()
+    except Exception as e:
+        print(f" [STORAGE ERROR] Could not read local file {local_path}: {e}")
         return None
-        
-    metadata = {
-        "name": file_name
-    }
-    
-    parent_id = folder_id or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
-    if parent_id:
-        metadata["parents"] = [parent_id]
-        
-    import json
-    import requests
-    
-    files = {
-        'data': ('metadata', json.dumps(metadata), 'application/json; charset=UTF-8'),
-        'file': (file_name, file_bytes, mime_type)
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    
-    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id"
-    
-    try:
-        res = requests.post(url, headers=headers, files=files, timeout=30)
-        if res.status_code == 200:
-            file_id = res.json().get('id')
-            print(f" [GOOGLE DRIVE] File uploaded successfully. File ID: {file_id}")
-            return file_id
-        else:
-            print(f" [GOOGLE DRIVE UPLOAD ERROR] {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f" [GOOGLE DRIVE UPLOAD EXCEPTION] {e}")
-    return None
 
-def delete_from_google_drive(file_id):
-    access_token = get_drive_access_token()
-    if not access_token:
-        print(" [GOOGLE DRIVE] Access token not available for deletion.")
-        return False
-        
-    url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    try:
-        import requests
-        res = requests.delete(url, headers=headers, timeout=10)
-        if res.status_code == 204:
-            print(f" [GOOGLE DRIVE] File {file_id} deleted successfully.")
-            return True
-        else:
-            print(f" [GOOGLE DRIVE DELETE ERROR] {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f" [GOOGLE DRIVE DELETE EXCEPTION] {e}")
-    return False
+    file_size = len(file_bytes)
+    ext = os.path.splitext(filename)[1].lower()
+    if not mime_type:
+        mime_type = get_content_type(ext)
 
-def find_file_in_google_drive(filename):
-    access_token = get_drive_access_token()
-    if not access_token:
-        print(" [GOOGLE DRIVE] Access token not available for find_file_in_google_drive.")
-        return None
-        
-    import urllib.parse
-    import requests
-    
-    # Escape single quotes in filenames for Google Drive API query syntax
-    escaped_filename = filename.replace("'", "\\'")
-    q = f"name = '{escaped_filename}' and trashed = false"
-    url = f"https://www.googleapis.com/drive/v3/files?q={urllib.parse.quote(q)}&fields=files(id,mimeType,name)"
-    
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 200:
-            files_list = res.json().get('files', [])
-            if files_list:
-                file_id = files_list[0].get('id')
-                print(f" [GOOGLE DRIVE] Found file '{filename}' on Drive with ID: {file_id}")
-                return file_id
+    # Automated Compression Firewall (2MB Threshold)
+    processed_bytes = file_bytes
+    if file_size > TARGET_FILE_LIMIT:
+        if ext in ['.jpg', '.jpeg', '.png']:
+            try:
+                stream, mime_type = optimize_image(io.BytesIO(file_bytes))
+                processed_bytes = stream.read()
+                print(f" [FIREWALL] Compressed image {filename}: {file_size:,} -> {len(processed_bytes):,} bytes")
+            except Exception as ce:
+                print(f" [FIREWALL ERROR] Image compression failed for {filename}: {ce}")
+        elif ext == '.pdf':
+            try:
+                stream, mime_type = optimize_pdf(io.BytesIO(file_bytes))
+                processed_bytes = stream.read()
+                print(f" [FIREWALL] Deflated PDF {filename}: {file_size:,} -> {len(processed_bytes):,} bytes")
+            except Exception as ce:
+                print(f" [FIREWALL ERROR] PDF compression failed for {filename}: {ce}")
         else:
-            print(f" [GOOGLE DRIVE FIND ERROR] {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f" [GOOGLE DRIVE FIND EXCEPTION] {e}")
-    return None
+            # Office documents (.docx, .xlsx, etc.) pass through directly
+            processed_bytes = file_bytes
 
-def upload_file_to_drive_and_map(local_path, filename, mime_type, folder_id=None):
-    drive_file_id = None
-    if os.path.exists(local_path):
+    # Determine storage path preserving exact relative structure
+    storage_path = determine_relative_storage_path(local_path, filename)
+    public_url = f"/static/uploads/{storage_path}"
+    uploaded_to_cloud = False
+
+    if is_supabase_configured():
+        cloud_url = upload_file_to_supabase(processed_bytes, storage_path, content_type=mime_type)
+        if cloud_url:
+            public_url = cloud_url
+            uploaded_to_cloud = True
+            print(f" [SUPABASE STORAGE] Successfully uploaded {storage_path} to Supabase bucket '{SUPABASE_STORAGE_BUCKET}'")
+
+    # Record in storage_mappings and drive_mappings for backwards compatibility
+    def _save_mapping(db_conn):
+        c = db_conn.cursor()
+        c.execute('''
+            INSERT OR REPLACE INTO storage_mappings (filename, storage_path, public_url, mime_type, file_size, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (filename, storage_path, public_url, mime_type, len(processed_bytes)))
+        c.execute('''
+            INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id)
+            VALUES (?, ?)
+        ''', (filename, storage_path))
+
+    if conn is not None:
         try:
-            with open(local_path, 'rb') as f:
-                file_bytes = f.read()
-            drive_file_id = upload_to_google_drive(file_bytes, filename, mime_type, folder_id=folder_id)
+            _save_mapping(conn)
+            if uploaded_to_cloud and os.path.exists(local_path):
+                try:
+                    os.remove(local_path)
+                except Exception:
+                    pass
         except Exception as e:
-            print(f"Error uploading file {filename} to Google Drive: {e}")
-            
-    if drive_file_id:
-        import time
-        db_saved = False
+            print(f" [STORAGE MAPPING ERROR] Failed to record mapping: {e}")
+    else:
         for attempt in range(5):
             try:
-                conn = get_db_connection()
-                c = conn.cursor()
-                c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
-                conn.commit()
-                conn.close()
-                db_saved = True
+                new_conn = get_db_connection()
+                _save_mapping(new_conn)
+                new_conn.commit()
+                new_conn.close()
+                if uploaded_to_cloud and os.path.exists(local_path):
+                    try:
+                        os.remove(local_path)
+                    except Exception:
+                        pass
                 break
             except sqlite3.OperationalError as oe:
                 if "locked" in str(oe).lower():
-                    print(f" [GOOGLE DRIVE] Database locked on attempt {attempt+1} when saving mapping for {filename}, retrying in 1s...")
-                    time.sleep(1)
+                    import time
+                    time.sleep(0.5)
                 else:
-                    print(f"Error saving drive mapping: {oe}")
                     break
             except Exception as e:
-                print(f"Error saving drive mapping: {e}")
+                print(f" [STORAGE MAPPING EXCEPTION] {e}")
                 break
-                
-        if db_saved:
-            try:
-                if os.path.exists(local_path):
-                    os.remove(local_path)
-                print(f" [GOOGLE DRIVE] File {filename} successfully uploaded and mapped to {drive_file_id}. Local file deleted.")
-            except Exception as e:
-                print(f"Error removing local file: {e}")
-            
-    return drive_file_id
+
+    return storage_path
+
+# Backward compatibility alias
+upload_file_to_drive_and_map = upload_file_to_supabase_and_map
 
 def delete_old_mapped_file(file_path):
+    """Deletes mapped file from Supabase storage and local mappings."""
     if not file_path:
         return
     filename = os.path.basename(file_path)
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        row = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
-        if row and row['drive_file_id']:
-            drive_file_id = row['drive_file_id']
-            delete_from_google_drive(drive_file_id)
-            c.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
+        row = c.execute("SELECT storage_path FROM storage_mappings WHERE filename = ?", (filename,)).fetchone()
+        storage_path = row['storage_path'] if row else None
+        if not storage_path:
+            row2 = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+            if row2:
+                storage_path = row2['drive_file_id']
+                
+        if storage_path:
+            delete_file_from_supabase(storage_path)
+            
+        c.execute("DELETE FROM storage_mappings WHERE filename = ?", (filename,))
+        c.execute("DELETE FROM drive_mappings WHERE filename = ?", (filename,))
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f" [GOOGLE DRIVE DELETE ERROR] Failed to delete old mapped file {filename}: {e}")
+        print(f" [STORAGE DELETE ERROR] Failed to delete old mapped file {filename}: {e}")
 
-# Google Drive View and Intercept Routes
-@app.route('/drive/view/<file_id>')
+def delete_from_google_drive(file_id):
+    """Backwards compatibility shim for delete_from_google_drive."""
+    if not file_id:
+        return False
+    return delete_file_from_supabase(file_id)
+
+def find_file_in_google_drive(filename):
+    """Backwards compatibility shim searching storage mappings."""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        row = c.execute("SELECT storage_path FROM storage_mappings WHERE filename = ?", (filename,)).fetchone()
+        if not row:
+            row = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
+        conn.close()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    return None
+
+@app.route('/drive/view/<path:file_id>')
 def drive_view(file_id):
-    access_token = get_drive_access_token()
-    if not access_token:
-        return "Google Drive is not configured.", 500
-        
-    import requests
-    
-    metadata_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?fields=mimeType,name"
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    
-    mime_type = "application/octet-stream"
-    filename = "download"
-    try:
-        meta_res = requests.get(metadata_url, headers=headers, timeout=10)
-        if meta_res.status_code == 200:
-            meta = meta_res.json()
-            mime_type = meta.get('mimeType', mime_type)
-            filename = meta.get('name', filename)
-    except Exception as e:
-        print(f" [GOOGLE DRIVE VIEW METADATA ERROR] {e}")
-        
-    download_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
-    
-    try:
-        drive_res = requests.get(download_url, headers=headers, stream=True, timeout=30)
-        if drive_res.status_code != 200:
-            return f"Failed to fetch file from Google Drive: {drive_res.status_code}", drive_res.status_code
-            
-        def generate():
-            for chunk in drive_res.iter_content(chunk_size=4096):
-                yield chunk
-                
-        return Response(generate(), mimetype=mime_type, headers={
-            "Content-Disposition": f"inline; filename=\"{filename}\""
-        })
-    except Exception as e:
-        return f"Error streaming file from Google Drive: {str(e)}", 500
+    """View route redirected or served from Supabase Storage."""
+    if is_supabase_configured():
+        from storage_pipeline import supabase, SUPABASE_STORAGE_BUCKET
+        public_url = supabase.storage.from_(SUPABASE_STORAGE_BUCKET).get_public_url(file_id)
+        return redirect(public_url)
+    return redirect(f"/static/uploads/{file_id}")
 
 @app.route('/static/uploads/<path:filepath>')
 def serve_static_upload(filepath):
-    # 1. Fast path: check if local file exists
+    # 1. Fast path: check if file exists locally on disk
     local_path = os.path.join(app.root_path, 'static', 'uploads', filepath)
     if os.path.exists(local_path):
         return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
-        
-    # 2. Local file missing: check DB mapping
+
     filename = os.path.basename(filepath)
-    drive_file_id = None
+    # 2. Local file missing: check DB mapping
+    public_url = None
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Check in pending_media (approved items)
-        row = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
-        if row and row['drive_file_id']:
-            drive_file_id = row['drive_file_id']
-        else:
-            # Check in general drive_mappings
-            row2 = c.execute("SELECT drive_file_id FROM drive_mappings WHERE filename = ?", (filename,)).fetchone()
-            if row2:
-                drive_file_id = row2['drive_file_id']
+        # Check storage_mappings table first
+        row = c.execute("SELECT public_url FROM storage_mappings WHERE filename = ? OR storage_path = ?", (filename, filepath)).fetchone()
+        if row and row['public_url'] and row['public_url'].startswith('http'):
+            public_url = row['public_url']
+            
+        # Check pending_media (approved gallery items)
+        if not public_url:
+            row2 = c.execute("SELECT drive_file_id FROM pending_media WHERE filename = ?", (filename,)).fetchone()
+            if row2 and row2['drive_file_id']:
+                if row2['drive_file_id'].startswith('http'):
+                    public_url = row2['drive_file_id']
+                elif is_supabase_configured():
+                    from storage_pipeline import supabase, SUPABASE_STORAGE_BUCKET
+                    public_url = supabase.storage.from_(SUPABASE_STORAGE_BUCKET).get_public_url(row2['drive_file_id'])
+
         conn.close()
     except Exception as e:
-        print(f"Error checking drive mapping for {filename}: {e}")
+        print(f" [STORAGE SERVE LOOKUP ERROR] {filename}: {e}")
 
-    if drive_file_id:
-        return drive_view(drive_file_id)
-        
-    # 3. Dynamic Google Drive lookup fallback
-    drive_file_id = find_file_in_google_drive(filename)
-    if drive_file_id:
-        import time
-        # Save recovered mapping
-        for attempt in range(5):
-            try:
-                conn = get_db_connection()
-                c = conn.cursor()
-                c.execute("INSERT OR REPLACE INTO drive_mappings (filename, drive_file_id) VALUES (?, ?)", (filename, drive_file_id))
-                conn.commit()
-                conn.close()
-                break
-            except sqlite3.OperationalError as oe:
-                if "locked" in str(oe).lower():
-                    time.sleep(1)
-                else:
-                    break
-            except Exception:
-                break
-        return drive_view(drive_file_id)
-        
-    # 4. Fallback to send_from_directory (returns 404 since file does not exist)
+    if public_url:
+        return redirect(public_url)
+
+    # 3. Direct Supabase Storage resolution fallback
+    if is_supabase_configured():
+        from storage_pipeline import supabase, SUPABASE_STORAGE_BUCKET
+        cloud_url = supabase.storage.from_(SUPABASE_STORAGE_BUCKET).get_public_url(filepath)
+        return redirect(cloud_url)
+
+    # 4. Fallback to send_from_directory (404)
     return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), filepath)
+
+# ============================================================================
+# USER SUBMISSIONS & CONTENT MODERATION REVIEW QUEUE ROUTES
+# ============================================================================
+@app.route('/submit', methods=['GET', 'POST'])
+def submit_file():
+    """User submission portal with automated file compression firewall."""
+    if request.method == 'GET':
+        return render_template('submit_file.html')
+        
+    file_obj = request.files.get('submission_file')
+    if not file_obj or file_obj.filename == '':
+        flash('Please select a valid file to submit.', 'danger')
+        return redirect(url_for('submit_file'))
+
+    filename = secure_filename(file_obj.filename)
+    if not filename:
+        flash('Invalid filename provided.', 'danger')
+        return redirect(url_for('submit_file'))
+
+    user_id = session.get('user', 'guest_user')
+    file_bytes = file_obj.read()
+    
+    result = storage_pipeline.handle_user_submission(file_bytes, filename, user_id)
+    flash(result.get('message', 'Success! Awaiting system authorization.'), 'success')
+    return redirect(url_for('public_submissions'))
+
+@app.route('/api/submit', methods=['POST'])
+def api_submit_file():
+    """REST API endpoint for programmatic file submissions."""
+    file_obj = request.files.get('submission_file') or request.files.get('file')
+    if not file_obj or file_obj.filename == '':
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+
+    filename = secure_filename(file_obj.filename)
+    user_id = request.form.get('user_id') or session.get('user', 'api_user')
+    file_bytes = file_obj.read()
+    
+    result = storage_pipeline.handle_user_submission(file_bytes, filename, user_id)
+    return jsonify(result), (200 if result.get('success', True) else 500)
+
+@app.route('/submissions')
+def public_submissions():
+    """Public showcase wall displaying verified published documents."""
+    posts = storage_pipeline.fetch_public_content()
+    return render_template('submissions_public.html', posts=posts)
+
+@app.route('/admin/review-queue')
+def admin_review_queue():
+    """Admin moderation queue displaying pending review uploads."""
+    if 'user' not in session or session.get('role') != 'admin':
+        flash('Unauthorized access to moderation review queue.', 'danger')
+        return redirect(url_for('login'))
+        
+    pending_posts = storage_pipeline.fetch_admin_queue()
+    published_posts = storage_pipeline.fetch_public_content()
+    return render_template('admin/review_queue.html', 
+                           pending_posts=pending_posts, 
+                           published_count=len(published_posts),
+                           role=session.get('role'))
+
+@app.route('/admin/review-queue/approve/<int:post_id>', methods=['POST'])
+def admin_approve_post(post_id):
+    """Transitions post status to 'published' for public exposure."""
+    if 'user' not in session or session.get('role') != 'admin':
+        flash('Unauthorized', 'danger')
+        return redirect(url_for('login'))
+
+    storage_pipeline.approve_post(post_id)
+    flash('Document approved and published to public view!', 'success')
+    return redirect(url_for('admin_review_queue'))
+
+@app.route('/admin/review-queue/reject/<int:post_id>', methods=['POST'])
+def admin_reject_post(post_id):
+    """Rejects post and hides from public exposure."""
+    if 'user' not in session or session.get('role') != 'admin':
+        flash('Unauthorized', 'danger')
+        return redirect(url_for('login'))
+
+    storage_pipeline.reject_post(post_id)
+    flash('Submission rejected and hidden from public view.', 'success')
+    return redirect(url_for('admin_review_queue'))
+
+@app.route('/admin/review-queue/delete/<int:post_id>', methods=['POST'])
+def admin_delete_post(post_id):
+    """Deletes post from DB and cleans up Supabase storage."""
+    if 'user' not in session or session.get('role') != 'admin':
+        flash('Unauthorized', 'danger')
+        return redirect(url_for('login'))
+
+    storage_pipeline.delete_post(post_id)
+    flash('Post deleted and cleaned up from storage.', 'success')
+    return redirect(url_for('admin_review_queue'))
 
 # Initialize DB and run absolute path sidebar updater
 init_db()
@@ -2093,21 +2383,28 @@ def get_teacher_allowed_subjects(conn, username):
     return allowed_subjects
 
 def get_db_class_names(selected_class):
+    # Normalize selected_class using normalize_class_name
+    key = normalize_class_name(selected_class).upper()
     mapping = {
-        'I': ['I', 'One', 'ONE'],
-        'II': ['II', 'Two', 'TWO'],
-        'III': ['III', 'Three', 'THREE'],
-        'IV': ['IV', 'Four', 'FOUR'],
-        'V': ['V', 'Five', 'FIVE'],
-        'VI': ['VI', 'Six', 'SIX'],
-        'VII': ['VII', 'Seven', 'SEVEN'],
-        'VIII': ['VIII', 'Eight', 'EIGHT'],
-        'IX': ['IX', 'Nine', 'NINE'],
-        'X': ['X', 'Ten', 'TEN'],
-        'KG': ['KG', 'U/N', 'UN'],
-        'Nursery': ['Nursery', 'NURSERY']
+        'I': ['I', 'One', 'ONE', 'i', 'one', '1'],
+        'II': ['II', 'Two', 'TWO', 'ii', 'two', '2'],
+        'III': ['III', 'Three', 'THREE', 'iii', 'three', '3'],
+        'IV': ['IV', 'Four', 'FOUR', 'iv', 'four', '4'],
+        'V': ['V', 'Five', 'FIVE', 'v', 'five', '5'],
+        'VI': ['VI', 'Six', 'SIX', 'vi', 'six', '6', 'siz', 'SIZ', 'Siz'],
+        'VII': ['VII', 'Seven', 'SEVEN', 'vii', 'seven', '7'],
+        'VIII': ['VIII', 'Eight', 'EIGHT', 'viii', 'eight', '8'],
+        'IX': ['IX', 'Nine', 'NINE', 'ix', 'nine', '9'],
+        'X': ['X', 'Ten', 'TEN', 'x', 'ten', '10'],
+        'KG': ['KG', 'U/N', 'UN', 'U-N', 'kg', 'u/n', 'un', 'u-n', 'Kg'],
+        'NURSERY': ['Nursery', 'NURSERY', 'nursery']
     }
-    return mapping.get(selected_class, [selected_class])
+    if key in mapping:
+        return mapping[key]
+    
+    # Fallback to case variations of the original input
+    val = str(selected_class).strip()
+    return list({val, val.lower(), val.upper(), val.title()})
 
 # --- ROUTES ---
 
@@ -2116,9 +2413,25 @@ def get_db_class_names(selected_class):
 def home():
     conn = get_db_connection()
     classes = conn.execute("SELECT * FROM classes ORDER BY id").fetchall()
+    
+    # build fee_data dict
+    fee_data = {}
+    for c_row in classes:
+        fee_data[c_row['name']] = {
+            'admission_fee': c_row['admission_fee'],
+            'admission_fee_coaching': c_row['admission_fee_coaching'],
+            'admission_fee_hostel': c_row['admission_fee_hostel'],
+            'readmission_fee_school': c_row['readmission_fee_school'],
+            'readmission_fee_coaching': c_row['readmission_fee_coaching'],
+            'readmission_fee_hostel': c_row['readmission_fee_hostel'],
+            'monthly_fee': c_row['monthly_fee'],
+            'monthly_fee_coaching': c_row['monthly_fee_coaching'],
+            'hostel_fee': c_row['hostel_fee']
+        }
+
     registration_documents = conn.execute("SELECT * FROM registration_documents ORDER BY id").fetchall()
     routine_list = [dict(row) for row in conn.execute("SELECT * FROM class_routine").fetchall()]
-    reviews = conn.execute("SELECT * FROM visitor_reviews WHERE is_approved = 1 ORDER BY id DESC LIMIT 6").fetchall()
+    reviews = conn.execute("SELECT * FROM visitor_reviews WHERE is_approved = 1 ORDER BY sort_order ASC, id DESC LIMIT 6").fetchall()
     
     # Query notices and compute is_new flag
     notices_raw = conn.execute("SELECT * FROM notices ORDER BY created_at DESC").fetchall()
@@ -2145,6 +2458,7 @@ def home():
     conn.close()
     return render_template('index.html', 
                            classes=classes, 
+                           fee_data=fee_data,
                            registration_documents=registration_documents, 
                            routine_list=routine_list, 
                            reviews=reviews,
@@ -2157,22 +2471,67 @@ def home():
 @app.route('/submit-review', methods=['POST'])
 def submit_review():
     visitor_name = request.form.get('visitor_name', '').strip()
+    visitor_email = request.form.get('visitor_email', '').strip()
     review_text = request.form.get('review_text', '').strip()
     rating = int(request.form.get('rating', 5))
     
-    if visitor_name and review_text:
-        conn = get_db_connection()
-        conn.execute('''
-            INSERT INTO visitor_reviews (visitor_name, review_text, rating, is_approved)
-            VALUES (?, ?, ?, 1)
-        ''', (visitor_name, review_text, rating))
-        conn.commit()
-        conn.close()
-        flash('Thank you! Your feedback has been submitted successfully.')
+    if visitor_name and visitor_email and review_text:
+        otp = str(random.randint(100000, 999999))
+        session['pending_review'] = {
+            'visitor_name': visitor_name,
+            'visitor_email': visitor_email,
+            'review_text': review_text,
+            'rating': rating,
+            'otp': otp
+        }
+        send_review_otp_email(visitor_email, otp)
+        flash('Verification code sent to your email.')
+        return redirect(url_for('verify_review_otp'))
     else:
-        flash('Failed to submit review: Name and feedback are required.')
+        flash('Failed to submit review: Name, Email, and Feedback are required.')
+        return redirect(url_for('home'))
+
+@app.route('/verify-review-otp', methods=['GET', 'POST'])
+def verify_review_otp():
+    pending = session.get('pending_review')
+    if not pending:
+        flash('No pending review submission found or session expired.')
+        return redirect(url_for('home'))
         
-    return redirect(url_for('home'))
+    if request.method == 'POST':
+        user_otp = request.form.get('otp', '').strip()
+        if user_otp == pending.get('otp'):
+            # Insert into database as verified and approved
+            conn = get_db_connection()
+            conn.execute('''
+                INSERT INTO visitor_reviews (visitor_name, visitor_email, review_text, rating, is_approved, sort_order)
+                VALUES (?, ?, ?, ?, 1, 0)
+            ''', (pending['visitor_name'], pending['visitor_email'], pending['review_text'], pending['rating']))
+            conn.commit()
+            conn.close()
+            
+            session.pop('pending_review', None)
+            flash('Thank you! Your feedback has been verified and submitted successfully.')
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid verification code! Please try again.')
+            
+    return render_template('verify_review_otp.html', email=pending.get('visitor_email'))
+
+@app.route('/resend-review-otp')
+def resend_review_otp():
+    pending = session.get('pending_review')
+    if not pending:
+        flash('No pending review submission found.')
+        return redirect(url_for('home'))
+        
+    otp = str(random.randint(100000, 999999))
+    pending['otp'] = otp
+    session['pending_review'] = pending
+    
+    send_review_otp_email(pending['visitor_email'], otp)
+    flash('A new verification code has been sent to your email.')
+    return redirect(url_for('verify_review_otp'))
 
 @app.route('/services')
 def services():
@@ -2253,6 +2612,10 @@ def branch_selection():
 def set_branch(branch_name):
     session['selected_branch'] = 'bhogram'
     return redirect(url_for('home'))
+
+@app.route('/login')
+def login_default():
+    return redirect(url_for('login', user_type='student'))
 
 @app.route('/login/<user_type>', methods=['GET', 'POST'])
 def login(user_type):
@@ -3056,7 +3419,7 @@ def form_action(form_id, action):
                 uploaded_docs = data.get('uploaded_documents', {})
                 attached_documents = json.dumps({'attached': attached_list, 'files': uploaded_docs})
                     
-                coaching_opted = 1 if data.get('coaching_opted') == 'Yes' else 0
+                coaching_opted = 1 if 'coaching' in mode_of_admission.lower() else 0
                 car_opted = 1 if (data.get('car_opted') == 'Yes' or mode_of_admission == 'School+Car') else 0
                 
                 monthly_fee = calculate_default_monthly_fee(class_name, mode_of_admission, coaching_opted == 1, car_opted == 1)
@@ -3116,6 +3479,7 @@ def form_action(form_id, action):
                 branch = form['branch'] or data.get('branch', 'bhogram')
                 aadhaar_number = data.get('aadhar_no', '').strip()
                 cv_path = data.get('cv_path', '').strip()
+                teacher_type = data.get('teacher_type', 'Regular Class').strip()
                 
                 # Check bank details inputs and serialize
                 bank_name = data.get('bank_name', '').strip()
@@ -3167,7 +3531,7 @@ def form_action(form_id, action):
                 c.execute('''
                     INSERT INTO teacher_info (user_id, full_name, phone_number, qualification, joining_date, address, aadhaar_number, bank_details, teacher_type, cv_path)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (user_id, full_name, phone_number, qualification, joining_date, address, aadhaar_number, bank_details, 'Regular Class', cv_path))
+                ''', (user_id, full_name, phone_number, qualification, joining_date, address, aadhaar_number, bank_details, teacher_type, cv_path))
                 
                 # Update application's user_id with the new user_id so it links!
                 c.execute("UPDATE applications SET user_id = ? WHERE id = ?", (user_id, form_id))
@@ -3260,7 +3624,7 @@ def form_action(form_id, action):
                 uploaded_docs = data.get('uploaded_documents', {})
                 attached_documents = json.dumps({'attached': attached_list, 'files': uploaded_docs})
                     
-                coaching_opted = 1 if data.get('coaching_opted') == 'Yes' else 0
+                coaching_opted = 1 if 'coaching' in mode_of_admission.lower() else 0
                 car_opted = 1 if (data.get('car_opted') == 'Yes' or mode_of_admission == 'School+Car') else 0
                 
                 monthly_fee = calculate_default_monthly_fee(class_applied, mode_of_admission, coaching_opted == 1, car_opted == 1)
@@ -3476,7 +3840,7 @@ def media_action(media_id, action):
                         mime_type, _ = mimetypes.guess_type(temp_path)
                         if not mime_type:
                             mime_type = "application/octet-stream"
-                        drive_file_id = upload_file_to_drive_and_map(temp_path, filename, mime_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_GALLERY'))
+                        drive_file_id = upload_file_to_drive_and_map(temp_path, filename, mime_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_GALLERY'), conn=conn)
                     except Exception as e:
                         print(f"Error uploading approved file to Google Drive: {e}")
                 
@@ -3650,6 +4014,106 @@ def delete_managing_committee(member_id):
     return redirect(url_for('admin_managing_committee'))
 
 
+@app.route('/admin/reviews')
+@login_required
+@roles_required('admin')
+def admin_reviews():
+    conn = get_db_connection()
+    reviews = conn.execute("SELECT * FROM visitor_reviews ORDER BY sort_order ASC, id DESC").fetchall()
+    conn.close()
+    return render_template('admin/reviews.html', reviews=reviews)
+
+@app.route('/admin/reviews/add', methods=['POST'])
+@login_required
+@roles_required('admin')
+def add_review():
+    visitor_name = request.form.get('visitor_name', '').strip()
+    visitor_email = request.form.get('visitor_email', '').strip()
+    rating = request.form.get('rating', '5')
+    review_text = request.form.get('review_text', '').strip()
+    sort_order = request.form.get('sort_order', '0').strip()
+    try:
+        rating = int(rating)
+    except ValueError:
+        rating = 5
+    try:
+        sort_order = int(sort_order)
+    except ValueError:
+        sort_order = 0
+    
+    if visitor_name and review_text:
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO visitor_reviews (visitor_name, visitor_email, rating, review_text, is_approved, sort_order)
+            VALUES (?, ?, ?, ?, 1, ?)
+        ''', (visitor_name, visitor_email, rating, review_text, sort_order))
+        conn.commit()
+        conn.close()
+        flash('Review added successfully.')
+    else:
+        flash('Visitor name and feedback text are required.')
+    return redirect(url_for('admin_reviews'))
+
+@app.route('/admin/reviews/edit/<int:review_id>', methods=['POST'])
+@login_required
+@roles_required('admin')
+def edit_review(review_id):
+    visitor_name = request.form.get('visitor_name', '').strip()
+    visitor_email = request.form.get('visitor_email', '').strip()
+    rating = request.form.get('rating', '5')
+    review_text = request.form.get('review_text', '').strip()
+    sort_order = request.form.get('sort_order', '0').strip()
+    try:
+        rating = int(rating)
+    except ValueError:
+        rating = 5
+    try:
+        sort_order = int(sort_order)
+    except ValueError:
+        sort_order = 0
+        
+    if visitor_name and review_text:
+        conn = get_db_connection()
+        conn.execute('''
+            UPDATE visitor_reviews 
+            SET visitor_name = ?, visitor_email = ?, rating = ?, review_text = ?, sort_order = ?
+            WHERE id = ?
+        ''', (visitor_name, visitor_email, rating, review_text, sort_order, review_id))
+        conn.commit()
+        conn.close()
+        flash('Review updated successfully.')
+    else:
+        flash('Visitor name and feedback text are required.')
+    return redirect(url_for('admin_reviews'))
+
+@app.route('/admin/reviews/toggle/<int:review_id>', methods=['POST'])
+@login_required
+@roles_required('admin')
+def toggle_review(review_id):
+    conn = get_db_connection()
+    review = conn.execute("SELECT is_approved FROM visitor_reviews WHERE id = ?", (review_id,)).fetchone()
+    if review:
+        new_status = 0 if review['is_approved'] == 1 else 1
+        conn.execute("UPDATE visitor_reviews SET is_approved = ? WHERE id = ?", (new_status, review_id))
+        conn.commit()
+        flash('Review visibility status updated.')
+    else:
+        flash('Review not found.')
+    conn.close()
+    return redirect(url_for('admin_reviews'))
+
+@app.route('/admin/reviews/delete/<int:review_id>', methods=['POST'])
+@login_required
+@roles_required('admin')
+def delete_review(review_id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM visitor_reviews WHERE id = ?", (review_id,))
+    conn.commit()
+    conn.close()
+    flash('Review deleted successfully.')
+    return redirect(url_for('admin_reviews'))
+
+
 @app.route('/admin/student-list')
 def student_list():
     if 'user' in session and session['role'] in ['admin', 'teacher']:
@@ -3692,6 +4156,17 @@ def student_list():
             WHERE u.role = 'teacher'
         ''').fetchall()
         
+        teacher_assigned_classes = None
+        if session['role'] == 'teacher':
+            t_row = conn.execute('''
+                SELECT ti.assigned_classes 
+                FROM users u
+                JOIN teacher_info ti ON u.id = ti.user_id
+                WHERE u.username = ?
+            ''', (session['user'],)).fetchone()
+            if t_row:
+                teacher_assigned_classes = t_row['assigned_classes']
+        
         conn.close()
         
         class_order = [
@@ -3713,6 +4188,25 @@ def student_list():
 
         # Convert sqlite3.Row to dict to make it mutable/sortable
         students_list = [dict(s) for s in students]
+        
+        if session['role'] == 'teacher':
+            teacher_classes = set()
+            if teacher_assigned_classes:
+                for part in teacher_assigned_classes.split(','):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    subparts = part.split(':')
+                    class_part = subparts[0].strip()
+                    if class_part.lower().startswith('class '):
+                        class_name = class_part[6:].strip()
+                    elif class_part.lower().startswith('class'):
+                        class_name = class_part[5:].strip()
+                    else:
+                        class_name = class_part
+                    if class_name:
+                        teacher_classes.add(normalize_class_name(class_name))
+            students_list = [s for s in students_list if normalize_class_name(s.get('class')) in teacher_classes]
         
         def get_student_sort_key(student):
             cls_idx = get_class_sort_index(student['class'])
@@ -3831,7 +4325,7 @@ def add_student_manual():
                     'prev_marks_percentage': request.form.get('prev_marks_percentage'),
                     'identification_mark': request.form.get('identification_mark'),
                     'attached_documents': ', '.join(request.form.getlist('attached_documents')),
-                    'coaching_opted': 1 if request.form.get('coaching_opted') == 'Yes' else 0,
+                    'coaching_opted': 1 if 'coaching' in str(request.form.get('mode_of_admission')).lower() else 0,
                     'car_opted': 1 if (request.form.get('car_opted') == 'Yes' or request.form.get('mode_of_admission') == 'School+Car') else 0,
                     'sl_no': request.form.get('sl_no', '').strip()
                 }
@@ -3869,7 +4363,10 @@ def add_student_manual():
             finally:
                 conn.close()
 
-        return render_template('admin/add_student.html')
+        conn = get_db_connection()
+        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
+        conn.close()
+        return render_template('admin/add_student.html', classes=classes)
     return redirect(url_for('home'))
 
 @app.route('/admin/edit-student/<int:user_id>', methods=['GET', 'POST'])
@@ -3942,7 +4439,7 @@ def edit_student(user_id):
                     'prev_marks_percentage': request.form.get('prev_marks_percentage'),
                     'identification_mark': request.form.get('identification_mark'),
                     'attached_documents': ', '.join(request.form.getlist('attached_documents')),
-                    'coaching_opted': 1 if request.form.get('coaching_opted') == 'Yes' else 0,
+                    'coaching_opted': 1 if 'coaching' in str(request.form.get('mode_of_admission')).lower() else 0,
                     'car_opted': 1 if (request.form.get('car_opted') == 'Yes' or request.form.get('mode_of_admission') == 'School+Car') else 0,
                     'sl_no': request.form.get('sl_no', '').strip()
                 }
@@ -3986,7 +4483,7 @@ def edit_student(user_id):
                         
                         local_path = os.path.join(upload_folder, filename)
                         photo_file.save(local_path)
-                        upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'))
+                        upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_STUDENTS'), conn=conn)
                         conn.execute("UPDATE student_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
                 
                 conn.commit()
@@ -4004,13 +4501,14 @@ def edit_student(user_id):
             LEFT JOIN student_info si ON u.id = si.user_id
             WHERE u.id = ? AND u.role = 'student'
         ''', (user_id,)).fetchone()
+        classes = [dict(row) for row in conn.execute("SELECT * FROM classes WHERE branch = 'bhogram'").fetchall()]
         conn.close()
         
         if not student:
             flash('Student not found!')
             return redirect(url_for('student_list'))
             
-        return render_template('admin/edit_student.html', student=student, user_id=user_id)
+        return render_template('admin/edit_student.html', student=student, user_id=user_id, classes=classes)
     return redirect(url_for('home'))
 
 @app.route('/admin/edit-teacher/<int:user_id>', methods=['GET', 'POST'])
@@ -4097,7 +4595,7 @@ def edit_teacher(user_id):
                     
                     local_path = os.path.join(upload_folder, filename)
                     photo_file.save(local_path)
-                    upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'))
+                    upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'), conn=conn)
                     conn.execute("UPDATE teacher_info SET photo_path = ? WHERE user_id = ?", (filename, user_id))
 
             # Handle CV Upload
@@ -4111,7 +4609,7 @@ def edit_teacher(user_id):
                     saved_filename = f"cv_{timestamp}_{filename}"
                     local_path = os.path.join(upload_dir, saved_filename)
                     cv_file.save(local_path)
-                    upload_file_to_drive_and_map(local_path, saved_filename, cv_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_CV'))
+                    upload_file_to_drive_and_map(local_path, saved_filename, cv_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_CV'), conn=conn)
                     
                     # Delete old CV if exists
                     old_cv = conn.execute("SELECT cv_path FROM teacher_info WHERE user_id = ?", (user_id,)).fetchone()
@@ -4271,6 +4769,38 @@ def calculate_grade(pct):
 
 def calculate_overall_grade(percentage):
     return calculate_grade(percentage)
+
+
+@app.route('/admin/marksheet/pdf')
+def marksheet_pdf():
+    if 'user' in session:
+        conn = get_db_connection()
+        user = conn.execute("SELECT id, role FROM users WHERE username = ?", (session['user'],)).fetchone()
+        student_id = user['id'] if user['role'] == 'student' else request.args.get('student_id')
+        exam_type = request.args.get('type', 'Annual Progress Report')
+        
+        if student_id:
+            student_meta = conn.execute('''
+                SELECT u.id, COALESCE(si.full_name, u.username) as name, si.class, si.roll_number, si.section, si.branch, si.guardian_name
+                FROM users u
+                LEFT JOIN student_info si ON u.id = si.user_id
+                WHERE u.id = ?
+            ''', (student_id,)).fetchone()
+            conn.close()
+
+            student_info = dict(student_meta) if student_meta else {'name': 'Student', 'class': 'N/A', 'roll_number': '1', 'section': 'A'}
+            
+            from pdf_marksheet_generator import generate_marksheet_pdf
+            pdf_bytes = generate_marksheet_pdf(student_info, {}, exam_type=exam_type)
+            
+            from flask import Response
+            return Response(
+                pdf_bytes,
+                mimetype='application/pdf',
+                headers={'Content-Disposition': f'inline; filename=Marksheet_{student_id}.pdf'}
+            )
+        conn.close()
+    return redirect(url_for('marksheet'))
 
 @app.route('/admin/marksheet')
 def marksheet():
@@ -4988,11 +5518,11 @@ def marksheet():
                 total_obtained = grand_tot_tot
                 total_possible = grand_tot_pos
                 
-                ped_fm = subject_fm_map.get('Physical Education', 20.0)
-                wed_fm = subject_fm_map.get('Work Education', 30.0)
-                hw_fm = subject_fm_map.get('Hand Writing', 20.0)
-                behav_fm = subject_fm_map.get('Behaviour', 20.0)
-                attend_fm = subject_fm_map.get('Attendance', 10.0)
+                ped_fm = subject_fm_annual_map.get('Physical Education', 20.0)
+                wed_fm = subject_fm_annual_map.get('Work Education', 30.0)
+                hw_fm = subject_fm_annual_map.get('Hand Writing', 20.0)
+                behav_fm = subject_fm_annual_map.get('Behaviour', 20.0)
+                attend_fm = subject_fm_annual_map.get('Attendance', 10.0)
 
                 s['add_fm'] = {
                     'ped': fmt_limit(ped_fm),
@@ -5141,6 +5671,9 @@ def bulk_marks():
                 
         subject_names = []
         marks_dict = {}
+        subject_oral_limit = {}
+        subject_written_limit = {}
+        subject_ct_limit = {}
         
         if selected_branch and selected_class:
             # 2. Fetch students using normalized class names (e.g. 'I' matches 'One' or 'I')
@@ -5833,18 +6366,25 @@ def get_fees():
                 WHERE u.username = ?
             ''', (username,)).fetchone()
             
-            if not student_info:
-                student_info = {'monthly_fee': 0.0, 'hostel_fee': 0.0, 'branch': ''}
+            if student_info:
+                student_info_dict = dict(student_info)
+                if student_info_dict.get('monthly_fee') is None:
+                    student_info_dict['monthly_fee'] = 0.0
+                if student_info_dict.get('hostel_fee') is None:
+                    student_info_dict['hostel_fee'] = 0.0
+            else:
+                student_info_dict = {'monthly_fee': 0.0, 'hostel_fee': 0.0, 'branch': ''}
             
             conn.close()
             return render_template(
                 'admin/get_fees.html',
                 recent_fees=my_fees,
                 role=role,
-                student_info=student_info,
+                student_info=student_info_dict,
                 razorpay_key_id=RAZORPAY_KEY_ID,
                 username=username,
-                email=''
+                email='',
+                logo_url=LOGO_URL
             )
             
     return redirect(url_for('home'))
@@ -6082,7 +6622,7 @@ def spend():
                     os.makedirs(proofs_folder, exist_ok=True)
                     local_path = os.path.join(proofs_folder, saved_name)
                     proof_file.save(local_path)
-                    upload_file_to_drive_and_map(local_path, saved_name, proof_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_PROOFS'))
+                    upload_file_to_drive_and_map(local_path, saved_name, proof_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_PROOFS'), conn=conn)
                     proof_path = saved_name
             
             conn.execute('''
@@ -6148,13 +6688,34 @@ def academics_setting():
                 else:
                     try:
                         admission_fee = float(request.form.get('admission_fee', 0.0) or 0.0)
+                        admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0) or 0.0)
+                        admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0) or 0.0)
+                        readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0) or 0.0)
+                        readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0) or 0.0)
+                        readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0) or 0.0)
                         monthly_fee = float(request.form.get('monthly_fee', 0.0) or 0.0)
-                        hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0) if branch == 'surangapur' else 0.0
+                        monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0) or 0.0)
+                        hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0)
                     except ValueError:
                         admission_fee = 0.0
+                        admission_fee_coaching = 0.0
+                        admission_fee_hostel = 0.0
+                        readmission_fee_school = 0.0
+                        readmission_fee_coaching = 0.0
+                        readmission_fee_hostel = 0.0
                         monthly_fee = 0.0
+                        monthly_fee_coaching = 0.0
                         hostel_fee = 0.0
-                    conn.execute("INSERT INTO classes (name, branch, admission_fee, monthly_fee, hostel_fee) VALUES (?, ?, ?, ?, ?)", (class_name, branch, admission_fee, monthly_fee, hostel_fee))
+                    conn.execute("""
+                        INSERT INTO classes (
+                            name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                            readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                            monthly_fee, monthly_fee_coaching, hostel_fee
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (class_name, branch, admission_fee, admission_fee_coaching, admission_fee_hostel,
+                          readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                          monthly_fee, monthly_fee_coaching, hostel_fee))
+
                     seed_default_subjects(conn)
                     conn.commit()
                     flash(f'Class {class_name} added successfully for {branch.title()} with fees!')
@@ -6464,17 +7025,28 @@ def update_class_fees():
         class_id = request.form.get('class_id')
         try:
             admission_fee = float(request.form.get('admission_fee', 0.0) or 0.0)
+            admission_fee_coaching = float(request.form.get('admission_fee_coaching', 0.0) or 0.0)
+            admission_fee_hostel = float(request.form.get('admission_fee_hostel', 0.0) or 0.0)
+            readmission_fee_school = float(request.form.get('readmission_fee_school', 0.0) or 0.0)
+            readmission_fee_coaching = float(request.form.get('readmission_fee_coaching', 0.0) or 0.0)
+            readmission_fee_hostel = float(request.form.get('readmission_fee_hostel', 0.0) or 0.0)
             monthly_fee = float(request.form.get('monthly_fee', 0.0) or 0.0)
+            monthly_fee_coaching = float(request.form.get('monthly_fee_coaching', 0.0) or 0.0)
             hostel_fee = float(request.form.get('hostel_fee', 0.0) or 0.0)
+            
             conn = get_db_connection()
-            class_row = conn.execute("SELECT branch FROM classes WHERE id = ?", (class_id,)).fetchone()
-            if class_row:
-                branch = class_row['branch']
-                if branch != 'surangapur':
-                    hostel_fee = 0.0
-                conn.execute("UPDATE classes SET admission_fee = ?, monthly_fee = ?, hostel_fee = ? WHERE id = ?", (admission_fee, monthly_fee, hostel_fee, class_id))
-                conn.commit()
+            conn.execute("""
+                UPDATE classes 
+                SET admission_fee = ?, admission_fee_coaching = ?, admission_fee_hostel = ?,
+                    readmission_fee_school = ?, readmission_fee_coaching = ?, readmission_fee_hostel = ?,
+                    monthly_fee = ?, monthly_fee_coaching = ?, hostel_fee = ?
+                WHERE id = ?
+            """, (admission_fee, admission_fee_coaching, admission_fee_hostel,
+                  readmission_fee_school, readmission_fee_coaching, readmission_fee_hostel,
+                  monthly_fee, monthly_fee_coaching, hostel_fee, class_id))
+            conn.commit()
             conn.close()
+            
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
                 return jsonify({'status': 'success', 'message': 'Class fees updated successfully!'})
             flash('Class fees updated successfully!')
@@ -7330,7 +7902,7 @@ def student_edit_info():
             'prev_marks_percentage': request.form.get('prev_marks_percentage', '').strip(),
             'identification_mark': request.form.get('identification_mark', '').strip(),
             'attached_documents': ', '.join(request.form.getlist('attached_documents')),
-            'coaching_opted': request.form.get('coaching_opted', 'No'),
+            'coaching_opted': 'Yes' if 'coaching' in str(request.form.get('mode_of_admission')).lower() else 'No',
             'car_opted': request.form.get('car_opted', 'No')
         }
         
@@ -7458,7 +8030,7 @@ def teacher_edit_info():
                 
                 local_path = os.path.join(upload_folder, filename)
                 photo_file.save(local_path)
-                upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'))
+                upload_file_to_drive_and_map(local_path, filename, photo_file.content_type, folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_TEACHERS'), conn=conn)
                 conn.execute("UPDATE teacher_info SET photo_path = ? WHERE user_id = ?", (filename, user['id']))
 
         # Parse bank details and serialize
@@ -8434,6 +9006,35 @@ def api_attendance_stats_user(user_id):
 def logout():
     session.clear()
     return redirect(url_for('home'))
+
+@app.route('/api/set-font', methods=['GET', 'POST'])
+def api_set_font():
+    data = request.get_json(silent=True, force=True) or request.form.to_dict() or {}
+    font_key = str(data.get('font') or request.args.get('font') or '').lower().strip()
+    
+    font_map = {
+        'times': ("'Times New Roman', Times, serif", "Times New Roman (Screenshot 2 Serif)"),
+        'playfair': ("'Playfair Display', Georgia, serif", "Playfair Display (Luxury Serif)"),
+        'cinzel': ("'Cinzel', serif", "Cinzel (Classical Roman)"),
+        'slab': ("'Roboto Slab', serif", "Roboto Slab (Academic Collegiate)"),
+        'fredoka': ("'Fredoka', cursive, sans-serif", "Fredoka (Rounded Display)"),
+        'outfit': ("'Outfit', sans-serif", "Outfit (Screenshot 1 Sans-Serif)")
+    }
+    
+    if font_key in font_map:
+        font_family, font_name = font_map[font_key]
+        css_path = os.path.join(app.root_path, 'static', 'style.css')
+        try:
+            with open(css_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            import re
+            content = re.sub(r'--font-sidebar:\s*[^;]+;', f'--font-sidebar: {font_family};', content)
+            with open(css_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return jsonify({'success': True, 'font_name': font_name, 'font_family': font_family})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': False, 'error': 'Unknown font'}), 400
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))

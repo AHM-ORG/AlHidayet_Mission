@@ -12,7 +12,7 @@
         href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -65,8 +65,8 @@
         <div id="forms" class="tab-content active">
             <h3 class="section-title">Received Applications for {{ branch_name }}</h3>
             {% if branch_forms %}
-            <div class="table-container" style="overflow-x: auto;">
-                <table
+            <div class="table-container table-scroll-container" style="overflow-x: auto;">
+                <table class="dash-table"
                     style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm);">
                     <thead>
                         <tr style="background: #f8f9fa; text-align: left;">
@@ -164,7 +164,7 @@
 
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
 
@@ -202,6 +202,7 @@
         `;
         document.head.appendChild(style);
     </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
 </body>
 
 </html>

@@ -14,7 +14,7 @@
         rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -94,25 +94,42 @@
 </head>
 
 <body class="bg-pattern">
+    <!-- Skip to Main Content Link for Keyboard / Screen Reader Accessibility -->
+    <a href="#application-content" class="skip-link">Skip to main content</a>
 
     <!-- Header -->
-    <header class="main-header" style="background: #fff;">
+    <header class="main-header" role="banner">
         <div class="container header-container">
             <div class="logo">
-                <a href="/" style="display:flex; align-items:center; gap:10px;">
-                    <img src="{{ logo_url }}" alt="AHM" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
-                    <span class="logo-text">Bhogram Al-Hidayet <span class="highlight">Mission</span></span>
+                <a href="/" aria-label="Al-Hidayet Mission Home" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+                    <img src="{{ logo_url or url_for('static', filename='images/logo.png') }}" alt="Al-Hidayet Mission Crest" class="logo-img">
+                    <span class="logo-text">Al-Hidayet <span class="highlight">Mission</span></span>
                 </a>
             </div>
-            <nav class="main-nav">
+            <nav class="main-nav" id="mainNav" aria-label="Primary Navigation">
                 <a href="/" class="nav-link">Home</a>
+                <a href="/services" class="nav-link">Services</a>
+                <a href="/gallery" class="nav-link">Gallery</a>
                 <a href="/#faq" class="nav-link">FAQ</a>
                 <a href="/#contact" class="nav-link">Contact</a>
+                <div class="mobile-nav-cta">
+                    <a href="/login/student" class="btn btn-outline" style="width: 100%; border-color: #0c2340; color: #0c2340;">Login</a>
+                </div>
             </nav>
+            <div class="header-cta">
+                <a href="/login/student" class="btn btn-outline" style="border-color: #0c2340; color: #0c2340;">Login</a>
+            </div>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNav">
+                <span class="hamburger-box">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
+            </button>
         </div>
     </header>
 
-    <div class="container section">
+    <div class="container section" id="application-content">
         <div style="text-align: center; margin-bottom: 40px;">
             <h1 class="hero-title" style="font-size: 32px; color: var(--primary-color);">Online Admission Form</h1>
             <p style="color: var(--text-light);">Application for Academic Session 2026</p>
@@ -202,12 +219,7 @@
                             <i class="fas fa-exclamation-circle"></i> Please enter exactly 12 digits for Aadhar Number
                         </small>
                     </div>
-                    <div class="input-group">
-                        <label>Whatsapp Number</label>
-                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}"
-                            minlength="10" maxlength="10" title="Must be 10 digits" id="whatsapp_input"
-                            value="{{ form_data.get('whatsapp_no', '') if form_data else '' }}">
-                    </div>
+
                     <div class="input-group">
                         <label>Identification Mark</label>
                         <input type="text" name="identification_mark" placeholder="e.g. mole on right cheek"
@@ -221,9 +233,8 @@
                 <h3><i class="fas fa-school"></i> Admission Details</h3>
                 <div class="form-grid">
                     <div class="input-group">
-                        <label>Form Serial No / SL No</label>
-                        <input type="text" name="sl_no" placeholder="e.g. 166"
-                            value="{{ form_data.get('sl_no', '') if form_data else '' }}">
+                        <label>Unique Code</label>
+                        <input type="text" readonly value="Auto-generated on registration" style="background: #f1f5f9; cursor: not-allowed; border: 2px solid #eee; border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; font-family: 'Outfit', sans-serif; color: #94a3b8;">
                     </div>
                     <div class="input-group">
                         <label>Academic Session*</label>
@@ -246,28 +257,17 @@
                             <option value="Four" {% if form_data and form_data.get('class_applied')=='Four' %}selected{% endif %}>Four</option>
                             <option value="Five" {% if form_data and form_data.get('class_applied')=='Five' %}selected{% endif %}>Five</option>
                             <option value="Six" {% if form_data and form_data.get('class_applied')=='Six' %}selected{% endif %}>Six</option>
-                            <option value="Seven" {% if form_data and form_data.get('class_applied')=='Seven' %}selected{% endif %}>Seven</option>
-                            <option value="Eight" {% if form_data and form_data.get('class_applied')=='Eight' %}selected{% endif %}>Eight</option>
-                            <option value="Nine" {% if form_data and form_data.get('class_applied')=='Nine' %}selected{% endif %}>Nine</option>
-                            <option value="Ten" {% if form_data and form_data.get('class_applied')=='Ten' %}selected{% endif %}>Ten</option>
                         </select>
                     </div>
                     <div class="input-group">
                         <label>Mode of Admission*</label>
                         <select name="mode_of_admission" required>
-                            <option value="School" {% if form_data and form_data.get('mode_of_admission')=='School' %}selected{% endif %}>School (Only School)</option>
+                            <option value="School" {% if form_data and form_data.get('mode_of_admission')=='School' %}selected{% endif %}>School</option>
+                            <option value="School with Coaching" {% if form_data and form_data.get('mode_of_admission')=='School with Coaching' %}selected{% endif %}>School with Coaching</option>
                             <option value="Day Hostel" {% if form_data and form_data.get('mode_of_admission')=='Day Hostel' %}selected{% endif %}>Day Hostel</option>
-                            <option value="School+Car" {% if form_data and form_data.get('mode_of_admission')=='School+Car' %}selected{% endif %}>School + Car</option>
-                            <option value="Hostel" {% if form_data and form_data.get('mode_of_admission')=='Hostel' %}selected{% endif %}>Hostel</option>
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label>Coaching Opted?*</label>
-                        <select name="coaching_opted" required>
-                            <option value="No" {% if form_data and form_data.get('coaching_opted')=='No' %}selected{% endif %}>No</option>
-                            <option value="Yes" {% if form_data and form_data.get('coaching_opted')=='Yes' %}selected{% endif %}>Yes</option>
-                        </select>
-                    </div>
+
                     <div class="input-group">
                         <label>Car Service Opted?*</label>
                         <select name="car_opted" required>
@@ -378,6 +378,16 @@
                             <i class="fas fa-exclamation-circle"></i> Please enter exactly 10 digits
                         </small>
                     </div>
+                    <div class="input-group">
+                        <label>Guardian's Whatsapp No</label>
+                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp Number" pattern="\d{10}"
+                            minlength="10" maxlength="10" title="Must be 10 digits" id="whatsapp_input"
+                            value="{{ form_data.get('whatsapp_no', '') if form_data else '' }}">
+                        <small class="error-msg" id="error-whatsapp-phone"
+                            style="color: #e74c3c; display: none; margin-top: 5px; font-size: 13px;">
+                            <i class="fas fa-exclamation-circle"></i> Please enter exactly 10 digits
+                        </small>
+                    </div>
                 </div>
             </div>
 
@@ -459,7 +469,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
 
@@ -488,6 +498,7 @@
         setupValidation('aadhar_input', 'error-aadhar', null, 12);
         setupValidation('guardian_phone_input', 'error-guardian-phone', null, 10);
         setupValidation('alt_phone_input', 'error-alt-phone', null, 10);
+        setupValidation('whatsapp_input', 'error-whatsapp-phone', null, 10);
     </script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 

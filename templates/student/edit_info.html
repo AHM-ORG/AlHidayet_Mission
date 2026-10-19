@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -117,12 +117,12 @@
 <body class="bg-pattern" style="background-color: #F7F9FC; font-family: 'Outfit', sans-serif;">
 
     <!-- Header -->
-    <header class="main-header" style="background: #fff;">
+    <header class="main-header " >
         <div class="container header-container">
             <div class="logo">
-                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #333; text-decoration: none;">
+                <a href="/dashboard" style="display:flex; align-items:center; gap:10px; color: #ffffff; text-decoration: none;">
                     <i data-lucide="arrow-left"></i>
-                    <span class="logo-text">Back to <span class="highlight">Dashboard</span></span>
+                    <span class="logo-text" >Back to <span class="highlight">Dashboard</span></span>
                 </a>
             </div>
             <div class="header-cta">
@@ -248,11 +248,7 @@
                         {% set current_nat = pending_data.get('nationality') if pending_edit else student_info.nationality %}
                         <input type="text" name="nationality" value="{{ current_nat or 'Indian' }}">
                     </div>
-                    <div class="input-group">
-                        <label>Whatsapp Number</label>
-                        {% set current_wa = pending_data.get('whatsapp_no') if pending_edit else student_info.whatsapp_no %}
-                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp No" pattern="\d{10}" minlength="10" maxlength="10" value="{{ current_wa or '' }}">
-                    </div>
+
                     <div class="input-group">
                         <label>Identification Mark</label>
                         {% set current_idmark = pending_data.get('identification_mark') if pending_edit else student_info.identification_mark %}
@@ -269,11 +265,6 @@
                         <input type="text" name="prev_marks_percentage" placeholder="e.g. 85%" value="{{ current_prevmarks or '' }}">
                     </div>
                     <div class="input-group">
-                        <label>Form Serial No / SL No</label>
-                        {% set current_sl_no = pending_data.get('sl_no') if pending_edit else student_info.sl_no %}
-                        <input type="text" name="sl_no" placeholder="e.g. 166" value="{{ current_sl_no or '' }}">
-                    </div>
-                    <div class="input-group">
                         <label>Academic Session</label>
                         {% set current_session = pending_data.get('session') if pending_edit else student_info.session %}
                         <input type="text" name="session" value="{{ current_session or '2026' }}">
@@ -282,20 +273,12 @@
                         <label>Mode of Admission</label>
                         {% set current_mode = pending_data.get('mode_of_admission') if pending_edit else student_info.mode_of_admission %}
                         <select name="mode_of_admission" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
-                            <option value="School" {% if current_mode == 'School' %}selected{% endif %}>School (Only School)</option>
+                            <option value="School" {% if current_mode == 'School' %}selected{% endif %}>School</option>
+                            <option value="School with Coaching" {% if current_mode == 'School with Coaching' %}selected{% endif %}>School with Coaching</option>
                             <option value="Day Hostel" {% if current_mode == 'Day Hostel' %}selected{% endif %}>Day Hostel</option>
-                            <option value="School+Car" {% if current_mode == 'School+Car' %}selected{% endif %}>School + Car</option>
-                            <option value="Hostel" {% if current_mode == 'Hostel' %}selected{% endif %}>Hostel</option>
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label>Coaching Opted</label>
-                        {% set current_coaching = pending_data.get('coaching_opted') if pending_edit else student_info.coaching_opted %}
-                        <select name="coaching_opted" style="width:100%; padding:12px; border:2px solid #eee; border-radius:8px;">
-                            <option value="No" {% if current_coaching == 0 or current_coaching == 'No' or not current_coaching %}selected{% endif %}>No</option>
-                            <option value="Yes" {% if current_coaching == 1 or current_coaching == 'Yes' %}selected{% endif %}>Yes</option>
-                        </select>
-                    </div>
+
                     <div class="input-group">
                         <label>Car Service Opted</label>
                         {% set current_car = pending_data.get('car_opted') if pending_edit else student_info.car_opted %}
@@ -350,6 +333,11 @@
                         <label>Mother's Monthly Income</label>
                         {% set current_mi = pending_data.get('mother_monthly_income') if pending_edit else student_info.mother_monthly_income %}
                         <input type="text" name="mother_monthly_income" placeholder="Mother's Monthly Income" value="{{ current_mi or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Guardian's Whatsapp No</label>
+                        {% set current_wa = pending_data.get('whatsapp_no') if pending_edit else student_info.whatsapp_no %}
+                        <input type="tel" name="whatsapp_no" placeholder="10-digit Whatsapp No" pattern="\d{10}" minlength="10" maxlength="10" value="{{ current_wa or '' }}">
                     </div>
                 </div>
             </div>
@@ -437,7 +425,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_bust }}"></script>
     <script>
         lucide.createIcons();
 
